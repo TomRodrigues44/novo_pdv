@@ -527,94 +527,100 @@ const AdminProducts = () => {
         ) : (
           <div className="space-y-8">
             {Object.entries(productsByCategory).map(([categoryId, { category, products: categoryProducts }]) => (
-              <div key={categoryId}>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-orange-100 p-3 rounded-full">
-                    <span className="text-2xl">{category.icon}</span>
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-800">{category.name}</h2>
-                    <p className="text-sm text-gray-500">{categoryProducts.length} produto(s)</p>
+              <div key={categoryId} className="bg-white rounded-xl border-2 border-orange-200 overflow-hidden">
+                {/* Category Header with Stripe */}
+                <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-4">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-white/20 p-3 rounded-full">
+                      <span className="text-3xl">{category.icon}</span>
+                    </div>
+                    <div className="text-white">
+                      <h2 className="text-2xl font-bold">{category.name}</h2>
+                      <p className="text-orange-100 text-sm">{categoryProducts.length} produto(s)</p>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {categoryProducts.map((product) => (
-                    <Card
-                      key={product.id}
-                      className={!product.available ? "opacity-50" : ""}
-                    >
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <span className="text-4xl">{product.image}</span>
-                            <div>
-                              <p className="font-medium">{product.name}</p>
-                              <p className="text-sm text-orange-600 font-bold">
-                                R$ {product.price.toFixed(2)}
-                              </p>
+                {/* Products Grid */}
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {categoryProducts.map((product) => (
+                      <Card
+                        key={product.id}
+                        className={!product.available ? "opacity-50" : ""}
+                      >
+                        <CardHeader>
+                          <CardTitle className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="text-4xl">{product.image}</span>
+                              <div>
+                                <p className="font-medium">{product.name}</p>
+                                <p className="text-sm text-orange-600 font-bold">
+                                  R$ {product.price.toFixed(2)}
+                                </p>
+                              </div>
                             </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleToggleAvailable(product)}
+                            >
+                              {product.available ? (
+                                <Power className="h-5 w-5 text-green-600" />
+                              ) : (
+                                <PowerOff className="h-5 w-5 text-red-600" />
+                              )}
+                            </Button>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                            {product.description}
+                          </p>
+                          {product.fiscal && (
+                            <div className="bg-gray-50 rounded p-2 mb-4 text-xs">
+                              <p><strong>NCM:</strong> {product.fiscal.ncm}</p>
+                              <p><strong>CFOP:</strong> {product.fiscal.cfop}</p>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 mb-4">
+                            <Package className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm">
+                              Estoque:{" "}
+                              <Input
+                                type="number"
+                                value={product.stock || 0}
+                                onChange={(e) =>
+                                  handleStockUpdate(product.id, parseInt(e.target.value))
+                                }
+                                className="w-20 h-8"
+                              />
+                            </span>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleToggleAvailable(product)}
-                          >
-                            {product.available ? (
-                              <Power className="h-5 w-5 text-green-600" />
-                            ) : (
-                              <PowerOff className="h-5 w-5 text-red-600" />
-                            )}
-                          </Button>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                          {product.description}
-                        </p>
-                        {product.fiscal && (
-                          <div className="bg-gray-50 rounded p-2 mb-4 text-xs">
-                            <p><strong>NCM:</strong> {product.fiscal.ncm}</p>
-                            <p><strong>CFOP:</strong> {product.fiscal.cfop}</p>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => handleEdit(product)}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Editar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 text-red-600 hover:text-red-700"
+                              onClick={() => handleDelete(product.id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Excluir
+                            </Button>
                           </div>
-                        )}
-                        <div className="flex items-center gap-2 mb-4">
-                          <Package className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm">
-                            Estoque:{" "}
-                            <Input
-                              type="number"
-                              value={product.stock || 0}
-                              onChange={(e) =>
-                                handleStockUpdate(product.id, parseInt(e.target.value))
-                              }
-                              className="w-20 h-8"
-                            />
-                          </span>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => handleEdit(product)}
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 text-red-600 hover:text-red-700"
-                            onClick={() => handleDelete(product.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
               </div>
             ))}
