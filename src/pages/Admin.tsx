@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import {
   Package,
+  Tags,
   ShoppingCart,
   TrendingUp,
   AlertTriangle,
