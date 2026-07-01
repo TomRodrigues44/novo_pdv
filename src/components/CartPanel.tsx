@@ -3,6 +3,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAdmin } from "@/hooks/use-admin";
 import { CartItemComponent } from "./CartItem";
 import { PaymentDialog } from "./PaymentDialog";
+import { DocumentDialog } from "./DocumentDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, Trash2, Receipt } from "lucide-react";
@@ -20,15 +21,22 @@ export const CartPanel = () => {
   
   const { recordSale } = useAdmin();
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
+  const [currentPayments, setCurrentPayments] = useState<any[]>([]);
+  const [currentSaleId, setCurrentSaleId] = useState<string | null>(null);
 
   const handleCheckout = () => {
     if (cartItems.length === 0) return;
     setIsPaymentDialogOpen(true);
   };
 
-  const handlePaymentConfirm = (payments: any[], type: "quote" | "fiscal") => {
+  const handlePaymentConfirm = (payments: any[]) => {
     // Registrar a venda
+    const saleId = `sale-${Date.now()}`;
+    setCurrentSaleId(saleId);
+    
     recordSale({
+      id: saleId,
       items: cartItems.map((item) => ({
         id: item.id,
         name: item.name,
@@ -38,12 +46,25 @@ export const CartPanel = () => {
       })),
       total: cartTotal,
       payments: payments,
-      type: type, // 'quote' ou 'fiscal'
+      type: "pending", // Pendente de escolha do documento
     });
 
+    setCurrentPayments(payments);
+    setIsPaymentDialogOpen(false);
+    setIsDocumentDialogOpen(true);
+  };
+
+  const handleGenerateDocument = (type: "quote" | "fiscal") => {
+    // Aqui você pode atualizar a venda com o tipo de documento
+    // e enviar ao FISCO se for fiscal
+    
     const documentType = type === "quote" ? "Orçamento" : "Cupom Fiscal";
     alert(`${documentType} gerado com sucesso!\nTotal: R$ ${cartTotal.toFixed(2)}`);
+    
+    setIsDocumentDialogOpen(false);
     clearCart();
+    setCurrentPayments([]);
+    setCurrentSaleId(null);
   };
 
   return (
@@ -113,7 +134,16 @@ export const CartPanel = () => {
         onClose={() => setIsPaymentDialogOpen(false)}
         total={cartTotal}
         cartItems={cartItems}
-        onConfirm={handlePaymentConfirm}
+        onPaymentConfirm={handlePaymentConfirm}
+      />
+
+      <DocumentDialog
+        open={isDocumentDialogOpen}
+        onClose={() => setIsDocumentDialogOpen(false)}
+        total={cartTotal}
+        cartItems={cartItems}
+        payments={currentPayments}
+        onGenerateDocument={handleGenerateDocument}
       />
     </>
   );

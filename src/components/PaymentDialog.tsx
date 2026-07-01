@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { CreditCard, QrCode, Banknote, Plus, Trash2, Check, Receipt, FileText, Printer } from "lucide-react";
+import { CreditCard, QrCode, Banknote, Plus, Trash2, Check, Printer } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { CartItem } from "@/types/product";
 
@@ -26,10 +26,10 @@ interface PaymentDialogProps {
   onClose: () => void;
   total: number;
   cartItems: CartItem[];
-  onConfirm: (payments: PaymentMethod[], type: "quote" | "fiscal") => void;
+  onPaymentConfirm: (payments: PaymentMethod[]) => void;
 }
 
-export const PaymentDialog = ({ open, onClose, total, cartItems, onConfirm }: PaymentDialogProps) => {
+export const PaymentDialog = ({ open, onClose, total, cartItems, onPaymentConfirm }: PaymentDialogProps) => {
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
   const [selectedType, setSelectedType] = useState<"debit" | "credit" | "pix" | "cash">("debit");
   const [amount, setAmount] = useState("");
@@ -65,11 +65,11 @@ export const PaymentDialog = ({ open, onClose, total, cartItems, onConfirm }: Pa
     setPayments(payments.filter((p) => p.id !== id));
   };
 
-  const handleConfirm = (type: "quote" | "fiscal") => {
-    if (type === "fiscal" && (!isComplete || payments.length === 0)) {
+  const handleConfirmPayment = () => {
+    if (!isComplete || payments.length === 0) {
       return;
     }
-    onConfirm(payments, type);
+    onPaymentConfirm(payments);
     setPayments([]);
     onClose();
   };
@@ -101,15 +101,15 @@ export const PaymentDialog = ({ open, onClose, total, cartItems, onConfirm }: Pa
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-5xl max-h-[95vh] p-0 overflow-hidden flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[95vh] p-0 overflow-hidden flex flex-col">
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="text-2xl">Pagamento</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Coluna Esquerda - Resumo do Pedido */}
-            <div className="lg:col-span-1 space-y-4">
+            <div className="space-y-4">
               <Card>
                 <CardHeader className="bg-orange-50 pb-3">
                   <h3 className="font-bold text-lg text-orange-800">Resumo do Pedido</h3>
@@ -156,8 +156,8 @@ export const PaymentDialog = ({ open, onClose, total, cartItems, onConfirm }: Pa
               </Card>
             </div>
 
-            {/* Coluna Central - Pagamentos */}
-            <div className="lg:col-span-1 space-y-4">
+            {/* Coluna Direita - Pagamentos */}
+            <div className="space-y-4">
               <h3 className="font-semibold text-lg">Pagamentos</h3>
 
               {/* Pagamentos Adicionados */}
@@ -322,123 +322,20 @@ export const PaymentDialog = ({ open, onClose, total, cartItems, onConfirm }: Pa
                 </div>
               )}
             </div>
-
-            {/* Coluna Direita - Visualização do Cupom */}
-            <div className="lg:col-span-1">
-              <Card className="h-full">
-                <CardHeader className="bg-gray-100 pb-3">
-                  <div className="flex items-center gap-2">
-                    <Printer className="h-5 w-5 text-gray-600" />
-                    <h3 className="font-bold text-lg text-gray-800">Visualização do Cupom</h3>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-4">
-                  <div className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-4 font-mono text-xs space-y-2">
-                    {/* Cabeçalho do Cupom */}
-                    <div className="text-center space-y-1">
-                      <p className="font-bold text-sm">EMPÓRIO DAS COXINHAS</p>
-                      <p className="text-gray-600">PDV Sistema - Não Fiscal</p>
-                      <Separator className="my-2" />
-                      <p>Data: {new Date().toLocaleString("pt-BR")}</p>
-                      <p>Operador: Caixa 01</p>
-                      <Separator className="my-2" />
-                    </div>
-
-                    {/* Itens do Cupom */}
-                    <div className="space-y-1">
-                      {cartItems.map((item, index) => (
-                        <div key={index} className="space-y-1">
-                          <div className="flex justify-between">
-                            <span>{item.quantity}x {item.name}</span>
-                            <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
-                          </div>
-                          {(item as any).flavors && (item as any).flavors.length > 0 && (
-                            <p className="text-gray-500 pl-2">
-                              Sabores: {(item as any).flavors.join(", ")}
-                            </p>
-                          )}
-                          <div className="flex justify-between text-gray-600">
-                            <span>  R$ {item.price.toFixed(2)} un.</span>
-                          </div>
-                          {index < cartItems.length - 1 && <Separator className="my-1" />}
-                        </div>
-                      ))}
-                    </div>
-
-                    <Separator className="my-2" />
-
-                    {/* Totais */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <span>Subtotal:</span>
-                        <span>R$ {total.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-sm">
-                        <span>TOTAL:</span>
-                        <span>R$ {total.toFixed(2)}</span>
-                      </div>
-                    </div>
-
-                    {/* Pagamentos */}
-                    {payments.length > 0 && (
-                      <>
-                        <Separator className="my-2" />
-                        <div className="space-y-1">
-                          <p className="font-bold">Pagamentos:</p>
-                          {payments.map((payment) => (
-                            <div key={payment.id} className="flex justify-between">
-                              <span>{getPaymentTypeName(payment.type)}</span>
-                              <span>R$ {payment.amount.toFixed(2)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-
-                    {/* Troco */}
-                    {totalChange > 0 && (
-                      <>
-                        <Separator className="my-2" />
-                        <div className="flex justify-between font-bold">
-                          <span>TROCO:</span>
-                          <span>R$ {totalChange.toFixed(2)}</span>
-                        </div>
-                      </>
-                    )}
-
-                    {/* Rodapé */}
-                    <Separator className="my-2" />
-                    <div className="text-center space-y-1">
-                      <p className="text-gray-600">Obrigado pela preferência!</p>
-                      <p className="text-gray-600">Volte sempre!</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </div>
         </div>
 
-        {/* Footer Fixo com Botões */}
+        {/* Footer Fixo com Botão de Confirmar Pagamento */}
         <DialogFooter className="px-6 py-4 border-t bg-gray-50 gap-2">
           <Button variant="outline" onClick={handleClose}>
             Cancelar
           </Button>
           <Button
-            onClick={() => handleConfirm("quote")}
-            variant="secondary"
-            className="flex-1"
-          >
-            <FileText className="mr-2 h-4 w-4" />
-            Orçamento
-          </Button>
-          <Button
-            onClick={() => handleConfirm("fiscal")}
+            onClick={handleConfirmPayment}
             className="flex-1 bg-green-600 hover:bg-green-700"
             disabled={!isComplete || payments.length === 0}
           >
-            <Receipt className="mr-2 h-4 w-4" />
-            Gerar Cupom Fiscal
+            Confirmar Pagamento
           </Button>
         </DialogFooter>
       </DialogContent>
