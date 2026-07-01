@@ -451,11 +451,11 @@ const AdminProducts = () => {
                             <SelectItem value="1">1 - Importada</SelectItem>
                             <SelectItem value="2">2 - Nacional com conteúdo importado</SelectItem>
                             <SelectItem value="3">3 - Nacional com processo produtivo básico</SelectItem>
-                            <SelectItem value="4">4 - Nacional com conteúdo importado > 40%</SelectItem>
-                            <SelectItem value="5">5 - Nacional com conteúdo importado > 70%</SelectItem>
+                            <SelectItem value="4">4 - Nacional com conteúdo importado {'>'} 40%</SelectItem>
+                            <SelectItem value="5">5 - Nacional com conteúdo importado {'>'} 70%</SelectItem>
                             <SelectItem value="6">6 - Estrangeira importada direta</SelectItem>
                             <SelectItem value="7">7 - Estrangeira adquirida no mercado interno</SelectItem>
-                            <SelectItem value="8">8 - Nacional com conteúdo importado < 40%</SelectItem>
+                            <SelectItem value="8">8 - Nacional com conteúdo importado {'<'} 40%</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
