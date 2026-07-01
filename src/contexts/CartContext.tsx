@@ -1,9 +1,13 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { CartItem, Product } from "@/types/product";
 
+interface CartItemWithFlavors extends CartItem {
+  flavors?: string[];
+}
+
 interface CartContextType {
-  cartItems: CartItem[];
-  addToCart: (product: Product) => void;
+  cartItems: CartItemWithFlavors[];
+  addToCart: (product: Product, flavors?: string[]) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -14,21 +18,24 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItemWithFlavors[]>([]);
 
-  const addToCart = useCallback((product: Product) => {
+  const addToCart = useCallback((product: Product, flavors?: string[]) => {
     setCartItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item.id === product.id);
+      const existingItem = prevItems.find((item) => 
+        item.id === product.id && 
+        JSON.stringify(item.flavors) === JSON.stringify(flavors)
+      );
       
       if (existingItem) {
         return prevItems.map((item) =>
-          item.id === product.id
+          item.id === product.id && JSON.stringify(item.flavors) === JSON.stringify(flavors)
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
       
-      return [...prevItems, { ...product, quantity: 1 }];
+      return [...prevItems, { ...product, quantity: 1, flavors }];
     });
   }, []);
 
