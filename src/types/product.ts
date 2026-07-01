@@ -6,6 +6,7 @@ export interface Product {
   category: string;
   image: string;
   available: boolean;
+  stock?: number;
 }
 
 export interface CartItem extends Product {
@@ -16,4 +17,5 @@ export interface Category {
   id: string;
   name: string;
   icon: string;
+  active?: boolean;
 }

@@ -5,7 +5,8 @@ import { CartPanel } from "@/components/CartPanel";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { products } from "@/data/products";
 import { Product } from "@/types/product";
-import { Store, Clock } from "lucide-react";
+import { Store, Clock, Settings } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -33,6 +34,15 @@ const Index = () => {
                 </p>
               </div>
             </div>
+            <Link to="/admin">
+              <Button
+                variant="outline"
+                className="bg-white/10 hover:bg-white/20 text-white border-white/30"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Admin
+              </Button>
+            </Link>
           </div>
         </div>
       </header>

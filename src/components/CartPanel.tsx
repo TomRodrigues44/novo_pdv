@@ -1,4 +1,5 @@
 import { useCart } from "@/hooks/use-cart";
+import { useAdmin } from "@/hooks/use-admin";
 import { CartItemComponent } from "./CartItem";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,11 +15,23 @@ export const CartPanel = () => {
     cartTotal,
     cartCount,
   } = useCart();
+  
+  const { recordSale } = useAdmin();
 
   const handleCheckout = () => {
     if (cartItems.length === 0) return;
     
-    // Aqui você pode adicionar lógica de checkout
+    // Registrar a venda
+    recordSale({
+      items: cartItems.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+      })),
+      total: cartTotal,
+    });
+
     alert(`Pedido finalizado! Total: R$ ${cartTotal.toFixed(2)}`);
     clearCart();
   };
