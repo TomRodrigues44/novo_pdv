@@ -1,4 +1,4 @@
-import { useCart } from "@/hooks/use-cart";
+import { useCart } from "@/contexts/CartContext";
 import { useAdmin } from "@/hooks/use-admin";
 import { CartItemComponent } from "./CartItem";
 import { Button } from "@/components/ui/button";

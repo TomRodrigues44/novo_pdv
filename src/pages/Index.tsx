@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { useCart } from "@/hooks/use-cart";
+import { useCart } from "@/contexts/CartContext";
 import { useAdmin } from "@/hooks/use-admin";
 import { ProductCard } from "@/components/ProductCard";
 import { CartPanel } from "@/components/CartPanel";
 import { CategoryFilter } from "@/components/CategoryFilter";
-import { Product } from "@/types/product";
 import { Store, Clock, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
