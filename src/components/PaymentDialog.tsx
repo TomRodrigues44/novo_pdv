@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { CreditCard, QrCode, Banknote, Plus, Trash2, Check, Printer } from "lucide-react";
+import { CreditCard, QrCode, Banknote, Plus, Trash2, Check, Truck } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { CartItem } from "@/types/product";
 
@@ -25,16 +25,18 @@ interface PaymentDialogProps {
   open: boolean;
   onClose: () => void;
   total: number;
+  freight: number;
   cartItems: CartItem[];
   onPaymentConfirm: (payments: PaymentMethod[]) => void;
 }
 
-export const PaymentDialog = ({ open, onClose, total, cartItems, onPaymentConfirm }: PaymentDialogProps) => {
+export const PaymentDialog = ({ open, onClose, total, freight, cartItems, onPaymentConfirm }: PaymentDialogProps) => {
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
   const [selectedType, setSelectedType] = useState<"debit" | "credit" | "pix" | "cash">("debit");
   const [amount, setAmount] = useState("");
   const [cashReceived, setCashReceived] = useState("");
 
+  const subtotal = total - freight;
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const remaining = total - totalPaid;
   const isComplete = remaining <= 0.01;
@@ -136,9 +138,27 @@ export const PaymentDialog = ({ open, onClose, total, cartItems, onPaymentConfir
                     </div>
                   ))}
                   <Separator className="my-3" />
-                  <div className="flex justify-between items-center text-lg font-bold">
-                    <span>Total:</span>
-                    <span className="text-orange-600">R$ {total.toFixed(2)}</span>
+                  
+                  {/* Discriminação de Valores */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Subtotal:</span>
+                      <span>R$ {subtotal.toFixed(2)}</span>
+                    </div>
+                    {freight > 0 && (
+                      <div className="flex justify-between items-center text-blue-600 font-medium">
+                        <span className="flex items-center gap-1">
+                          <Truck className="h-4 w-4" />
+                          Frete (Entrega):
+                        </span>
+                        <span>R$ {freight.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between items-center text-lg font-bold">
+                      <span>Total:</span>
+                      <span className="text-orange-600">R$ {total.toFixed(2)}</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

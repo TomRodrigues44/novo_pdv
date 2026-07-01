@@ -231,6 +231,7 @@ export const CartPanel = () => {
         open={isPaymentDialogOpen}
         onClose={() => setIsPaymentDialogOpen(false)}
         total={totalWithFreight}
+        freight={freight}
         cartItems={cartItems}
         onPaymentConfirm={handlePaymentConfirm}
       />
@@ -239,6 +240,7 @@ export const CartPanel = () => {
         open={isDocumentDialogOpen}
         onClose={() => setIsDocumentDialogOpen(false)}
         total={totalWithFreight}
+        freight={freight}
         cartItems={cartItems}
         payments={currentPayments}
         onGenerateDocument={handleGenerateDocument}
