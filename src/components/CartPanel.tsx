@@ -5,8 +5,17 @@ import { CartItemComponent } from "./CartItem";
 import { PaymentDialog } from "./PaymentDialog";
 import { DocumentDialog } from "./DocumentDialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, Trash2, Receipt } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ShoppingCart, Trash2, Receipt, Truck, Plus, X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export const CartPanel = () => {
@@ -24,6 +33,24 @@ export const CartPanel = () => {
   const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
   const [currentPayments, setCurrentPayments] = useState<any[]>([]);
   const [currentSaleId, setCurrentSaleId] = useState<string | null>(null);
+  const [freight, setFreight] = useState<number>(0);
+  const [isFreightDialogOpen, setIsFreightDialogOpen] = useState(false);
+  const [freightValue, setFreightValue] = useState("");
+
+  const totalWithFreight = cartTotal + freight;
+
+  const handleAddFreight = () => {
+    const value = parseFloat(freightValue);
+    if (value && value >= 0) {
+      setFreight(value);
+      setFreightValue("");
+      setIsFreightDialogOpen(false);
+    }
+  };
+
+  const handleRemoveFreight = () => {
+    setFreight(0);
+  };
 
   const handleCheckout = () => {
     if (cartItems.length === 0) return;
@@ -44,9 +71,10 @@ export const CartPanel = () => {
         quantity: item.quantity,
         flavors: (item as any).flavors,
       })),
-      total: cartTotal,
+      total: totalWithFreight,
       payments: payments,
-      type: "pending", // Pendente de escolha do documento
+      type: "pending",
+      freight: freight,
     });
 
     setCurrentPayments(payments);
@@ -55,14 +83,12 @@ export const CartPanel = () => {
   };
 
   const handleGenerateDocument = (type: "quote" | "fiscal") => {
-    // Aqui você pode atualizar a venda com o tipo de documento
-    // e enviar ao FISCO se for fiscal
-    
     const documentType = type === "quote" ? "Orçamento" : "Cupom Fiscal";
-    alert(`${documentType} gerado com sucesso!\nTotal: R$ ${cartTotal.toFixed(2)}`);
+    alert(`${documentType} gerado com sucesso!\nTotal: R$ ${totalWithFreight.toFixed(2)}`);
     
     setIsDocumentDialogOpen(false);
     clearCart();
+    setFreight(0);
     setCurrentPayments([]);
     setCurrentSaleId(null);
   };
@@ -105,10 +131,81 @@ export const CartPanel = () => {
           <>
             <Separator />
             <div className="p-4 space-y-3">
+              {/* Botão de Frete */}
+              <div className="flex gap-2">
+                <Dialog open={isFreightDialogOpen} onOpenChange={setIsFreightDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-blue-300 text-blue-600 hover:bg-blue-50"
+                    >
+                      <Truck className="mr-2 h-4 w-4" />
+                      Adicionar Frete
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Adicionar Frete</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Valor do Frete
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={freightValue}
+                          onChange={(e) => setFreightValue(e.target.value)}
+                          placeholder="Ex: 10.00"
+                        />
+                      </div>
+                      <Button onClick={handleAddFreight} className="w-full bg-blue-600">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Adicionar
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                {freight > 0 && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleRemoveFreight}
+                    className="border-red-300 text-red-600 hover:bg-red-50"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Display do Frete */}
+              {freight > 0 && (
+                <div className="flex justify-between items-center text-sm bg-blue-50 p-2 rounded-lg">
+                  <span className="text-blue-700 font-medium">Frete (Entrega):</span>
+                  <span className="text-blue-700 font-bold">R$ {freight.toFixed(2)}</span>
+                </div>
+              )}
+
               <div className="flex justify-between items-center text-lg">
                 <span className="text-gray-600">Subtotal:</span>
                 <span className="font-semibold">R$ {cartTotal.toFixed(2)}</span>
               </div>
+              
+              {freight > 0 && (
+                <div className="flex justify-between items-center text-sm text-gray-500">
+                  <span>Frete:</span>
+                  <span>R$ {freight.toFixed(2)}</span>
+                </div>
+              )}
+
+              <Separator />
+
+              <div className="flex justify-between items-center text-xl font-bold">
+                <span className="text-gray-800">Total:</span>
+                <span className="text-orange-600">R$ {totalWithFreight.toFixed(2)}</span>
+              </div>
+
               <Button
                 onClick={handleCheckout}
                 className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-lg"
@@ -116,6 +213,7 @@ export const CartPanel = () => {
                 <Receipt className="mr-2 h-5 w-5" />
                 Finalizar Pedido
               </Button>
+              
               <Button
                 onClick={clearCart}
                 variant="outline"
@@ -132,7 +230,7 @@ export const CartPanel = () => {
       <PaymentDialog
         open={isPaymentDialogOpen}
         onClose={() => setIsPaymentDialogOpen(false)}
-        total={cartTotal}
+        total={totalWithFreight}
         cartItems={cartItems}
         onPaymentConfirm={handlePaymentConfirm}
       />
@@ -140,7 +238,7 @@ export const CartPanel = () => {
       <DocumentDialog
         open={isDocumentDialogOpen}
         onClose={() => setIsDocumentDialogOpen(false)}
-        total={cartTotal}
+        total={totalWithFreight}
         cartItems={cartItems}
         payments={currentPayments}
         onGenerateDocument={handleGenerateDocument}

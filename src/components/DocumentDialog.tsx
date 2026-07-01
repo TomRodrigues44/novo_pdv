@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Receipt, FileText, Printer, CheckCircle } from "lucide-react";
+import { Receipt, FileText, Printer, CheckCircle, Truck } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { CartItem } from "@/types/product";
 
@@ -16,18 +16,21 @@ interface DocumentDialogProps {
   open: boolean;
   onClose: () => void;
   total: number;
+  freight: number;
   cartItems: CartItem[];
   payments: any[];
   onGenerateDocument: (type: "quote" | "fiscal") => void;
 }
 
-export const DocumentDialog = ({ open, onClose, total, cartItems, payments, onGenerateDocument }: DocumentDialogProps) => {
+export const DocumentDialog = ({ open, onClose, total, freight, cartItems, payments, onGenerateDocument }: DocumentDialogProps) => {
   const totalChange = payments.reduce((sum: number, p: any) => {
     if (p.type === "cash" && p.cashReceived) {
       return sum + (p.cashReceived - p.amount);
     }
     return sum;
   }, 0);
+
+  const subtotal = total - freight;
 
   const getPaymentTypeName = (type: string) => {
     switch (type) {
@@ -79,9 +82,25 @@ export const DocumentDialog = ({ open, onClose, total, cartItems, payments, onGe
                     </div>
                   ))}
                   <Separator className="my-3" />
-                  <div className="flex justify-between items-center text-lg font-bold">
-                    <span>Total:</span>
-                    <span className="text-orange-600">R$ {total.toFixed(2)}</span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Subtotal:</span>
+                      <span>R$ {subtotal.toFixed(2)}</span>
+                    </div>
+                    {freight > 0 && (
+                      <div className="flex justify-between items-center text-blue-600">
+                        <span className="flex items-center gap-1">
+                          <Truck className="h-4 w-4" />
+                          Frete (Entrega):
+                        </span>
+                        <span>R$ {freight.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between items-center text-lg font-bold">
+                      <span>Total:</span>
+                      <span className="text-orange-600">R$ {total.toFixed(2)}</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
