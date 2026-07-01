@@ -15,7 +15,7 @@ import { Separator } from "@/components/ui/separator";
 
 interface PaymentMethod {
   id: string;
-  type: "card" | "pix" | "cash";
+  type: "debit" | "credit" | "pix" | "cash";
   amount: number;
   cashReceived?: number;
 }
@@ -29,7 +29,7 @@ interface PaymentDialogProps {
 
 export const PaymentDialog = ({ open, onClose, total, onConfirm }: PaymentDialogProps) => {
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
-  const [selectedType, setSelectedType] = useState<"card" | "pix" | "cash">("card");
+  const [selectedType, setSelectedType] = useState<"debit" | "credit" | "pix" | "cash">("debit");
   const [amount, setAmount] = useState("");
   const [cashReceived, setCashReceived] = useState("");
 
@@ -117,12 +117,14 @@ export const PaymentDialog = ({ open, onClose, total, onConfirm }: PaymentDialog
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                   >
                     <div className="flex items-center gap-3">
-                      {payment.type === "card" && <CreditCard className="h-5 w-5 text-blue-600" />}
-                      {payment.type === "pix" && <QrCode className="h-5 w-5 text-purple-600" />}
-                      {payment.type === "cash" && <Banknote className="h-5 w-5 text-green-600" />}
+                      {payment.type === "debit" && <CreditCard className="h-5 w-5 text-blue-600" />}
+                      {payment.type === "credit" && <CreditCard className="h-5 w-5 text-purple-600" />}
+                      {payment.type === "pix" && <QrCode className="h-5 w-5 text-green-600" />}
+                      {payment.type === "cash" && <Banknote className="h-5 w-5 text-amber-600" />}
                       <div>
                         <p className="font-medium">
-                          {payment.type === "card" && "Cartão"}
+                          {payment.type === "debit" && "Cartão de Débito"}
+                          {payment.type === "credit" && "Cartão de Crédito"}
                           {payment.type === "pix" && "Pix"}
                           {payment.type === "cash" && "Dinheiro"}
                         </p>
@@ -173,10 +175,14 @@ export const PaymentDialog = ({ open, onClose, total, onConfirm }: PaymentDialog
               <h3 className="font-semibold text-lg">Adicionar Pagamento</h3>
               
               <Tabs value={selectedType} onValueChange={(v) => setSelectedType(v as any)}>
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="card">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="debit">
                     <CreditCard className="h-4 w-4 mr-2" />
-                    Cartão
+                    Débito
+                  </TabsTrigger>
+                  <TabsTrigger value="credit">
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Crédito
                   </TabsTrigger>
                   <TabsTrigger value="pix">
                     <QrCode className="h-4 w-4 mr-2" />
@@ -188,7 +194,22 @@ export const PaymentDialog = ({ open, onClose, total, onConfirm }: PaymentDialog
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="card" className="space-y-4">
+                <TabsContent value="debit" className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Valor do Pagamento
+                    </label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
+                    />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="credit" className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">
                       Valor do Pagamento
