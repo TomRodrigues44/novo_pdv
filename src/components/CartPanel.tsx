@@ -26,7 +26,7 @@ export const CartPanel = () => {
     setIsPaymentDialogOpen(true);
   };
 
-  const handlePaymentConfirm = (payments: any[]) => {
+  const handlePaymentConfirm = (payments: any[], type: "quote" | "fiscal") => {
     // Registrar a venda
     recordSale({
       items: cartItems.map((item) => ({
@@ -34,12 +34,15 @@ export const CartPanel = () => {
         name: item.name,
         price: item.price,
         quantity: item.quantity,
+        flavors: (item as any).flavors,
       })),
       total: cartTotal,
       payments: payments,
+      type: type, // 'quote' ou 'fiscal'
     });
 
-    alert(`Pedido finalizado! Total: R$ ${cartTotal.toFixed(2)}`);
+    const documentType = type === "quote" ? "Orçamento" : "Cupom Fiscal";
+    alert(`${documentType} gerado com sucesso!\nTotal: R$ ${cartTotal.toFixed(2)}`);
     clearCart();
   };
 
@@ -109,6 +112,7 @@ export const CartPanel = () => {
         open={isPaymentDialogOpen}
         onClose={() => setIsPaymentDialogOpen(false)}
         total={cartTotal}
+        cartItems={cartItems}
         onConfirm={handlePaymentConfirm}
       />
     </>
