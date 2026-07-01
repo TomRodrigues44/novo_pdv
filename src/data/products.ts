@@ -9,6 +9,32 @@ export const categories: Category[] = [
   { id: "diversos", name: "Diversos", icon: "🍪" },
 ];
 
+// Informações fiscais padrão para produtos alimentícios
+const fiscalInfoPadrao = {
+  ncm: "1905.90.00",
+  cfop: "5102",
+  cest: "",
+  unidade: "UN",
+  icms: 17,
+  ipi: 0,
+  pis: 0.65,
+  cofins: 3,
+  origem: 0,
+};
+
+// Informações fiscais para bebidas
+const fiscalInfoBebidas = {
+  ncm: "2202.10.00",
+  cfop: "5102",
+  cest: "0301400",
+  unidade: "UN",
+  icms: 17,
+  ipi: 0,
+  pis: 0.65,
+  cofins: 3,
+  origem: 0,
+};
+
 export const products: Product[] = [
   // Salgados
   {
@@ -19,6 +45,8 @@ export const products: Product[] = [
     category: "salgados",
     image: "🥟",
     available: true,
+    stock: 50,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "cox-calabresa",
@@ -28,6 +56,8 @@ export const products: Product[] = [
     category: "salgados",
     image: "🥟",
     available: true,
+    stock: 40,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "cox-queijo",
@@ -37,6 +67,8 @@ export const products: Product[] = [
     category: "salgados",
     image: "🥟",
     available: true,
+    stock: 45,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "cox-carne",
@@ -46,6 +78,8 @@ export const products: Product[] = [
     category: "salgados",
     image: "🥟",
     available: true,
+    stock: 30,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "cox-catupiry",
@@ -55,6 +89,8 @@ export const products: Product[] = [
     category: "salgados",
     image: "🥟",
     available: true,
+    stock: 35,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "kibe",
@@ -64,6 +100,8 @@ export const products: Product[] = [
     category: "salgados",
     image: "🥙",
     available: true,
+    stock: 60,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "risoles",
@@ -73,6 +111,8 @@ export const products: Product[] = [
     category: "salgados",
     image: "🥐",
     available: true,
+    stock: 55,
+    fiscal: fiscalInfoPadrao,
   },
 
   // Bolos
@@ -84,6 +124,8 @@ export const products: Product[] = [
     category: "bolos",
     image: "🎂",
     available: true,
+    stock: 20,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "bolo-cenoura",
@@ -93,6 +135,8 @@ export const products: Product[] = [
     category: "bolos",
     image: "🥕",
     available: true,
+    stock: 25,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "bolo-milho",
@@ -102,6 +146,8 @@ export const products: Product[] = [
     category: "bolos",
     image: "🌽",
     available: true,
+    stock: 30,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "bolo-coco",
@@ -111,6 +157,8 @@ export const products: Product[] = [
     category: "bolos",
     image: "🥥",
     available: true,
+    stock: 25,
+    fiscal: fiscalInfoPadrao,
   },
 
   // Brigadeiros
@@ -122,6 +170,8 @@ export const products: Product[] = [
     category: "brigadeiros",
     image: "🍫",
     available: true,
+    stock: 100,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "brig-branco",
@@ -131,6 +181,8 @@ export const products: Product[] = [
     category: "brigadeiros",
     image: "🤍",
     available: true,
+    stock: 80,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "brig-ninho",
@@ -140,6 +192,8 @@ export const products: Product[] = [
     category: "brigadeiros",
     image: "🍼",
     available: true,
+    stock: 70,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "caixa-brig",
@@ -149,6 +203,8 @@ export const products: Product[] = [
     category: "brigadeiros",
     image: "📦",
     available: true,
+    stock: 15,
+    fiscal: fiscalInfoPadrao,
   },
 
   // Bebidas
@@ -160,6 +216,8 @@ export const products: Product[] = [
     category: "bebidas",
     image: "🥤",
     available: true,
+    stock: 100,
+    fiscal: fiscalInfoBebidas,
   },
   {
     id: "refri-guarana",
@@ -169,6 +227,8 @@ export const products: Product[] = [
     category: "bebidas",
     image: "🥤",
     available: true,
+    stock: 100,
+    fiscal: fiscalInfoBebidas,
   },
   {
     id: "suco-laranja",
@@ -178,6 +238,8 @@ export const products: Product[] = [
     category: "bebidas",
     image: "🍊",
     available: true,
+    stock: 50,
+    fiscal: fiscalInfoBebidas,
   },
   {
     id: "agua",
@@ -187,6 +249,18 @@ export const products: Product[] = [
     category: "bebidas",
     image: "💧",
     available: true,
+    stock: 150,
+    fiscal: {
+      ncm: "2201.10.00",
+      cfop: "5102",
+      cest: "",
+      unidade: "UN",
+      icms: 17,
+      ipi: 0,
+      pis: 0.65,
+      cofins: 3,
+      origem: 0,
+    },
   },
   {
     id: "cerveja",
@@ -196,6 +270,18 @@ export const products: Product[] = [
     category: "bebidas",
     image: "🍺",
     available: true,
+    stock: 80,
+    fiscal: {
+      ncm: "2203.00.00",
+      cfop: "5102",
+      cest: "0301400",
+      unidade: "UN",
+      icms: 27,
+      ipi: 0,
+      pis: 2.22,
+      cofins: 10.23,
+      origem: 0,
+    },
   },
   {
     id: "cafe",
@@ -205,6 +291,18 @@ export const products: Product[] = [
     category: "bebidas",
     image: "☕",
     available: true,
+    stock: 200,
+    fiscal: {
+      ncm: "0901.21.00",
+      cfop: "5102",
+      cest: "",
+      unidade: "UN",
+      icms: 17,
+      ipi: 0,
+      pis: 0.65,
+      cofins: 3,
+      origem: 0,
+    },
   },
 
   // Combos
@@ -216,6 +314,8 @@ export const products: Product[] = [
     category: "combos",
     image: "🎁",
     available: true,
+    stock: 20,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "combo-2",
@@ -225,6 +325,8 @@ export const products: Product[] = [
     category: "combos",
     image: "🎁",
     available: true,
+    stock: 10,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "combo-3",
@@ -234,6 +336,8 @@ export const products: Product[] = [
     category: "combos",
     image: "🎁",
     available: true,
+    stock: 15,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "combo-cafe",
@@ -243,6 +347,8 @@ export const products: Product[] = [
     category: "combos",
     image: "☕",
     available: true,
+    stock: 30,
+    fiscal: fiscalInfoPadrao,
   },
 
   // Diversos
@@ -254,6 +360,8 @@ export const products: Product[] = [
     category: "diversos",
     image: "🍮",
     available: true,
+    stock: 25,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "brownie",
@@ -263,6 +371,8 @@ export const products: Product[] = [
     category: "diversos",
     image: "🍫",
     available: true,
+    stock: 20,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "petit-gateau",
@@ -272,6 +382,8 @@ export const products: Product[] = [
     category: "diversos",
     image: "🧁",
     available: true,
+    stock: 15,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "churros",
@@ -281,6 +393,8 @@ export const products: Product[] = [
     category: "diversos",
     image: "🥖",
     available: true,
+    stock: 40,
+    fiscal: fiscalInfoPadrao,
   },
   {
     id: "paodequeijo",
@@ -290,5 +404,7 @@ export const products: Product[] = [
     category: "diversos",
     image: "🧀",
     available: true,
+    stock: 100,
+    fiscal: fiscalInfoPadrao,
   },
 ];

@@ -31,8 +31,10 @@ import {
   Power,
   PowerOff,
   Package,
+  FileText,
 } from "lucide-react";
-import { Product } from "@/types/product";
+import { Product, FiscalInfo } from "@/types/product";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const AdminProducts = () => {
   const { products, categories, addProduct, updateProduct, deleteProduct, updateStock } = useAdmin();
@@ -45,10 +47,34 @@ const AdminProducts = () => {
     category: "",
     image: "",
     stock: "10",
+    // Fiscal info
+    ncm: "",
+    cfop: "",
+    cest: "",
+    unidade: "UN",
+    icms: "17",
+    ipi: "0",
+    pis: "0.65",
+    cofins: "3",
+    origem: "0",
+    codigoBarras: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const fiscalInfo: FiscalInfo = {
+      ncm: formData.ncm,
+      cfop: formData.cfop,
+      cest: formData.cest,
+      unidade: formData.unidade,
+      icms: parseFloat(formData.icms),
+      ipi: parseFloat(formData.ipi),
+      pis: parseFloat(formData.pis),
+      cofins: parseFloat(formData.cofins),
+      origem: parseInt(formData.origem),
+      codigoBarras: formData.codigoBarras || undefined,
+    };
+
     const productData = {
       name: formData.name,
       description: formData.description,
@@ -57,6 +83,7 @@ const AdminProducts = () => {
       image: formData.image,
       stock: parseInt(formData.stock),
       available: parseInt(formData.stock) > 0,
+      fiscal: fiscalInfo,
     };
 
     if (editingProduct) {
@@ -66,6 +93,10 @@ const AdminProducts = () => {
     }
     setIsDialogOpen(false);
     setEditingProduct(null);
+    resetForm();
+  };
+
+  const resetForm = () => {
     setFormData({
       name: "",
       description: "",
@@ -73,6 +104,16 @@ const AdminProducts = () => {
       category: "",
       image: "",
       stock: "10",
+      ncm: "",
+      cfop: "",
+      cest: "",
+      unidade: "UN",
+      icms: "17",
+      ipi: "0",
+      pis: "0.65",
+      cofins: "3",
+      origem: "0",
+      codigoBarras: "",
     });
   };
 
@@ -85,6 +126,16 @@ const AdminProducts = () => {
       category: product.category,
       image: product.image,
       stock: (product.stock || 10).toString(),
+      ncm: product.fiscal?.ncm || "",
+      cfop: product.fiscal?.cfop || "",
+      cest: product.fiscal?.cest || "",
+      unidade: product.fiscal?.unidade || "UN",
+      icms: product.fiscal?.icms?.toString() || "17",
+      ipi: product.fiscal?.ipi?.toString() || "0",
+      pis: product.fiscal?.pis?.toString() || "0.65",
+      cofins: product.fiscal?.cofins?.toString() || "3",
+      origem: product.fiscal?.origem?.toString() || "0",
+      codigoBarras: product.fiscal?.codigoBarras || "",
     });
     setIsDialogOpen(true);
   };
@@ -114,14 +165,7 @@ const AdminProducts = () => {
               <Button
                 onClick={() => {
                   setEditingProduct(null);
-                  setFormData({
-                    name: "",
-                    description: "",
-                    price: "",
-                    category: "",
-                    image: "",
-                    stock: "10",
-                  });
+                  resetForm();
                 }}
                 className="bg-orange-600 hover:bg-orange-700"
               >
@@ -129,108 +173,308 @@ const AdminProducts = () => {
                 Novo Produto
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingProduct ? "Editar Produto" : "Novo Produto"}
                 </DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Nome
-                    </label>
-                    <Input
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
-                      placeholder="Ex: Coxinha de Frango"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Preço
-                    </label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) =>
-                        setFormData({ ...formData, price: e.target.value })
-                      }
-                      placeholder="Ex: 8.00"
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Descrição
-                  </label>
-                  <Textarea
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    placeholder="Descrição do produto"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Categoria
-                    </label>
-                    <Select
-                      value={formData.category}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, category: value })
-                      }
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.icon} {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Estoque
-                    </label>
-                    <Input
-                      type="number"
-                      value={formData.stock}
-                      onChange={(e) =>
-                        setFormData({ ...formData, stock: e.target.value })
-                      }
-                      placeholder="Ex: 10"
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Imagem (Emoji ou URL)
-                  </label>
-                  <Input
-                    value={formData.image}
-                    onChange={(e) =>
-                      setFormData({ ...formData, image: e.target.value })
-                    }
-                    placeholder="Ex: 🥟"
-                    required
-                  />
-                </div>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <Tabs defaultValue="basic" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="basic">Dados Básicos</TabsTrigger>
+                    <TabsTrigger value="fiscal">Informações Fiscais</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="basic" className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Nome
+                        </label>
+                        <Input
+                          value={formData.name}
+                          onChange={(e) =>
+                            setFormData({ ...formData, name: e.target.value })
+                          }
+                          placeholder="Ex: Coxinha de Frango"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Preço
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.price}
+                          onChange={(e) =>
+                            setFormData({ ...formData, price: e.target.value })
+                          }
+                          placeholder="Ex: 8.00"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Descrição
+                      </label>
+                      <Textarea
+                        value={formData.description}
+                        onChange={(e) =>
+                          setFormData({ ...formData, description: e.target.value })
+                        }
+                        placeholder="Descrição do produto"
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Categoria
+                        </label>
+                        <Select
+                          value={formData.category}
+                          onValueChange={(value) =>
+                            setFormData({ ...formData, category: value })
+                          }
+                          required
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.icon} {cat.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Estoque
+                        </label>
+                        <Input
+                          type="number"
+                          value={formData.stock}
+                          onChange={(e) =>
+                            setFormData({ ...formData, stock: e.target.value })
+                          }
+                          placeholder="Ex: 10"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Imagem (Emoji ou URL)
+                      </label>
+                      <Input
+                        value={formData.image}
+                        onChange={(e) =>
+                          setFormData({ ...formData, image: e.target.value })
+                        }
+                        placeholder="Ex: 🥟"
+                        required
+                      />
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="fiscal" className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-start gap-2">
+                        <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-blue-900">Informações Fiscais</h4>
+                          <p className="text-sm text-blue-700">
+                            Dados necessários para emissão de Nota Fiscal e Cupom Fiscal conforme SEFAZ-RR
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          NCM
+                        </label>
+                        <Input
+                          value={formData.ncm}
+                          onChange={(e) =>
+                            setFormData({ ...formData, ncm: e.target.value })
+                          }
+                          placeholder="Ex: 1905.90.00"
+                          required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Nomenclatura Comum do Mercosul</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          CFOP
+                        </label>
+                        <Input
+                          value={formData.cfop}
+                          onChange={(e) =>
+                            setFormData({ ...formData, cfop: e.target.value })
+                          }
+                          placeholder="Ex: 5102"
+                          required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Código Fiscal de Operações</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          CEST
+                        </label>
+                        <Input
+                          value={formData.cest}
+                          onChange={(e) =>
+                            setFormData({ ...formData, cest: e.target.value })
+                          }
+                          placeholder="Ex: 0301400"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Código Especificador da Substituição Tributária</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Unidade
+                        </label>
+                        <Select
+                          value={formData.unidade}
+                          onValueChange={(value) =>
+                            setFormData({ ...formData, unidade: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="UN">UN - Unidade</SelectItem>
+                            <SelectItem value="KG">KG - Quilograma</SelectItem>
+                            <SelectItem value="LT">LT - Litro</SelectItem>
+                            <SelectItem value="CX">CX - Caixa</SelectItem>
+                            <SelectItem value="PCT">PCT - Pacote</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          ICMS (%)
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.icms}
+                          onChange={(e) =>
+                            setFormData({ ...formData, icms: e.target.value })
+                          }
+                          placeholder="Ex: 17"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          IPI (%)
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.ipi}
+                          onChange={(e) =>
+                            setFormData({ ...formData, ipi: e.target.value })
+                          }
+                          placeholder="Ex: 0"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          PIS (%)
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.pis}
+                          onChange={(e) =>
+                            setFormData({ ...formData, pis: e.target.value })
+                          }
+                          placeholder="Ex: 0.65"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          COFINS (%)
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.cofins}
+                          onChange={(e) =>
+                            setFormData({ ...formData, cofins: e.target.value })
+                          }
+                          placeholder="Ex: 3"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Origem
+                        </label>
+                        <Select
+                          value={formData.origem}
+                          onValueChange={(value) =>
+                            setFormData({ ...formData, origem: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0">0 - Nacional</SelectItem>
+                            <SelectItem value="1">1 - Importada</SelectItem>
+                            <SelectItem value="2">2 - Nacional com conteúdo importado</SelectItem>
+                            <SelectItem value="3">3 - Nacional com processo produtivo básico</SelectItem>
+                            <SelectItem value="4">4 - Nacional com conteúdo importado > 40%</SelectItem>
+                            <SelectItem value="5">5 - Nacional com conteúdo importado > 70%</SelectItem>
+                            <SelectItem value="6">6 - Estrangeira importada direta</SelectItem>
+                            <SelectItem value="7">7 - Estrangeira adquirida no mercado interno</SelectItem>
+                            <SelectItem value="8">8 - Nacional com conteúdo importado < 40%</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Código de Barras (EAN)
+                        </label>
+                        <Input
+                          value={formData.codigoBarras}
+                          onChange={(e) =>
+                            setFormData({ ...formData, codigoBarras: e.target.value })
+                          }
+                          placeholder="Ex: 7891234567890"
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
                 <Button type="submit" className="w-full bg-orange-600">
                   {editingProduct ? "Atualizar" : "Criar"}
                 </Button>
@@ -273,6 +517,12 @@ const AdminProducts = () => {
                 <p className="text-sm text-gray-600 mb-4 line-clamp-2">
                   {product.description}
                 </p>
+                {product.fiscal && (
+                  <div className="bg-gray-50 rounded p-2 mb-4 text-xs">
+                    <p><strong>NCM:</strong> {product.fiscal.ncm}</p>
+                    <p><strong>CFOP:</strong> {product.fiscal.cfop}</p>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 mb-4">
                   <Package className="h-4 w-4 text-gray-500" />
                   <span className="text-sm">

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useCart } from "@/hooks/use-cart";
+import { useAdmin } from "@/hooks/use-admin";
 import { ProductCard } from "@/components/ProductCard";
 import { CartPanel } from "@/components/CartPanel";
 import { CategoryFilter } from "@/components/CategoryFilter";
-import { products } from "@/data/products";
 import { Product } from "@/types/product";
 import { Store, Clock, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -12,10 +12,11 @@ import { Button } from "@/components/ui/button";
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const { addToCart } = useCart();
+  const { products, categories } = useAdmin();
 
   const filteredProducts = selectedCategory === "all"
-    ? products
-    : products.filter((product) => product.category === selectedCategory);
+    ? products.filter((p) => p.available)
+    : products.filter((product) => product.category === selectedCategory && product.available);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50">
