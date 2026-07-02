@@ -9,6 +9,9 @@ interface CartItemProps {
 }
 
 export const CartItemComponent = ({ item, onUpdateQuantity, onRemove }: CartItemProps) => {
+  // Garantir que o preço seja um número
+  const price = typeof item.price === 'number' ? item.price : parseFloat(String(item.price));
+
   return (
     <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg">
       <div className="flex items-center gap-3">
@@ -16,7 +19,7 @@ export const CartItemComponent = ({ item, onUpdateQuantity, onRemove }: CartItem
         <div className="flex-1">
           <h4 className="font-semibold text-gray-800">{item.name}</h4>
           <p className="text-sm text-orange-600 font-medium">
-            R$ {item.price.toFixed(2)}
+            R$ {price.toFixed(2)}
           </p>
         </div>
       </div>
@@ -59,7 +62,7 @@ export const CartItemComponent = ({ item, onUpdateQuantity, onRemove }: CartItem
         </div>
         <div className="flex items-center gap-4">
           <p className="font-bold text-gray-800">
-            R$ {(item.price * item.quantity).toFixed(2)}
+            R$ {(price * item.quantity).toFixed(2)}
           </p>
           <Button
             size="icon"

@@ -26,6 +26,9 @@ export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
     onAddToCart(product, flavors);
   };
 
+  // Garantir que o preço seja um número
+  const price = typeof product.price === 'number' ? product.price : parseFloat(String(product.price));
+
   return (
     <>
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-2 hover:border-orange-400">
@@ -35,7 +38,7 @@ export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
           <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
           <div className="flex items-center justify-between">
             <span className="text-2xl font-bold text-orange-600">
-              R$ {product.price.toFixed(2)}
+              R$ {price.toFixed(2)}
             </span>
           </div>
         </CardContent>
