@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Database, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { sql } from '@/lib/db';
 
 interface MigrateToNeonDialogProps {
   open: boolean;
@@ -26,25 +25,18 @@ export const MigrateToNeonDialog = ({ open, onOpenChange, onMigrate }: MigrateTo
       }
 
       const categories = JSON.parse(localCategories);
-      let migrated = 0;
+      const response = await fetch('/api/migrate/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(categories),
+      });
 
-      for (const cat of categories) {
-        try {
-          await sql`
-            INSERT INTO categories (id, name, icon, active)
-            VALUES (${cat.id}, ${cat.name}, ${cat.icon}, ${cat.active ?? true})
-            ON CONFLICT (id) DO UPDATE SET
-              name = EXCLUDED.name,
-              icon = EXCLUDED.icon,
-              active = EXCLUDED.active
-          `;
-          migrated++;
-        } catch (err) {
-          console.error('Error migrating category:', cat, err);
-        }
+      if (!response.ok) {
+        throw new Error('Erro ao migrar categorias');
       }
 
-      return migrated;
+      const data = await response.json();
+      return data.count;
     } catch (error) {
       console.error('Error migrating categories:', error);
       throw error;
@@ -60,45 +52,18 @@ export const MigrateToNeonDialog = ({ open, onOpenChange, onMigrate }: MigrateTo
       }
 
       const products = JSON.parse(localProducts);
-      let migrated = 0;
+      const response = await fetch('/api/migrate/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(products),
+      });
 
-      for (const prod of products) {
-        try {
-          await sql`
-            INSERT INTO products (
-              id, name, description, price, category, category_name,
-              image, available, stock, fiscal
-            )
-            VALUES (
-              ${prod.id},
-              ${prod.name},
-              ${prod.description || null},
-              ${prod.price},
-              ${prod.category},
-              ${null},
-              ${prod.image},
-              ${prod.available ?? true},
-              ${prod.stock ?? 0},
-              ${prod.fiscal ? JSON.stringify(prod.fiscal) : null}::jsonb
-            )
-            ON CONFLICT (id) DO UPDATE SET
-              name = EXCLUDED.name,
-              description = EXCLUDED.description,
-              price = EXCLUDED.price,
-              category = EXCLUDED.category,
-              image = EXCLUDED.image,
-              available = EXCLUDED.available,
-              stock = EXCLUDED.stock,
-              fiscal = EXCLUDED.fiscal,
-              updated_at = CURRENT_TIMESTAMP
-          `;
-          migrated++;
-        } catch (err) {
-          console.error('Error migrating product:', prod, err);
-        }
+      if (!response.ok) {
+        throw new Error('Erro ao migrar produtos');
       }
 
-      return migrated;
+      const data = await response.json();
+      return data.count;
     } catch (error) {
       console.error('Error migrating products:', error);
       throw error;
@@ -114,41 +79,18 @@ export const MigrateToNeonDialog = ({ open, onOpenChange, onMigrate }: MigrateTo
       }
 
       const sales = JSON.parse(localSales);
-      let migrated = 0;
+      const response = await fetch('/api/migrate/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sales),
+      });
 
-      for (const sale of sales) {
-        try {
-          // Criar a venda
-          const saleResult = await sql`
-            INSERT INTO sales (total_amount, payment_method, freight, created_at)
-            VALUES (${sale.total}, ${sale.payments?.[0]?.type || 'cash'}, ${sale.freight || 0}, ${sale.date})
-            RETURNING id
-          `;
-
-          const saleId = saleResult[0].id;
-
-          // Criar os itens da venda
-          for (const item of sale.items) {
-            await sql`
-              INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, flavors)
-              VALUES (
-                ${saleId},
-                ${item.id},
-                ${item.name},
-                ${item.quantity},
-                ${item.price},
-                ${item.flavors ? JSON.stringify(item.flavors) : null}::jsonb
-              )
-            `;
-          }
-
-          migrated++;
-        } catch (err) {
-          console.error('Error migrating sale:', sale, err);
-        }
+      if (!response.ok) {
+        throw new Error('Erro ao migrar vendas');
       }
 
-      return migrated;
+      const data = await response.json();
+      return data.count;
     } catch (error) {
       console.error('Error migrating sales:', error);
       throw error;
