@@ -1,6 +1,4 @@
-import { defineHandler } from 'nitro';
-
-export default defineHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   try {
     const { neon } = await import('@neondatabase/serverless');
     const dbUrl = process.env.DATABASE_URL;

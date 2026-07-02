@@ -24,8 +24,6 @@ import { SourceMapConsumer } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das
 import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
-import { defineHandler } from 'nitro';
-import { neon } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs';
 
 const serverAssets = [{"baseName":"server","dir":"C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/server/assets"}];
 
@@ -933,7 +931,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"d029-nR7+xHo4/grOJ3U/JT48v3VH7v8\"",
+    "mtime": "2026-07-02T15:55:38.722Z",
+    "size": 53289,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"2dca0-IClyC7uQkk2V7FHHyKqkC2EWyrY\"",
+    "mtime": "2026-07-02T15:55:38.712Z",
+    "size": 187552,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1305,17 +1318,14 @@ async function shutdown() {
   parentPort?.postMessage({ event: "exit" });
 }
 
-const dbUrl = process.env.DATABASE_URL;
-if (!dbUrl) {
-  console.error("ERROR: DATABASE_URL environment variable is not set!");
-  console.error("Available env vars:", Object.keys(process.env).filter((k) => k.includes("DATABASE") || k.includes("NEON")));
-  throw new Error("DATABASE_URL is required but not set");
-}
-console.log("DATABASE_URL is set:", dbUrl.substring(0, 20) + "...");
-const sql = neon(dbUrl);
-
-const categories_get = defineHandler(async () => {
+const categories_get = defineEventHandler(async () => {
   try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
     const categories = await sql`
       SELECT * FROM categories
       ORDER BY name ASC
@@ -1335,9 +1345,15 @@ const categories_get$1 = /*#__PURE__*/Object.freeze({
   default: categories_get
 });
 
-const categories_post = defineHandler(async (event) => {
+const categories_post = defineEventHandler(async (event) => {
   var _a;
   try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
     const categories = await readBody(event);
     if (!Array.isArray(categories)) {
       throw createError({
@@ -1372,9 +1388,15 @@ const categories_post$1 = /*#__PURE__*/Object.freeze({
   default: categories_post
 });
 
-const products_post = defineHandler(async (event) => {
+const products_post = defineEventHandler(async (event) => {
   var _a, _b;
   try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
     const products = await readBody(event);
     if (!Array.isArray(products)) {
       throw createError({
@@ -1429,9 +1451,15 @@ const products_post$1 = /*#__PURE__*/Object.freeze({
   default: products_post
 });
 
-const sales_post = defineHandler(async (event) => {
+const sales_post = defineEventHandler(async (event) => {
   var _a, _b;
   try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
     const sales = await readBody(event);
     if (!Array.isArray(sales)) {
       throw createError({
@@ -1484,8 +1512,14 @@ const sales_post$1 = /*#__PURE__*/Object.freeze({
   default: sales_post
 });
 
-const products_get = defineHandler(async () => {
+const products_get = defineEventHandler(async () => {
   try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
     const products = await sql`
       SELECT * FROM products
       ORDER BY name ASC
@@ -1505,8 +1539,14 @@ const products_get$1 = /*#__PURE__*/Object.freeze({
   default: products_get
 });
 
-const sales_get = defineHandler(async () => {
+const sales_get = defineEventHandler(async () => {
   try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
     const sales = await sql`
       SELECT 
         s.*,
@@ -1540,8 +1580,9 @@ const sales_get$1 = /*#__PURE__*/Object.freeze({
   default: sales_get
 });
 
-const testDb_get = defineHandler(async () => {
+const testDb_get = defineEventHandler(async () => {
   try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
     const dbUrl = process.env.DATABASE_URL;
     if (!dbUrl) {
       return {
@@ -1550,7 +1591,6 @@ const testDb_get = defineHandler(async () => {
         env: Object.keys(process.env).filter((k) => k.includes("DATABASE") || k.includes("NEON"))
       };
     }
-    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
     const sql = neon(dbUrl);
     const result = await sql`SELECT 1 as test`;
     return {
