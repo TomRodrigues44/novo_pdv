@@ -934,16 +934,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"ce93-A0yFv12tEEyb+q+H+sCYqrYd6Cc\"",
-    "mtime": "2026-07-02T15:56:01.783Z",
-    "size": 52883,
+    "etag": "\"d127-b0hVjCG3pnR19m3ZdM1yczjQIo8\"",
+    "mtime": "2026-07-02T16:06:32.825Z",
+    "size": 53543,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"2dc91-EUzQ3pBvGSUL2oaPGqROnQ9u8xI\"",
-    "mtime": "2026-07-02T15:56:01.783Z",
-    "size": 187537,
+    "etag": "\"2e164-Wyfmp0DwHqvG4+ClvUOGtIc0fG0\"",
+    "mtime": "2026-07-02T16:06:32.825Z",
+    "size": 188772,
     "path": "index.mjs.map"
   }
 };
@@ -1532,7 +1532,17 @@ const products_get = defineEventHandler(async () => {
     const sql = neon(dbUrl);
     const products = await sql`
       SELECT * FROM products
-      ORDER BY name ASC
+      ORDER BY 
+        CASE category
+          WHEN 'salgados' THEN 1
+          WHEN 'bolos' THEN 2
+          WHEN 'brigadeiros' THEN 3
+          WHEN 'bebidas' THEN 4
+          WHEN 'combos' THEN 5
+          WHEN 'diversos' THEN 6
+          ELSE 7
+        END ASC,
+        name ASC
     `;
     return products;
   } catch (error) {

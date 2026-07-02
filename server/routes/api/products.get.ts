@@ -10,7 +10,17 @@ export default defineEventHandler(async () => {
     const sql = neon(dbUrl);
     const products = await sql`
       SELECT * FROM products
-      ORDER BY name ASC
+      ORDER BY 
+        CASE category
+          WHEN 'salgados' THEN 1
+          WHEN 'bolos' THEN 2
+          WHEN 'brigadeiros' THEN 3
+          WHEN 'bebidas' THEN 4
+          WHEN 'combos' THEN 5
+          WHEN 'diversos' THEN 6
+          ELSE 7
+        END ASC,
+        name ASC
     `;
     return products;
   } catch (error) {
