@@ -1021,21 +1021,35 @@ const _ngUQxC = eventHandler((event) => {
 });
 
 const _lazy__iU8wW = () => Promise.resolve().then(function () { return categories_get$1; });
+const _lazy_o1wo52 = () => Promise.resolve().then(function () { return categories_post$3; });
+const _lazy_b2VTWC = () => Promise.resolve().then(function () { return _id__delete$3; });
+const _lazy_eDpqQf = () => Promise.resolve().then(function () { return _id__put$3; });
 const _lazy_zELk_7 = () => Promise.resolve().then(function () { return categories_post$1; });
-const _lazy_GwWEhE = () => Promise.resolve().then(function () { return products_post$1; });
-const _lazy_lNzaoz = () => Promise.resolve().then(function () { return sales_post$1; });
+const _lazy_GwWEhE = () => Promise.resolve().then(function () { return products_post$3; });
+const _lazy_lNzaoz = () => Promise.resolve().then(function () { return sales_post$3; });
 const _lazy_9dG2yK = () => Promise.resolve().then(function () { return products_get$1; });
+const _lazy_C0_k4l = () => Promise.resolve().then(function () { return products_post$1; });
+const _lazy_q5qboF = () => Promise.resolve().then(function () { return _id__delete$1; });
+const _lazy_gmpj8W = () => Promise.resolve().then(function () { return _id__put$1; });
 const _lazy_nl6xh4 = () => Promise.resolve().then(function () { return sales_get$1; });
+const _lazy__VRAiA = () => Promise.resolve().then(function () { return sales_post$1; });
 const _lazy_C90ob_ = () => Promise.resolve().then(function () { return testDb_get$1; });
 
 const handlers = [
   { route: '', handler: _ngUQxC, lazy: false, middleware: true, method: undefined },
   { route: '/api/categories', handler: _lazy__iU8wW, lazy: true, middleware: false, method: "get" },
+  { route: '/api/categories', handler: _lazy_o1wo52, lazy: true, middleware: false, method: "post" },
+  { route: '/api/categories/:id', handler: _lazy_b2VTWC, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/categories/:id', handler: _lazy_eDpqQf, lazy: true, middleware: false, method: "put" },
   { route: '/api/migrate/categories', handler: _lazy_zELk_7, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/products', handler: _lazy_GwWEhE, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/sales', handler: _lazy_lNzaoz, lazy: true, middleware: false, method: "post" },
   { route: '/api/products', handler: _lazy_9dG2yK, lazy: true, middleware: false, method: "get" },
+  { route: '/api/products', handler: _lazy_C0_k4l, lazy: true, middleware: false, method: "post" },
+  { route: '/api/products/:id', handler: _lazy_q5qboF, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/products/:id', handler: _lazy_gmpj8W, lazy: true, middleware: false, method: "put" },
   { route: '/api/sales', handler: _lazy_nl6xh4, lazy: true, middleware: false, method: "get" },
+  { route: '/api/sales', handler: _lazy__VRAiA, lazy: true, middleware: false, method: "post" },
   { route: '/api/test-db', handler: _lazy_C90ob_, lazy: true, middleware: false, method: "get" }
 ];
 
@@ -1340,6 +1354,113 @@ const categories_get$1 = /*#__PURE__*/Object.freeze({
   default: categories_get
 });
 
+const categories_post$2 = defineEventHandler(async (event) => {
+  var _a;
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const category = await readBody(event);
+    const result = await sql`
+      INSERT INTO categories (id, name, icon, active)
+      VALUES (${category.id}, ${category.name}, ${category.icon}, ${(_a = category.active) != null ? _a : true})
+      RETURNING *
+    `;
+    return result[0];
+  } catch (error) {
+    console.error("Error creating category:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error creating category"
+    });
+  }
+});
+
+const categories_post$3 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: categories_post$2
+});
+
+const _id__delete$2 = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const id = getRouterParam(event, "id");
+    await sql`DELETE FROM products WHERE category = ${id}`;
+    const result = await sql`
+      DELETE FROM categories
+      WHERE id = ${id}
+      RETURNING *
+    `;
+    if (result.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Category not found"
+      });
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting category:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error deleting category"
+    });
+  }
+});
+
+const _id__delete$3 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _id__delete$2
+});
+
+const _id__put$2 = defineEventHandler(async (event) => {
+  var _a;
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const id = getRouterParam(event, "id");
+    const category = await readBody(event);
+    const result = await sql`
+      UPDATE categories
+      SET 
+        name = ${category.name},
+        icon = ${category.icon},
+        active = ${(_a = category.active) != null ? _a : true}
+      WHERE id = ${id}
+      RETURNING *
+    `;
+    if (result.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Category not found"
+      });
+    }
+    return result[0];
+  } catch (error) {
+    console.error("Error updating category:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error updating category"
+    });
+  }
+});
+
+const _id__put$3 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _id__put$2
+});
+
 const categories_post = defineEventHandler(async (event) => {
   var _a;
   try {
@@ -1383,7 +1504,7 @@ const categories_post$1 = /*#__PURE__*/Object.freeze({
   default: categories_post
 });
 
-const products_post = defineEventHandler(async (event) => {
+const products_post$2 = defineEventHandler(async (event) => {
   var _a, _b;
   try {
     const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
@@ -1441,12 +1562,12 @@ const products_post = defineEventHandler(async (event) => {
   }
 });
 
-const products_post$1 = /*#__PURE__*/Object.freeze({
+const products_post$3 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: products_post
+  default: products_post$2
 });
 
-const sales_post = defineEventHandler(async (event) => {
+const sales_post$2 = defineEventHandler(async (event) => {
   var _a, _b;
   try {
     const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
@@ -1502,9 +1623,9 @@ const sales_post = defineEventHandler(async (event) => {
   }
 });
 
-const sales_post$1 = /*#__PURE__*/Object.freeze({
+const sales_post$3 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: sales_post
+  default: sales_post$2
 });
 
 const products_get = defineEventHandler(async () => {
@@ -1566,6 +1687,132 @@ const products_get$1 = /*#__PURE__*/Object.freeze({
   default: products_get
 });
 
+const products_post = defineEventHandler(async (event) => {
+  var _a, _b;
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const product = await readBody(event);
+    const result = await sql`
+      INSERT INTO products (
+        id, name, description, price, category, category_name,
+        image, available, stock, fiscal
+      )
+      VALUES (
+        ${product.id},
+        ${product.name},
+        ${product.description || null},
+        ${product.price},
+        ${product.category},
+        ${null},
+        ${product.image},
+        ${(_a = product.available) != null ? _a : true},
+        ${(_b = product.stock) != null ? _b : 0},
+        ${product.fiscal ? JSON.stringify(product.fiscal) : null}::jsonb
+      )
+      RETURNING *
+    `;
+    return result[0];
+  } catch (error) {
+    console.error("Error creating product:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error creating product"
+    });
+  }
+});
+
+const products_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: products_post
+});
+
+const _id__delete = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const id = getRouterParam(event, "id");
+    const result = await sql`
+      DELETE FROM products
+      WHERE id = ${id}
+      RETURNING *
+    `;
+    if (result.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Product not found"
+      });
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error deleting product"
+    });
+  }
+});
+
+const _id__delete$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _id__delete
+});
+
+const _id__put = defineEventHandler(async (event) => {
+  var _a, _b;
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const id = getRouterParam(event, "id");
+    const product = await readBody(event);
+    const result = await sql`
+      UPDATE products
+      SET 
+        name = ${product.name},
+        description = ${product.description || null},
+        price = ${product.price},
+        category = ${product.category},
+        image = ${product.image},
+        available = ${(_a = product.available) != null ? _a : true},
+        stock = ${(_b = product.stock) != null ? _b : 0},
+        fiscal = ${product.fiscal ? JSON.stringify(product.fiscal) : null}::jsonb,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id}
+      RETURNING *
+    `;
+    if (result.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Product not found"
+      });
+    }
+    return result[0];
+  } catch (error) {
+    console.error("Error updating product:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error updating product"
+    });
+  }
+});
+
+const _id__put$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _id__put
+});
+
 const sales_get = defineEventHandler(async () => {
   try {
     const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
@@ -1605,6 +1852,63 @@ const sales_get = defineEventHandler(async () => {
 const sales_get$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: sales_get
+});
+
+const sales_post = defineEventHandler(async (event) => {
+  var _a, _b;
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const saleData = await readBody(event);
+    const saleResult = await sql`
+      INSERT INTO sales (total_amount, payment_method, freight, created_at)
+      VALUES (
+        ${saleData.total}, 
+        ${((_b = (_a = saleData.payments) == null ? void 0 : _a[0]) == null ? void 0 : _b.type) || "cash"}, 
+        ${saleData.freight || 0}, 
+        ${saleData.date || (/* @__PURE__ */ new Date()).toISOString()}
+      )
+      RETURNING id
+    `;
+    const saleId = saleResult[0].id;
+    if (saleData.items && Array.isArray(saleData.items)) {
+      for (const item of saleData.items) {
+        await sql`
+          INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, flavors)
+          VALUES (
+            ${saleId},
+            ${item.id},
+            ${item.name},
+            ${item.quantity},
+            ${item.price},
+            ${item.flavors ? JSON.stringify(item.flavors) : null}::jsonb
+          )
+        `;
+        await sql`
+          UPDATE products
+          SET stock = stock - ${item.quantity},
+              available = (stock - ${item.quantity}) > 0
+          WHERE id = ${item.id}
+        `;
+      }
+    }
+    return { success: true, id: saleId };
+  } catch (error) {
+    console.error("Error creating sale:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error creating sale"
+    });
+  }
+});
+
+const sales_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: sales_post
 });
 
 const testDb_get = defineEventHandler(async () => {
