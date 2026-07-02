@@ -931,7 +931,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"ce93-A0yFv12tEEyb+q+H+sCYqrYd6Cc\"",
+    "mtime": "2026-07-02T15:56:01.783Z",
+    "size": 52883,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"2dc91-EUzQ3pBvGSUL2oaPGqROnQ9u8xI\"",
+    "mtime": "2026-07-02T15:56:01.783Z",
+    "size": 187537,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1313,7 +1328,17 @@ const categories_get = defineEventHandler(async () => {
     const sql = neon(dbUrl);
     const categories = await sql`
       SELECT * FROM categories
-      ORDER BY name ASC
+      ORDER BY 
+        CASE id
+          WHEN 'salgados' THEN 1
+          WHEN 'bolos' THEN 2
+          WHEN 'brigadeiros' THEN 3
+          WHEN 'bebidas' THEN 4
+          WHEN 'combos' THEN 5
+          WHEN 'diversos' THEN 6
+          ELSE 7
+        END ASC,
+        name ASC
     `;
     return categories;
   } catch (error) {
