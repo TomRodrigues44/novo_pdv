@@ -1,5 +1,4 @@
 import { defineHandler } from 'nitro';
-import { readBody } from 'h3';
 import { sql } from '~/lib/db';
 
 export default defineHandler(async (event) => {

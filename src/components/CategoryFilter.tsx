@@ -1,13 +1,14 @@
-import { categories } from "@/data/products";
+import { Category } from "@/types/product";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface CategoryFilterProps {
+  categories: Category[];
   selectedCategory: string;
   onSelectCategory: (category: string) => void;
 }
 
-export const CategoryFilter = ({ selectedCategory, onSelectCategory }: CategoryFilterProps) => {
+export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory }: CategoryFilterProps) => {
   return (
     <div className="flex gap-2 overflow-x-auto pb-2">
       <Button

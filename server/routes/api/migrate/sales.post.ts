@@ -1,5 +1,4 @@
 import { defineHandler } from 'nitro';
-import { readBody } from 'h3';
 import { sql } from '~/lib/db';
 
 export default defineHandler(async (event) => {
@@ -15,7 +14,6 @@ export default defineHandler(async (event) => {
 
     let migrated = 0;
     for (const sale of sales) {
-      // Criar a venda
       const saleResult = await sql`
         INSERT INTO sales (total_amount, payment_method, freight, created_at)
         VALUES (
@@ -29,7 +27,6 @@ export default defineHandler(async (event) => {
 
       const saleId = saleResult[0].id;
 
-      // Criar os itens da venda
       if (sale.items && Array.isArray(sale.items)) {
         for (const item of sale.items) {
           await sql`
