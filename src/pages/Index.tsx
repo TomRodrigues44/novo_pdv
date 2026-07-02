@@ -25,10 +25,12 @@ const Index = () => {
         const productsData = await productsRes.json();
         const categoriesData = await categoriesRes.json();
 
-        setProducts(productsData);
-        setCategories(categoriesData);
+        setProducts(Array.isArray(productsData) ? productsData : []);
+        setCategories(Array.isArray(categoriesData) ? categoriesData : []);
       } catch (error) {
         console.error('Error fetching data:', error);
+        setProducts([]);
+        setCategories([]);
       } finally {
         setLoading(false);
       }
