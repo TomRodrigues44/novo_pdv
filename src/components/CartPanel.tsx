@@ -42,7 +42,7 @@ export const CartPanel = () => {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{item.name}</p>
                   <p className="text-sm text-gray-500">
-                    R$ {item.price.toFixed(2)} × {item.quantity}
+                    R$ {Number(item.price).toFixed(2)} × {item.quantity}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">

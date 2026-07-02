@@ -21,7 +21,7 @@ export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
         )}
         <div className="flex items-center justify-between">
           <span className="text-2xl font-bold text-orange-600">
-            R$ {product.price.toFixed(2)}
+            R$ {Number(product.price).toFixed(2)}
           </span>
           {product.category_name && (
             <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">

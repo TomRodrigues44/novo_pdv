@@ -29,7 +29,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         );
       }
       toast.success(`${product.name} adicionado ao carrinho`);
-      return [...prevItems, { ...product, quantity: 1 }];
+      return [...prevItems, { ...product, quantity: 1, price: Number(product.price) }];
     });
   };
 
