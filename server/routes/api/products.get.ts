@@ -1,5 +1,5 @@
 import { defineHandler } from 'nitro';
-import { sql } from '~/lib/db';
+import { sql } from '../lib/db';
 
 export default defineHandler(async () => {
   try {
