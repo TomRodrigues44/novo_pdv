@@ -3,11 +3,10 @@ import { useCart } from '@/contexts/CartContext';
 import { ProductCard } from '@/components/ProductCard';
 import { CartPanel } from '@/components/CartPanel';
 import { CategoryFilter } from '@/components/CategoryFilter';
-import { MigrateToNeonDialog } from '@/components/MigrateToNeonDialog';
-import { Store, Clock, Loader2, Database, HardDrive, Upload } from 'lucide-react';
+import { Store, Clock, Loader2, Database, HardDrive, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product, Category } from '@/types';
-import { localStorageUtils } from '@/utils/localStorage';
+import { toast } from 'sonner';
 
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -15,11 +14,12 @@ const Index = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [usingLocalStorage, setUsingLocalStorage] = useState(false);
-  const [migrateDialogOpen, setMigrateDialogOpen] = useState(false);
   const { addToCart } = useCart();
 
   const fetchData = async () => {
     try {
+      setLoading(true);
+      
       const [productsRes, categoriesRes] = await Promise.all([
         fetch('/api/products'),
         fetch('/api/categories'),
@@ -35,27 +35,45 @@ const Index = () => {
       setProducts(Array.isArray(productsData) ? productsData : []);
       setCategories(Array.isArray(categoriesData) ? categoriesData : []);
       setUsingLocalStorage(false);
+      
+      // Limpar localStorage após buscar dados com sucesso do banco
+      localStorage.removeItem('admin_products');
+      localStorage.removeItem('admin_categories');
+      localStorage.removeItem('admin_sales');
+      
+      toast.success('Dados atualizados do banco de dados!');
     } catch (error) {
-      console.error('Error fetching data from database, using localStorage:', error);
-      // Fallback to localStorage
-      const localProducts = localStorageUtils.getProducts();
-      const localCategories = localStorageUtils.getCategories();
-      setProducts(localProducts);
-      setCategories(localCategories);
-      setUsingLocalStorage(true);
+      console.error('Error fetching data from database:', error);
+      
+      // Tentar usar localStorage como fallback
+      const localProducts = localStorage.getItem('admin_products');
+      const localCategories = localStorage.getItem('admin_categories');
+      
+      if (localProducts || localCategories) {
+        setProducts(localProducts ? JSON.parse(localProducts) : []);
+        setCategories(localCategories ? JSON.parse(localCategories) : []);
+        setUsingLocalStorage(true);
+        toast.warning('Usando dados em cache. Tente recarregar a página.', {
+          action: {
+            label: 'Recarregar',
+            onClick: () => fetchData()
+          }
+        });
+      } else {
+        toast.error('Erro ao carregar produtos. Por favor, recarregue a página.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Limpar localStorage ao carregar a página pela primeira vez
   useEffect(() => {
+    localStorage.removeItem('admin_products');
+    localStorage.removeItem('admin_categories');
+    localStorage.removeItem('admin_sales');
     fetchData();
   }, []);
-
-  const handleMigrate = () => {
-    // Reload data from database after migration
-    fetchData();
-  };
 
   const filteredProducts = selectedCategory === 'all'
     ? products.filter((p) => p.available)
@@ -92,9 +110,9 @@ const Index = () => {
             </div>
             <div className="flex items-center gap-2">
               {usingLocalStorage ? (
-                <div className="flex items-center gap-2 bg-blue-500/20 border border-blue-400/50 rounded-lg px-3 py-2 text-sm">
+                <div className="flex items-center gap-2 bg-red-500/20 border border-red-400/50 rounded-lg px-3 py-2 text-sm">
                   <HardDrive className="h-4 w-4" />
-                  <span>Modo Local</span>
+                  <span>Modo Cache</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 bg-green-500/20 border border-green-400/50 rounded-lg px-3 py-2 text-sm">
@@ -102,17 +120,20 @@ const Index = () => {
                   <span>Banco de Dados</span>
                 </div>
               )}
-              {usingLocalStorage && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="bg-white/10 hover:bg-white/20 text-white border-white/30"
-                  onClick={() => setMigrateDialogOpen(true)}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Migrar para Neon
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-white/10 hover:bg-white/20 text-white border-white/30"
+                onClick={() => {
+                  localStorage.removeItem('admin_products');
+                  localStorage.removeItem('admin_categories');
+                  localStorage.removeItem('admin_sales');
+                  fetchData();
+                }}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Atualizar
+              </Button>
             </div>
           </div>
         </div>
@@ -154,12 +175,6 @@ const Index = () => {
           </div>
         </div>
       </div>
-
-      <MigrateToNeonDialog
-        open={migrateDialogOpen}
-        onOpenChange={setMigrateDialogOpen}
-        onMigrate={handleMigrate}
-      />
     </div>
   );
 };
