@@ -3,15 +3,19 @@ import { useCart } from '@/contexts/CartContext';
 import { ProductCard } from '@/components/ProductCard';
 import { CartPanel } from '@/components/CartPanel';
 import { CategoryFilter } from '@/components/CategoryFilter';
-import { Store, Clock, Loader2 } from 'lucide-react';
+import { ImportDataDialog } from '@/components/ImportDataDialog';
+import { Store, Clock, Loader2, Database, HardDrive, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product, Category } from '@/types';
+import { localStorageUtils } from '@/utils/localStorage';
 
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [usingLocalStorage, setUsingLocalStorage] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const { addToCart } = useCart();
 
   useEffect(() => {
@@ -22,15 +26,23 @@ const Index = () => {
           fetch('/api/categories'),
         ]);
 
+        if (!productsRes.ok || !categoriesRes.ok) {
+          throw new Error('API error');
+        }
+
         const productsData = await productsRes.json();
         const categoriesData = await categoriesRes.json();
 
         setProducts(Array.isArray(productsData) ? productsData : []);
         setCategories(Array.isArray(categoriesData) ? categoriesData : []);
       } catch (error) {
-        console.error('Error fetching data:', error);
-        setProducts([]);
-        setCategories([]);
+        console.error('Error fetching data from database, using localStorage:', error);
+        // Fallback to localStorage
+        const localProducts = localStorageUtils.getProducts();
+        const localCategories = localStorageUtils.getCategories();
+        setProducts(localProducts);
+        setCategories(localCategories);
+        setUsingLocalStorage(true);
       } finally {
         setLoading(false);
       }
@@ -42,6 +54,15 @@ const Index = () => {
   const filteredProducts = selectedCategory === 'all'
     ? products.filter((p) => p.available)
     : products.filter((product) => product.category_name === selectedCategory && product.available);
+
+  const handleImport = () => {
+    // Reload data from localStorage after import
+    const localProducts = localStorageUtils.getProducts();
+    const localCategories = localStorageUtils.getCategories();
+    setProducts(localProducts);
+    setCategories(localCategories);
+    setUsingLocalStorage(true);
+  };
 
   if (loading) {
     return (
@@ -71,6 +92,28 @@ const Index = () => {
                   Aberto agora • PDV Sistema
                 </p>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {usingLocalStorage ? (
+                <div className="flex items-center gap-2 bg-blue-500/20 border border-blue-400/50 rounded-lg px-3 py-2 text-sm">
+                  <HardDrive className="h-4 w-4" />
+                  <span>Modo Local</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 bg-green-500/20 border border-green-400/50 rounded-lg px-3 py-2 text-sm">
+                  <Database className="h-4 w-4" />
+                  <span>Banco de Dados</span>
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-white/10 hover:bg-white/20 text-white border-white/30"
+                onClick={() => setImportDialogOpen(true)}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Dados
+              </Button>
             </div>
           </div>
         </div>
@@ -112,6 +155,12 @@ const Index = () => {
           </div>
         </div>
       </div>
+
+      <ImportDataDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImport={handleImport}
+      />
     </div>
   );
 };
