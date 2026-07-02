@@ -1,124 +1,164 @@
 import { useState, useEffect, useCallback } from "react";
 import { Product, Category } from "@/types/product";
-import { products as initialProducts, categories as initialCategories } from "@/data/products";
 
 export const useAdmin = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [sales, setSales] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Carregar dados do localStorage
-  useEffect(() => {
-    const savedProducts = localStorage.getItem("admin_products");
-    const savedCategories = localStorage.getItem("admin_categories");
-    const savedSales = localStorage.getItem("admin_sales");
+  // Buscar dados do banco de dados
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      const [productsRes, categoriesRes, salesRes] = await Promise.all([
+        fetch('/api/products'),
+        fetch('/api/categories'),
+        fetch('/api/sales'),
+      ]);
 
-    if (savedProducts) {
-      setProducts(JSON.parse(savedProducts));
-    } else {
-      setProducts(initialProducts);
-    }
+      if (!productsRes.ok || !categoriesRes.ok || !salesRes.ok) {
+        throw new Error('API error');
+      }
 
-    if (savedCategories) {
-      setCategories(JSON.parse(savedCategories));
-    } else {
-      setCategories(initialCategories);
-    }
+      const productsData = await productsRes.json();
+      const categoriesData = await categoriesRes.json();
+      const salesData = await salesRes.json();
 
-    if (savedSales) {
-      setSales(JSON.parse(savedSales));
+      setProducts(Array.isArray(productsData) ? productsData : []);
+      setCategories(Array.isArray(categoriesData) ? categoriesData : []);
+      setSales(Array.isArray(salesData) ? salesData : []);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  // Salvar dados no localStorage
+  // Carregar dados ao montar
   useEffect(() => {
-    if (products.length > 0) {
-      localStorage.setItem("admin_products", JSON.stringify(products));
-    }
-  }, [products]);
-
-  useEffect(() => {
-    if (categories.length > 0) {
-      localStorage.setItem("admin_categories", JSON.stringify(categories));
-    }
-  }, [categories]);
-
-  useEffect(() => {
-    localStorage.setItem("admin_sales", JSON.stringify(sales));
-  }, [sales]);
+    fetchData();
+  }, [fetchData]);
 
   // Gerenciar Categorias
-  const addCategory = useCallback((category: Omit<Category, "id">) => {
+  const addCategory = useCallback(async (category: Omit<Category, "id">) => {
     const newCategory: Category = {
       ...category,
       id: `cat-${Date.now()}`,
     };
-    setCategories((prev) => [...prev, newCategory]);
+    
+    const response = await fetch('/api/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCategory),
+    });
+
+    if (response.ok) {
+      setCategories((prev) => [...prev, newCategory]);
+    }
   }, []);
 
-  const updateCategory = useCallback((id: string, updates: Partial<Category>) => {
-    setCategories((prev) =>
-      prev.map((cat) => (cat.id === id ? { ...cat, ...updates } : cat))
-    );
+  const updateCategory = useCallback(async (id: string, updates: Partial<Category>) => {
+    const response = await fetch(`/api/categories/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+
+    if (response.ok) {
+      setCategories((prev) =>
+        prev.map((cat) => (cat.id === id ? { ...cat, ...updates } : cat))
+      );
+    }
   }, []);
 
-  const deleteCategory = useCallback((id: string) => {
-    setCategories((prev) => prev.filter((cat) => cat.id !== id));
-    // Remover produtos dessa categoria
-    setProducts((prev) => prev.filter((prod) => prod.category !== id));
+  const deleteCategory = useCallback(async (id: string) => {
+    const response = await fetch(`/api/categories/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (response.ok) {
+      setCategories((prev) => prev.filter((cat) => cat.id !== id));
+      setProducts((prev) => prev.filter((prod) => prod.category !== id));
+    }
   }, []);
 
   // Gerenciar Produtos
-  const addProduct = useCallback((product: Omit<Product, "id">) => {
+  const addProduct = useCallback(async (product: Omit<Product, "id">) => {
     const newProduct: Product = {
       ...product,
       id: `prod-${Date.now()}`,
     };
-    setProducts((prev) => [...prev, newProduct]);
+    
+    const response = await fetch('/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newProduct),
+    });
+
+    if (response.ok) {
+      setProducts((prev) => [...prev, newProduct]);
+    }
   }, []);
 
-  const updateProduct = useCallback((id: string, updates: Partial<Product>) => {
-    setProducts((prev) =>
-      prev.map((prod) => (prod.id === id ? { ...prod, ...updates } : prod))
-    );
+  const updateProduct = useCallback(async (id: string, updates: Partial<Product>) => {
+    const response = await fetch(`/api/products/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+
+    if (response.ok) {
+      setProducts((prev) =>
+        prev.map((prod) => (prod.id === id ? { ...prod, ...updates } : prod))
+      );
+    }
   }, []);
 
-  const deleteProduct = useCallback((id: string) => {
-    setProducts((prev) => prev.filter((prod) => prod.id !== id));
+  const deleteProduct = useCallback(async (id: string) => {
+    const response = await fetch(`/api/products/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (response.ok) {
+      setProducts((prev) => prev.filter((prod) => prod.id !== id));
+    }
   }, []);
 
-  const updateStock = useCallback((id: string, quantity: number) => {
-    setProducts((prev) =>
-      prev.map((prod) =>
-        prod.id === id ? { ...prod, stock: quantity, available: quantity > 0 } : prod
-      )
-    );
+  const updateStock = useCallback(async (id: string, quantity: number) => {
+    const response = await fetch(`/api/products/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stock: quantity, available: quantity > 0 }),
+    });
+
+    if (response.ok) {
+      setProducts((prev) =>
+        prev.map((prod) =>
+          prod.id === id ? { ...prod, stock: quantity, available: quantity > 0 } : prod
+        )
+      );
+    }
   }, []);
 
   // Registrar venda
-  const recordSale = useCallback((saleData: any) => {
-    const sale = {
-      id: `sale-${Date.now()}`,
-      date: new Date().toISOString(),
-      ...saleData,
-    };
-    setSales((prev) => [...prev, sale]);
-
-    // Atualizar estoque
-    saleData.items.forEach((item: any) => {
-      setProducts((prev) =>
-        prev.map((prod) =>
-          prod.id === item.id
-            ? {
-                ...prod,
-                stock: (prod.stock || 0) - item.quantity,
-                available: (prod.stock || 0) - item.quantity > 0,
-              }
-            : prod
-        )
-      );
+  const recordSale = useCallback(async (saleData: any) => {
+    const response = await fetch('/api/sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(saleData),
     });
-  }, []);
+
+    if (response.ok) {
+      const result = await response.json();
+      
+      // Atualizar a lista de vendas
+      await fetchData();
+      
+      return result;
+    }
+  }, [fetchData]);
 
   // Relatórios
   const getSalesReport = useCallback((days: number = 7) => {
@@ -126,24 +166,24 @@ export const useAdmin = () => {
     cutoffDate.setDate(cutoffDate.getDate() - days);
 
     const recentSales = sales.filter(
-      (sale) => new Date(sale.date) >= cutoffDate
+      (sale) => new Date(sale.created_at) >= cutoffDate
     );
 
     const totalRevenue = recentSales.reduce(
-      (sum, sale) => sum + sale.total,
+      (sum, sale) => sum + (sale.total_amount || sale.total || 0),
       0
     );
 
     const totalItems = recentSales.reduce(
-      (sum, sale) => sum + sale.items.length,
+      (sum, sale) => sum + (sale.items?.length || 0),
       0
     );
 
     const salesByCategory = recentSales.reduce((acc: any, sale: any) => {
-      sale.items.forEach((item: any) => {
-        const category = products.find((p) => p.id === item.id)?.category;
+      sale.items?.forEach((item: any) => {
+        const category = products.find((p) => p.id === item.product_id)?.category;
         if (category) {
-          acc[category] = (acc[category] || 0) + item.price * item.quantity;
+          acc[category] = (acc[category] || 0) + (item.price || 0) * item.quantity;
         }
       });
       return acc;
@@ -166,6 +206,7 @@ export const useAdmin = () => {
     products,
     categories,
     sales,
+    loading,
     addCategory,
     updateCategory,
     deleteCategory,

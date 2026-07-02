@@ -5,6 +5,11 @@ declare module "nitropack/types" {
   interface InternalApi {
     '/api/categories': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/categories.get').default>>>>
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/categories.post').default>>>>
+    }
+    '/api/categories/:id': {
+      'delete': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/categories/[id].delete').default>>>>
+      'put': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/categories/[id].put').default>>>>
     }
     '/api/migrate/categories': {
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/migrate/categories.post').default>>>>
@@ -17,9 +22,15 @@ declare module "nitropack/types" {
     }
     '/api/products': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/products.get').default>>>>
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/products.post').default>>>>
+    }
+    '/api/products/:id': {
+      'delete': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/products/[id].delete').default>>>>
+      'put': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/products/[id].put').default>>>>
     }
     '/api/sales': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/sales.get').default>>>>
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/sales.post').default>>>>
     }
     '/api/test-db': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/test-db.get').default>>>>
