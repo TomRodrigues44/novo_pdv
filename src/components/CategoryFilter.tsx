@@ -1,32 +1,40 @@
-import { Category } from '@/types';
-import { Button } from '@/components/ui/button';
+import { categories } from "@/data/products";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface CategoryFilterProps {
-  categories: Category[];
   selectedCategory: string;
   onSelectCategory: (category: string) => void;
 }
 
-export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory }: CategoryFilterProps) => {
+export const CategoryFilter = ({ selectedCategory, onSelectCategory }: CategoryFilterProps) => {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex gap-2 overflow-x-auto pb-2">
       <Button
-        variant={selectedCategory === 'all' ? 'default' : 'outline'}
-        onClick={() => onSelectCategory('all')}
-        className={selectedCategory === 'all' ? 'bg-orange-600 hover:bg-orange-700' : ''}
+        onClick={() => onSelectCategory("all")}
+        variant={selectedCategory === "all" ? "default" : "outline"}
+        className={cn(
+          "whitespace-nowrap",
+          selectedCategory === "all"
+            ? "bg-orange-500 hover:bg-orange-600 text-white"
+            : "border-orange-300 text-orange-700 hover:bg-orange-50"
+        )}
       >
-        Todos
+        🍽️ Todos
       </Button>
       {categories.map((category) => (
         <Button
           key={category.id}
-          variant={selectedCategory === category.name ? 'default' : 'outline'}
-          onClick={() => onSelectCategory(category.name)}
-          className={
-            selectedCategory === category.name ? 'bg-orange-600 hover:bg-orange-700' : ''
-          }
+          onClick={() => onSelectCategory(category.id)}
+          variant={selectedCategory === category.id ? "default" : "outline"}
+          className={cn(
+            "whitespace-nowrap",
+            selectedCategory === category.id
+              ? "bg-orange-500 hover:bg-orange-600 text-white"
+              : "border-orange-300 text-orange-700 hover:bg-orange-50"
+          )}
         >
-          {category.name}
+          {category.icon} {category.name}
         </Button>
       ))}
     </div>

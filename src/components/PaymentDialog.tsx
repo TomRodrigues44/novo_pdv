@@ -1,126 +1,363 @@
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { CreditCard, DollarSign, QrCode, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { CreditCard, QrCode, Banknote, Plus, Trash2, Check, Truck } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { CartItem } from "@/types/product";
+
+interface PaymentMethod {
+  id: string;
+  type: "debit" | "credit" | "pix" | "cash";
+  amount: number;
+  cashReceived?: number;
+}
 
 interface PaymentDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
-  items: any[];
+  onClose: () => void;
   total: number;
-  onSuccess: () => void;
+  freight: number;
+  cartItems: CartItem[];
+  onPaymentConfirm: (payments: PaymentMethod[]) => void;
 }
 
-export const PaymentDialog = ({ open, onOpenChange, items, total, onSuccess }: PaymentDialogProps) => {
-  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
-  const [isProcessing, setIsProcessing] = useState(false);
+export const PaymentDialog = ({ open, onClose, total, freight, cartItems, onPaymentConfirm }: PaymentDialogProps) => {
+  const [payments, setPayments] = useState<PaymentMethod[]>([]);
+  const [selectedType, setSelectedType] = useState<"debit" | "credit" | "pix" | "cash">("debit");
+  const [amount, setAmount] = useState("");
+  const [cashReceived, setCashReceived] = useState("");
 
-  const handlePayment = async () => {
-    setIsProcessing(true);
-    try {
-      const response = await fetch('/api/sales', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          items,
-          paymentMethod,
-        }),
-      });
+  const subtotal = total - freight;
+  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+  const remaining = total - totalPaid;
+  const isComplete = remaining <= 0.01;
 
-      if (!response.ok) {
-        throw new Error('Failed to process payment');
+  const addPayment = () => {
+    const paymentAmount = parseFloat(amount);
+    if (!paymentAmount || paymentAmount <= 0) return;
+
+    const newPayment: PaymentMethod = {
+      id: `pay-${Date.now()}`,
+      type: selectedType,
+      amount: paymentAmount,
+    };
+
+    if (selectedType === "cash") {
+      const received = parseFloat(cashReceived);
+      if (received && received >= paymentAmount) {
+        newPayment.cashReceived = received;
       }
+    }
 
-      const result = await response.json();
-      toast.success('Venda realizada com sucesso!');
-      onSuccess();
-      onOpenChange(false);
-    } catch (error) {
-      toast.error('Erro ao processar pagamento');
-      console.error(error);
-    } finally {
-      setIsProcessing(false);
+    setPayments([...payments, newPayment]);
+    setAmount("");
+    setCashReceived("");
+  };
+
+  const removePayment = (id: string) => {
+    setPayments(payments.filter((p) => p.id !== id));
+  };
+
+  const handleConfirmPayment = () => {
+    if (!isComplete || payments.length === 0) {
+      return;
+    }
+    onPaymentConfirm(payments);
+    setPayments([]);
+    onClose();
+  };
+
+  const handleClose = () => {
+    setPayments([]);
+    setAmount("");
+    setCashReceived("");
+    onClose();
+  };
+
+  // Calcular troco total
+  const totalChange = payments.reduce((sum, p) => {
+    if (p.type === "cash" && p.cashReceived) {
+      return sum + (p.cashReceived - p.amount);
+    }
+    return sum;
+  }, 0);
+
+  const getPaymentTypeName = (type: string) => {
+    switch (type) {
+      case "debit": return "Cartão de Débito";
+      case "credit": return "Cartão de Crédito";
+      case "pix": return "Pix";
+      case "cash": return "Dinheiro";
+      default: return type;
     }
   };
 
-  const paymentMethods = [
-    { value: 'cash', label: 'Dinheiro', icon: DollarSign },
-    { value: 'credit', label: 'Cartão de Crédito', icon: CreditCard },
-    { value: 'debit', label: 'Cartão de Débito', icon: CreditCard },
-    { value: 'pix', label: 'PIX', icon: QrCode },
-  ];
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Pagamento</DialogTitle>
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-4xl max-h-[95vh] p-0 overflow-hidden flex flex-col">
+        <DialogHeader className="px-6 py-4 border-b">
+          <DialogTitle className="text-2xl">Pagamento</DialogTitle>
         </DialogHeader>
-        <div className="space-y-6">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-600">Total a pagar</span>
-              <span className="text-2xl font-bold text-orange-600">
-                R$ {total.toFixed(2)}
-              </span>
-            </div>
-            <div className="text-sm text-gray-500">
-              {items.length} {items.length === 1 ? 'item' : 'itens'}
-            </div>
-          </div>
 
-          <div className="space-y-3">
-            <Label>Forma de Pagamento</Label>
-            <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-              {paymentMethods.map((method) => {
-                const Icon = method.icon;
-                return (
-                  <div key={method.value} className="flex items-center space-x-2">
-                    <RadioGroupItem value={method.value} id={method.value} />
-                    <Label
-                      htmlFor={method.value}
-                      className="flex items-center gap-2 cursor-pointer flex-1"
-                    >
-                      <Icon className="h-4 w-4" />
-                      {method.label}
-                    </Label>
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Coluna Esquerda - Resumo do Pedido */}
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="bg-orange-50 pb-3">
+                  <h3 className="font-bold text-lg text-orange-800">Resumo do Pedido</h3>
+                </CardHeader>
+                <CardContent className="p-4 space-y-3">
+                  {cartItems.map((item, index) => (
+                    <div key={index} className="space-y-1">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">
+                            {item.quantity}x {item.name}
+                          </p>
+                          {(item as any).flavors && (item as any).flavors.length > 0 && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Sabores: {(item as any).flavors.join(", ")}
+                            </p>
+                          )}
+                        </div>
+                        <span className="font-semibold text-sm">
+                          R$ {(item.price * item.quantity).toFixed(2)}
+                        </span>
+                      </div>
+                      {index < cartItems.length - 1 && <Separator className="my-2" />}
+                    </div>
+                  ))}
+                  <Separator className="my-3" />
+                  
+                  {/* Discriminação de Valores */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Subtotal:</span>
+                      <span>R$ {subtotal.toFixed(2)}</span>
+                    </div>
+                    {freight > 0 && (
+                      <div className="flex justify-between items-center text-blue-600 font-medium">
+                        <span className="flex items-center gap-1">
+                          <Truck className="h-4 w-4" />
+                          Frete (Entrega):
+                        </span>
+                        <span>R$ {freight.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between items-center text-lg font-bold">
+                      <span>Total:</span>
+                      <span className="text-orange-600">R$ {total.toFixed(2)}</span>
+                    </div>
                   </div>
-                );
-              })}
-            </RadioGroup>
-          </div>
+                </CardContent>
+              </Card>
 
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => onOpenChange(false)}
-              disabled={isProcessing}
-            >
-              Cancelar
-            </Button>
-            <Button
-              className="flex-1 bg-orange-600 hover:bg-orange-700"
-              onClick={handlePayment}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                'Confirmar Pagamento'
+              {/* Total a Pagar */}
+              <Card className="bg-orange-50 border-orange-200">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-medium">Total a Pagar:</span>
+                    <span className="text-2xl font-bold text-orange-600">
+                      R$ {total.toFixed(2)}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Coluna Direita - Pagamentos */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">Pagamentos</h3>
+
+              {/* Pagamentos Adicionados */}
+              {payments.length > 0 && (
+                <div className="space-y-2">
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {payments.map((payment) => (
+                      <div
+                        key={payment.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          {payment.type === "debit" && <CreditCard className="h-5 w-5 text-blue-600" />}
+                          {payment.type === "credit" && <CreditCard className="h-5 w-5 text-purple-600" />}
+                          {payment.type === "pix" && <QrCode className="h-5 w-5 text-green-600" />}
+                          {payment.type === "cash" && <Banknote className="h-5 w-5 text-amber-600" />}
+                          <div>
+                            <p className="font-medium text-sm">
+                              {getPaymentTypeName(payment.type)}
+                            </p>
+                            {payment.type === "cash" && payment.cashReceived && (
+                              <p className="text-xs text-gray-500">
+                                Recebido: R$ {payment.cashReceived.toFixed(2)} • Troco: R$ {(payment.cashReceived - payment.amount).toFixed(2)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm">R$ {payment.amount.toFixed(2)}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removePayment(payment.id)}
+                            className="h-6 w-6 text-red-600"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-medium">Total Pago:</span>
+                    <span className="font-bold text-green-600">R$ {totalPaid.toFixed(2)}</span>
+                  </div>
+                  {remaining > 0.01 && (
+                    <div className="flex justify-between items-center text-sm text-red-600">
+                      <span className="font-medium">Restante:</span>
+                      <span className="font-bold">R$ {remaining.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {totalChange > 0 && (
+                    <div className="bg-green-50 p-2 rounded-lg text-center">
+                      <span className="font-medium text-green-700 text-sm">Troco: R$ {totalChange.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
               )}
-            </Button>
+
+              {/* Adicionar Pagamento */}
+              {!isComplete && (
+                <div className="space-y-4">
+                  <h4 className="font-semibold">Adicionar Pagamento</h4>
+                  
+                  <Tabs value={selectedType} onValueChange={(v) => setSelectedType(v as any)}>
+                    <TabsList className="grid w-full grid-cols-4">
+                      <TabsTrigger value="debit" className="text-xs">
+                        <CreditCard className="h-3 w-3 mr-1" />
+                        Débito
+                      </TabsTrigger>
+                      <TabsTrigger value="credit" className="text-xs">
+                        <CreditCard className="h-3 w-3 mr-1" />
+                        Crédito
+                      </TabsTrigger>
+                      <TabsTrigger value="pix" className="text-xs">
+                        <QrCode className="h-3 w-3 mr-1" />
+                        Pix
+                      </TabsTrigger>
+                      <TabsTrigger value="cash" className="text-xs">
+                        <Banknote className="h-3 w-3 mr-1" />
+                        Dinheiro
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="debit" className="space-y-3">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
+                      />
+                    </TabsContent>
+
+                    <TabsContent value="credit" className="space-y-3">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
+                      />
+                    </TabsContent>
+
+                    <TabsContent value="pix" className="space-y-3">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
+                      />
+                    </TabsContent>
+
+                    <TabsContent value="cash" className="space-y-3">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={cashReceived}
+                        onChange={(e) => setCashReceived(e.target.value)}
+                        placeholder="Valor Recebido"
+                      />
+                      {amount && cashReceived && parseFloat(cashReceived) < parseFloat(amount) && (
+                        <p className="text-sm text-red-600">
+                          Valor recebido é menor que o pagamento!
+                        </p>
+                      )}
+                      {amount && cashReceived && parseFloat(cashReceived) >= parseFloat(amount) && (
+                        <p className="text-sm text-green-600">
+                          Troco: R$ {(parseFloat(cashReceived) - parseFloat(amount)).toFixed(2)}
+                        </p>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+
+                  <Button
+                    onClick={addPayment}
+                    className="w-full bg-orange-600 hover:bg-orange-700"
+                    disabled={!amount || parseFloat(amount) <= 0}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Adicionar Pagamento
+                  </Button>
+                </div>
+              )}
+
+              {isComplete && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                  <Check className="h-10 w-10 text-green-600 mx-auto mb-2" />
+                  <p className="font-semibold text-green-700">Pagamento Completo!</p>
+                  {totalChange > 0 && (
+                    <p className="text-green-600 text-sm mt-1">Troco: R$ {totalChange.toFixed(2)}</p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Footer Fixo com Botão de Confirmar Pagamento */}
+        <DialogFooter className="px-6 py-4 border-t bg-gray-50 gap-2">
+          <Button variant="outline" onClick={handleClose}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleConfirmPayment}
+            className="flex-1 bg-green-600 hover:bg-green-700"
+            disabled={!isComplete || payments.length === 0}
+          >
+            Confirmar Pagamento
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

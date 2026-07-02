@@ -1,110 +1,249 @@
-import { useCart } from '@/contexts/CartContext';
-import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { useState } from 'react';
-import { PaymentDialog } from '@/components/PaymentDialog';
+import { useState } from "react";
+import { useCart } from "@/contexts/CartContext";
+import { useAdmin } from "@/hooks/use-admin";
+import { CartItemComponent } from "./CartItem";
+import { PaymentDialog } from "./PaymentDialog";
+import { DocumentDialog } from "./DocumentDialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ShoppingCart, Trash2, Receipt, Truck, Plus, X } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 export const CartPanel = () => {
-  const { items, updateQuantity, removeFromCart, getTotal, getTotalItems, clearCart } = useCart();
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const {
+    cartItems,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    cartTotal,
+    cartCount,
+  } = useCart();
+  
+  const { recordSale } = useAdmin();
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
+  const [currentPayments, setCurrentPayments] = useState<any[]>([]);
+  const [currentSaleId, setCurrentSaleId] = useState<string | null>(null);
+  const [freight, setFreight] = useState<number>(0);
+  const [isFreightDialogOpen, setIsFreightDialogOpen] = useState(false);
+  const [freightValue, setFreightValue] = useState("");
 
-  if (items.length === 0) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center py-8">
-            <ShoppingBag className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-            <p className="text-gray-500">Carrinho vazio</p>
-            <p className="text-sm text-gray-400 mt-1">Adicione produtos para começar</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const totalWithFreight = cartTotal + freight;
+
+  const handleAddFreight = () => {
+    const value = parseFloat(freightValue);
+    if (value && value >= 0) {
+      setFreight(value);
+      setFreightValue("");
+      setIsFreightDialogOpen(false);
+    }
+  };
+
+  const handleRemoveFreight = () => {
+    setFreight(0);
+  };
+
+  const handleCheckout = () => {
+    if (cartItems.length === 0) return;
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handlePaymentConfirm = (payments: any[]) => {
+    // Registrar a venda
+    const saleId = `sale-${Date.now()}`;
+    setCurrentSaleId(saleId);
+    
+    recordSale({
+      id: saleId,
+      items: cartItems.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        flavors: (item as any).flavors,
+      })),
+      total: totalWithFreight,
+      payments: payments,
+      type: "pending",
+      freight: freight,
+    });
+
+    setCurrentPayments(payments);
+    setIsPaymentDialogOpen(false);
+    setIsDocumentDialogOpen(true);
+  };
+
+  const handleGenerateDocument = (type: "quote" | "fiscal") => {
+    const documentType = type === "quote" ? "Orçamento" : "Cupom Fiscal";
+    alert(`${documentType} gerado com sucesso!\nTotal: R$ ${totalWithFreight.toFixed(2)}`);
+    
+    setIsDocumentDialogOpen(false);
+    clearCart();
+    setFreight(0);
+    setCurrentPayments([]);
+    setCurrentSaleId(null);
+  };
 
   return (
     <>
-      <Card className="sticky top-6">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Carrinho</span>
-            <span className="text-sm font-normal text-gray-500">
-              {getTotalItems()} {getTotalItems() === 1 ? 'item' : 'itens'}
-            </span>
+      <Card className="h-full flex flex-col border-2 border-orange-200">
+        <CardHeader className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+          <CardTitle className="flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5" />
+            Carrinho
+            {cartCount > 0 && (
+              <span className="ml-auto bg-white text-orange-600 px-2 py-1 rounded-full text-sm font-bold">
+                {cartCount}
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {items.map((item) => (
-              <div key={item.id} className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{item.name}</p>
-                  <p className="text-sm text-gray-500">
-                    R$ {Number(item.price).toFixed(2)} × {item.quantity}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                  >
-                    <Minus className="h-3 w-3" />
-                  </Button>
-                  <span className="w-8 text-center font-medium">{item.quantity}</span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-red-500 hover:text-red-700"
-                  onClick={() => removeFromCart(item.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Subtotal</span>
-              <span>R$ {getTotal().toFixed(2)}</span>
+        <CardContent className="flex-1 overflow-auto p-4">
+          {cartItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <ShoppingCart className="h-16 w-16 mb-4" />
+              <p className="text-center">Carrinho vazio</p>
+              <p className="text-sm">Adicione produtos para começar</p>
             </div>
-            <div className="flex justify-between text-lg font-bold">
-              <span>Total</span>
-              <span className="text-orange-600">R$ {getTotal().toFixed(2)}</span>
+          ) : (
+            <div className="space-y-3">
+              {cartItems.map((item) => (
+                <CartItemComponent
+                  key={item.id}
+                  item={item}
+                  onUpdateQuantity={updateQuantity}
+                  onRemove={removeFromCart}
+                />
+              ))}
             </div>
-          </div>
-
-          <Button
-            className="w-full bg-orange-600 hover:bg-orange-700"
-            size="lg"
-            onClick={() => setPaymentDialogOpen(true)}
-          >
-            Finalizar Pedido
-          </Button>
+          )}
         </CardContent>
+        {cartItems.length > 0 && (
+          <>
+            <Separator />
+            <div className="p-4 space-y-3">
+              {/* Botão de Frete */}
+              <div className="flex gap-2">
+                <Dialog open={isFreightDialogOpen} onOpenChange={setIsFreightDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-blue-300 text-blue-600 hover:bg-blue-50"
+                    >
+                      <Truck className="mr-2 h-4 w-4" />
+                      Adicionar Frete
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Adicionar Frete</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Valor do Frete
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={freightValue}
+                          onChange={(e) => setFreightValue(e.target.value)}
+                          placeholder="Ex: 10.00"
+                        />
+                      </div>
+                      <Button onClick={handleAddFreight} className="w-full bg-blue-600">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Adicionar
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                {freight > 0 && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleRemoveFreight}
+                    className="border-red-300 text-red-600 hover:bg-red-50"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Display do Frete */}
+              {freight > 0 && (
+                <div className="flex justify-between items-center text-sm bg-blue-50 p-2 rounded-lg">
+                  <span className="text-blue-700 font-medium">Frete (Entrega):</span>
+                  <span className="text-blue-700 font-bold">R$ {freight.toFixed(2)}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center text-lg">
+                <span className="text-gray-600">Subtotal:</span>
+                <span className="font-semibold">R$ {cartTotal.toFixed(2)}</span>
+              </div>
+              
+              {freight > 0 && (
+                <div className="flex justify-between items-center text-sm text-gray-500">
+                  <span>Frete:</span>
+                  <span>R$ {freight.toFixed(2)}</span>
+                </div>
+              )}
+
+              <Separator />
+
+              <div className="flex justify-between items-center text-xl font-bold">
+                <span className="text-gray-800">Total:</span>
+                <span className="text-orange-600">R$ {totalWithFreight.toFixed(2)}</span>
+              </div>
+
+              <Button
+                onClick={handleCheckout}
+                className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-lg"
+              >
+                <Receipt className="mr-2 h-5 w-5" />
+                Finalizar Pedido
+              </Button>
+              
+              <Button
+                onClick={clearCart}
+                variant="outline"
+                className="w-full border-red-300 text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Limpar Carrinho
+              </Button>
+            </div>
+          </>
+        )}
       </Card>
 
       <PaymentDialog
-        open={paymentDialogOpen}
-        onOpenChange={setPaymentDialogOpen}
-        items={items}
-        total={getTotal()}
-        onSuccess={clearCart}
+        open={isPaymentDialogOpen}
+        onClose={() => setIsPaymentDialogOpen(false)}
+        total={totalWithFreight}
+        freight={freight}
+        cartItems={cartItems}
+        onPaymentConfirm={handlePaymentConfirm}
+      />
+
+      <DocumentDialog
+        open={isDocumentDialogOpen}
+        onClose={() => setIsDocumentDialogOpen(false)}
+        total={totalWithFreight}
+        freight={freight}
+        cartItems={cartItems}
+        payments={currentPayments}
+        onGenerateDocument={handleGenerateDocument}
       />
     </>
   );
