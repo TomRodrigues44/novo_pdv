@@ -102,12 +102,12 @@ export const ImportDataDialog = ({ open, onOpenChange, onImport }: ImportDataDia
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Importando...
-                <>
+                </>
               ) : (
                 <>
                   <Upload className="mr-2 h-4 w-4" />
                   Importar
-                <>
+                </>
               )}
             </Button>
           </div>
