@@ -1,27 +1,42 @@
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   description: string | null;
   price: number;
-  category_id: number | null;
+  category: string;
   category_name: string | null;
-  image_url: string | null;
+  image: string;
   available: boolean;
-  created_at: string;
-  updated_at: string;
+  stock: number;
+  fiscal?: {
+    ncm: string;
+    cfop: string;
+    cest: string;
+    unidade: string;
+    icms: number;
+    ipi: number;
+    pis: number;
+    cofins: number;
+    origem: number;
+  };
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Category {
-  id: number;
+  id: string;
   name: string;
-  created_at: string;
+  icon: string;
+  active?: boolean;
+  created_at?: string;
 }
 
 export interface CartItem {
-  id: number;
+  id: string;
   name: string;
   price: number;
   quantity: number;
+  image: string;
 }
 
 export interface Sale {

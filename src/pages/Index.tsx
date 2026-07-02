@@ -53,7 +53,7 @@ const Index = () => {
 
   const filteredProducts = selectedCategory === 'all'
     ? products.filter((p) => p.available)
-    : products.filter((product) => product.category_name === selectedCategory && product.available);
+    : products.filter((product) => product.category === selectedCategory && product.available);
 
   const handleImport = () => {
     // Reload data from localStorage after import

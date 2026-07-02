@@ -15,7 +15,7 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory 
         onClick={() => onSelectCategory('all')}
         className={selectedCategory === 'all' ? 'bg-orange-600 hover:bg-orange-700' : ''}
       >
-        Todos
+        🛒 Todos
       </Button>
       {categories.map((category) => (
         <Button
@@ -26,7 +26,7 @@ export const CategoryFilter = ({ categories, selectedCategory, onSelectCategory 
             selectedCategory === category.name ? 'bg-orange-600 hover:bg-orange-700' : ''
           }
         >
-          {category.name}
+          {category.icon} {category.name}
         </Button>
       ))}
     </div>
