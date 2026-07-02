@@ -1,58 +1,62 @@
-import { Product } from '@/types';
-import { Plus, Package } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { useState } from "react";
+import { Product } from "@/types/product";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { FlavorDialog } from "./FlavorDialog";
 
 interface ProductCardProps {
   product: Product;
-  onAddToCart: (product: Product) => void;
+  onAddToCart: (product: Product, flavors?: string[]) => void;
 }
 
 export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
-  const stockStatus = product.stock > 0 ? (
-    <Badge variant="outline" className="text-green-600 border-green-600">
-      <Package className="h-3 w-3 mr-1" />
-      {product.stock} un.
-    </Badge>
-  ) : (
-    <Badge variant="destructive">
-      Esgotado
-    </Badge>
-  );
+  const [isFlavorDialogOpen, setIsFlavorDialogOpen] = useState(false);
+
+  const handleAddToCart = () => {
+    // Se for da categoria salgados, abrir modal de sabores
+    if (product.category === "salgados") {
+      setIsFlavorDialogOpen(true);
+    } else {
+      onAddToCart(product);
+    }
+  };
+
+  const handleFlavorConfirm = (flavors: string[]) => {
+    onAddToCart(product, flavors);
+  };
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-200">
-      <CardContent className="p-4">
-        <div className="aspect-square bg-gradient-to-br from-orange-100 to-amber-100 rounded-lg mb-3 flex items-center justify-center text-6xl">
-          {product.image}
-        </div>
-        <h3 className="font-semibold text-lg mb-1 line-clamp-1">{product.name}</h3>
-        {product.description && (
-          <p className="text-sm text-gray-600 mb-2 line-clamp-2">{product.description}</p>
-        )}
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-2xl font-bold text-orange-600">
-            R$ {Number(product.price).toFixed(2)}
-          </span>
-          {stockStatus}
-        </div>
-        {product.category_name && (
-          <Badge variant="secondary" className="text-xs">
-            {product.category_name}
-          </Badge>
-        )}
-      </CardContent>
-      <CardFooter className="p-4 pt-0">
-        <Button
-          onClick={() => onAddToCart(product)}
-          className="w-full bg-orange-600 hover:bg-orange-700"
-          disabled={!product.available || product.stock <= 0}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Adicionar
-        </Button>
-      </CardFooter>
-    </Card>
+    <>
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-2 hover:border-orange-400">
+        <CardContent className="p-4">
+          <div className="text-6xl text-center mb-4">{product.image}</div>
+          <h3 className="font-bold text-lg mb-2 text-gray-800">{product.name}</h3>
+          <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
+          <div className="flex items-center justify-between">
+            <span className="text-2xl font-bold text-orange-600">
+              R$ {product.price.toFixed(2)}
+            </span>
+          </div>
+        </CardContent>
+        <CardFooter className="p-4 pt-0">
+          <Button
+            onClick={handleAddToCart}
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+            disabled={!product.available}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <FlavorDialog
+        open={isFlavorDialogOpen}
+        onClose={() => setIsFlavorDialogOpen(false)}
+        onConfirm={handleFlavorConfirm}
+        productName={product.name}
+      />
+    </>
   );
 };
