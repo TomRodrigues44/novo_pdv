@@ -7,51 +7,35 @@ import { Store, Clock, Loader2, Database, HardDrive, RefreshCw } from 'lucide-re
 import { Button } from '@/components/ui/button';
 import { Product, Category } from '@/types';
 import { toast } from 'sonner';
+import { useProducts } from '@/hooks/use-products';
+import { useCategories } from '@/hooks/use-categories';
 
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
   const [usingLocalStorage, setUsingLocalStorage] = useState(false);
   const { addToCart } = useCart();
+  
+  // Usar hooks do React Query
+  const { products, isLoading: productsLoading, error: productsError, invalidateProducts } = useProducts();
+  const { categories, isLoading: categoriesLoading, error: categoriesError, invalidateCategories } = useCategories();
+
+  const isLoading = productsLoading || categoriesLoading;
+  const error = productsError || categoriesError;
 
   const fetchData = async () => {
     try {
-      setLoading(true);
-      
-      const [productsRes, categoriesRes] = await Promise.all([
-        fetch('/api/products'),
-        fetch('/api/categories'),
-      ]);
-
-      if (!productsRes.ok || !categoriesRes.ok) {
-        throw new Error('API error');
-      }
-
-      const productsData = await productsRes.json();
-      const categoriesData = await categoriesRes.json();
-
-      setProducts(Array.isArray(productsData) ? productsData : []);
-      setCategories(Array.isArray(categoriesData) ? categoriesData : []);
+      invalidateProducts();
+      invalidateCategories();
       setUsingLocalStorage(false);
-      
-      // Limpar localStorage após buscar dados com sucesso do banco
-      localStorage.removeItem('admin_products');
-      localStorage.removeItem('admin_categories');
-      localStorage.removeItem('admin_sales');
-      
       toast.success('Dados atualizados do banco de dados!');
-    } catch (error) {
-      console.error('Error fetching data from database:', error);
+    } catch (err) {
+      console.error('Error fetching data from database:', err);
       
       // Tentar usar localStorage como fallback
       const localProducts = localStorage.getItem('admin_products');
       const localCategories = localStorage.getItem('admin_categories');
       
       if (localProducts || localCategories) {
-        setProducts(localProducts ? JSON.parse(localProducts) : []);
-        setCategories(localCategories ? JSON.parse(localCategories) : []);
         setUsingLocalStorage(true);
         toast.warning('Usando dados em cache. Tente recarregar a página.', {
           action: {
@@ -62,8 +46,6 @@ const Index = () => {
       } else {
         toast.error('Erro ao carregar produtos. Por favor, recarregue a página.');
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -72,19 +54,29 @@ const Index = () => {
     localStorage.removeItem('admin_products');
     localStorage.removeItem('admin_categories');
     localStorage.removeItem('admin_sales');
-    fetchData();
   }, []);
 
   const filteredProducts = selectedCategory === 'all'
     ? products.filter((p) => p.available)
     : products.filter((product) => product.category === selectedCategory && product.available);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-orange-600 mx-auto mb-4" />
           <p className="text-gray-600">Carregando produtos...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Erro ao carregar dados</p>
+          <Button onClick={() => fetchData()}>Tentar novamente</Button>
         </div>
       </div>
     );

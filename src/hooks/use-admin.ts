@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Product, Category } from "@/types/product";
 
 export const useAdmin = () => {
@@ -6,6 +7,7 @@ export const useAdmin = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [sales, setSales] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   // Buscar dados do banco de dados
   const fetchData = useCallback(async () => {
@@ -41,6 +43,12 @@ export const useAdmin = () => {
     fetchData();
   }, [fetchData]);
 
+  // Invalidar cache do React Query
+  const invalidateCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['categories'] });
+  }, [queryClient]);
+
   // Gerenciar Categorias
   const addCategory = useCallback(async (category: Omit<Category, "id">) => {
     const newCategory: Category = {
@@ -56,8 +64,9 @@ export const useAdmin = () => {
 
     if (response.ok) {
       setCategories((prev) => [...prev, newCategory]);
+      invalidateCache(); // Invalidar cache do PDV
     }
-  }, []);
+  }, [invalidateCache]);
 
   const updateCategory = useCallback(async (id: string, updates: Partial<Category>) => {
     const response = await fetch(`/api/categories/${id}`, {
@@ -70,8 +79,9 @@ export const useAdmin = () => {
       setCategories((prev) =>
         prev.map((cat) => (cat.id === id ? { ...cat, ...updates } : cat))
       );
+      invalidateCache(); // Invalidar cache do PDV
     }
-  }, []);
+  }, [invalidateCache]);
 
   const deleteCategory = useCallback(async (id: string) => {
     const response = await fetch(`/api/categories/${id}`, {
@@ -81,8 +91,9 @@ export const useAdmin = () => {
     if (response.ok) {
       setCategories((prev) => prev.filter((cat) => cat.id !== id));
       setProducts((prev) => prev.filter((prod) => prod.category !== id));
+      invalidateCache(); // Invalidar cache do PDV
     }
-  }, []);
+  }, [invalidateCache]);
 
   // Gerenciar Produtos
   const addProduct = useCallback(async (product: Omit<Product, "id">) => {
@@ -99,8 +110,9 @@ export const useAdmin = () => {
 
     if (response.ok) {
       setProducts((prev) => [...prev, newProduct]);
+      invalidateCache(); // Invalidar cache do PDV
     }
-  }, []);
+  }, [invalidateCache]);
 
   const updateProduct = useCallback(async (id: string, updates: Partial<Product>) => {
     const response = await fetch(`/api/products/${id}`, {
@@ -113,8 +125,9 @@ export const useAdmin = () => {
       setProducts((prev) =>
         prev.map((prod) => (prod.id === id ? { ...prod, ...updates } : prod))
       );
+      invalidateCache(); // Invalidar cache do PDV
     }
-  }, []);
+  }, [invalidateCache]);
 
   const deleteProduct = useCallback(async (id: string) => {
     const response = await fetch(`/api/products/${id}`, {
@@ -123,8 +136,9 @@ export const useAdmin = () => {
 
     if (response.ok) {
       setProducts((prev) => prev.filter((prod) => prod.id !== id));
+      invalidateCache(); // Invalidar cache do PDV
     }
-  }, []);
+  }, [invalidateCache]);
 
   const updateStock = useCallback(async (id: string, quantity: number) => {
     const response = await fetch(`/api/products/${id}`, {
@@ -139,8 +153,9 @@ export const useAdmin = () => {
           prod.id === id ? { ...prod, stock: quantity, available: quantity > 0 } : prod
         )
       );
+      invalidateCache(); // Invalidar cache do PDV
     }
-  }, []);
+  }, [invalidateCache]);
 
   // Registrar venda
   const recordSale = useCallback(async (saleData: any) => {
@@ -156,9 +171,12 @@ export const useAdmin = () => {
       // Atualizar a lista de vendas
       await fetchData();
       
+      // Invalidar cache do PDV para atualizar estoque
+      invalidateCache();
+      
       return result;
     }
-  }, [fetchData]);
+  }, [fetchData, invalidateCache]);
 
   // Relatórios
   const getSalesReport = useCallback((days: number = 7) => {
