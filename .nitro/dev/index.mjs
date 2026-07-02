@@ -934,16 +934,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"d127-b0hVjCG3pnR19m3ZdM1yczjQIo8\"",
-    "mtime": "2026-07-02T16:06:32.825Z",
-    "size": 53543,
+    "etag": "\"d22b-s71+g/WrEDsseCZo5FmPTHub1mc\"",
+    "mtime": "2026-07-02T16:10:27.894Z",
+    "size": 53803,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"2e164-Wyfmp0DwHqvG4+ClvUOGtIc0fG0\"",
-    "mtime": "2026-07-02T16:06:32.825Z",
-    "size": 188772,
+    "etag": "\"2e646-7gJZ+sbECZlcvbhlLfvv6XMuaQ4\"",
+    "mtime": "2026-07-02T16:10:27.894Z",
+    "size": 190022,
     "path": "index.mjs.map"
   }
 };
@@ -1541,6 +1541,28 @@ const products_get = defineEventHandler(async () => {
           WHEN 'combos' THEN 5
           WHEN 'diversos' THEN 6
           ELSE 7
+        END ASC,
+        CASE 
+          WHEN category = 'salgados' THEN
+            CASE name
+              WHEN 'Cento' THEN 1
+              WHEN 'Meio Cento' THEN 2
+              WHEN 'Copo G' THEN 3
+              WHEN 'Copo M' THEN 4
+              WHEN 'Copo P' THEN 5
+              ELSE 6
+            END
+          WHEN category = 'bolos' THEN
+            CASE name
+              WHEN 'Bolo de Chocolate' THEN 1
+              WHEN 'Bolo de Limão' THEN 2
+              WHEN 'Bolo de Milho' THEN 3
+              WHEN 'Bolo de Romeu e Julieta' THEN 4
+              WHEN 'Bolo de Café' THEN 5
+              WHEN 'Bolo Mesclado' THEN 6
+              ELSE 7
+            END
+          ELSE 0
         END ASC,
         name ASC
     `;

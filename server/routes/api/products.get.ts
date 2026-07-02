@@ -20,6 +20,28 @@ export default defineEventHandler(async () => {
           WHEN 'diversos' THEN 6
           ELSE 7
         END ASC,
+        CASE 
+          WHEN category = 'salgados' THEN
+            CASE name
+              WHEN 'Cento' THEN 1
+              WHEN 'Meio Cento' THEN 2
+              WHEN 'Copo G' THEN 3
+              WHEN 'Copo M' THEN 4
+              WHEN 'Copo P' THEN 5
+              ELSE 6
+            END
+          WHEN category = 'bolos' THEN
+            CASE name
+              WHEN 'Bolo de Chocolate' THEN 1
+              WHEN 'Bolo de Limão' THEN 2
+              WHEN 'Bolo de Milho' THEN 3
+              WHEN 'Bolo de Romeu e Julieta' THEN 4
+              WHEN 'Bolo de Café' THEN 5
+              WHEN 'Bolo Mesclado' THEN 6
+              ELSE 7
+            END
+          ELSE 0
+        END ASC,
         name ASC
     `;
     return products;
