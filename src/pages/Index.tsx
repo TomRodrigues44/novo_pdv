@@ -6,14 +6,12 @@ import { CategoryFilter } from '@/components/CategoryFilter';
 import { Store, Clock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product, Category } from '@/types';
-import { mockProducts, mockCategories } from '@/data/mockData';
 
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [usingMockData, setUsingMockData] = useState(false);
   const { addToCart } = useCart();
 
   useEffect(() => {
@@ -24,20 +22,15 @@ const Index = () => {
           fetch('/api/categories'),
         ]);
 
-        if (!productsRes.ok || !categoriesRes.ok) {
-          throw new Error('API error');
-        }
-
         const productsData = await productsRes.json();
         const categoriesData = await categoriesRes.json();
 
         setProducts(Array.isArray(productsData) ? productsData : []);
         setCategories(Array.isArray(categoriesData) ? categoriesData : []);
       } catch (error) {
-        console.error('Error fetching data, using mock data:', error);
-        setProducts(mockProducts);
-        setCategories(mockCategories);
-        setUsingMockData(true);
+        console.error('Error fetching data:', error);
+        setProducts([]);
+        setCategories([]);
       } finally {
         setLoading(false);
       }
@@ -80,11 +73,6 @@ const Index = () => {
               </div>
             </div>
           </div>
-          {usingMockData && (
-            <div className="mt-4 bg-yellow-500/20 border border-yellow-400/50 rounded-lg px-4 py-2 text-sm">
-              ⚠️ Usando dados de exemplo - Conexão com banco de dados não disponível
-            </div>
-          )}
         </div>
       </header>
 
