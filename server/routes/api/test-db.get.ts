@@ -2,7 +2,7 @@ import { defineHandler } from 'nitro';
 
 export default defineHandler(async () => {
   try {
-    // Verificar se DATABASE_URL está definida
+    const { neon } = await import('@neondatabase/serverless');
     const dbUrl = process.env.DATABASE_URL;
     
     if (!dbUrl) {
@@ -13,11 +13,7 @@ export default defineHandler(async () => {
       };
     }
 
-    // Tentar importar e usar o cliente
-    const { neon } = await import('@neondatabase/serverless');
     const sql = neon(dbUrl);
-    
-    // Testar uma query simples
     const result = await sql`SELECT 1 as test`;
     
     return {
