@@ -934,16 +934,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"12694-d5EytjBk9ofCJffT25joCu61jjo\"",
-    "mtime": "2026-07-03T14:09:57.210Z",
-    "size": 75412,
+    "etag": "\"12888-MnWzqtCJQxHP3zmsD1X2eUgdazg\"",
+    "mtime": "2026-07-03T14:30:55.461Z",
+    "size": 75912,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"3e463-DgRikb01/dD766TZbj/J8wA9Jw0\"",
-    "mtime": "2026-07-03T14:09:57.210Z",
-    "size": 255075,
+    "etag": "\"3e639-TsMaQwY8UhG6chiMPjVIQILVH5Y\"",
+    "mtime": "2026-07-03T14:30:55.462Z",
+    "size": 255545,
     "path": "index.mjs.map"
   }
 };
@@ -1035,6 +1035,9 @@ const _ngUQxC = eventHandler((event) => {
   return readAsset(id);
 });
 
+const _lazy_zyPM9J = () => Promise.resolve().then(function () { return cashRegister_get$1; });
+const _lazy_s4P548 = () => Promise.resolve().then(function () { return close_post$1; });
+const _lazy_rID8to = () => Promise.resolve().then(function () { return open_post$1; });
 const _lazy__iU8wW = () => Promise.resolve().then(function () { return categories_get$1; });
 const _lazy_o1wo52 = () => Promise.resolve().then(function () { return categories_post$3; });
 const _lazy_b2VTWC = () => Promise.resolve().then(function () { return _id__delete$5; });
@@ -1058,6 +1061,9 @@ const _lazy_C90ob_ = () => Promise.resolve().then(function () { return testDb_ge
 
 const handlers = [
   { route: '', handler: _ngUQxC, lazy: false, middleware: true, method: undefined },
+  { route: '/api/cash-register', handler: _lazy_zyPM9J, lazy: true, middleware: false, method: "get" },
+  { route: '/api/cash-register/close', handler: _lazy_s4P548, lazy: true, middleware: false, method: "post" },
+  { route: '/api/cash-register/open', handler: _lazy_rID8to, lazy: true, middleware: false, method: "post" },
   { route: '/api/categories', handler: _lazy__iU8wW, lazy: true, middleware: false, method: "get" },
   { route: '/api/categories', handler: _lazy_o1wo52, lazy: true, middleware: false, method: "post" },
   { route: '/api/categories/:id', handler: _lazy_b2VTWC, lazy: true, middleware: false, method: "delete" },
@@ -1343,6 +1349,157 @@ async function shutdown() {
   ]);
   parentPort?.postMessage({ event: "exit" });
 }
+
+const cashRegister_get = defineEventHandler(async () => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const openRegister = await sql`
+      SELECT * FROM cash_registers
+      WHERE status = 'open'
+      ORDER BY opened_at DESC
+      LIMIT 1
+    `;
+    let currentRegister = null;
+    let salesTotal = 0;
+    if (openRegister.length > 0) {
+      currentRegister = openRegister[0];
+      const salesResult = await sql`
+        SELECT COALESCE(SUM(total_amount), 0) as total
+        FROM sales
+        WHERE created_at >= ${currentRegister.opened_at}
+      `;
+      salesTotal = parseFloat(salesResult[0].total);
+    }
+    const history = await sql`
+      SELECT * FROM cash_registers
+      WHERE status = 'closed'
+      ORDER BY closed_at DESC
+      LIMIT 10
+    `;
+    return {
+      current: currentRegister ? { ...currentRegister, salesTotal } : null,
+      history
+    };
+  } catch (error) {
+    console.error("Error fetching cash register:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error fetching cash register"
+    });
+  }
+});
+
+const cashRegister_get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: cashRegister_get
+});
+
+const close_post = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const { closingAmount, notes } = await readBody(event);
+    const openRegister = await sql`
+      SELECT * FROM cash_registers
+      WHERE status = 'open'
+      ORDER BY opened_at DESC
+      LIMIT 1
+    `;
+    if (openRegister.length === 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Nenhum caixa aberto encontrado"
+      });
+    }
+    const register = openRegister[0];
+    const salesResult = await sql`
+      SELECT COALESCE(SUM(total_amount), 0) as total
+      FROM sales
+      WHERE created_at >= ${register.opened_at}
+    `;
+    const salesTotal = parseFloat(salesResult[0].total);
+    const openingAmount = parseFloat(register.opening_amount);
+    const expectedAmount = openingAmount + salesTotal;
+    const difference = closingAmount - expectedAmount;
+    await sql`
+      UPDATE cash_registers
+      SET 
+        closed_at = CURRENT_TIMESTAMP,
+        closing_amount = ${closingAmount},
+        expected_amount = ${expectedAmount},
+        difference = ${difference},
+        status = 'closed',
+        notes = ${notes || null}
+      WHERE id = ${register.id}
+    `;
+    return {
+      success: true,
+      salesTotal,
+      expectedAmount,
+      difference
+    };
+  } catch (error) {
+    console.error("Error closing cash register:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error closing cash register"
+    });
+  }
+});
+
+const close_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: close_post
+});
+
+const open_post = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const { openingAmount, notes } = await readBody(event);
+    const existing = await sql`
+      SELECT * FROM cash_registers
+      WHERE status = 'open'
+      LIMIT 1
+    `;
+    if (existing.length > 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "J\xE1 existe um caixa aberto"
+      });
+    }
+    const id = `cash-${Date.now()}`;
+    await sql`
+      INSERT INTO cash_registers (id, opening_amount, status, notes)
+      VALUES (${id}, ${openingAmount}, 'open', ${notes || null})
+    `;
+    return { success: true, id };
+  } catch (error) {
+    console.error("Error opening cash register:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error opening cash register"
+    });
+  }
+});
+
+const open_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: open_post
+});
 
 const categories_get = defineEventHandler(async () => {
   try {

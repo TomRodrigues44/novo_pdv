@@ -19,17 +19,48 @@ export default defineEventHandler(async () => {
     
     let currentRegister = null;
     let salesTotal = 0;
+    let salesByPayment = {
+      cash: 0,
+      debit: 0,
+      credit: 0,
+      pix: 0,
+    };
     
     if (openRegister.length > 0) {
       currentRegister = openRegister[0];
       
-      // Calcular total de vendas desde a abertura
+      // Calcular total de vendas por forma de pagamento
       const salesResult = await sql`
-        SELECT COALESCE(SUM(total_amount), 0) as total
+        SELECT 
+          payment_method,
+          COALESCE(SUM(total_amount), 0) as total
         FROM sales
         WHERE created_at >= ${currentRegister.opened_at}
+        GROUP BY payment_method
       `;
-      salesTotal = parseFloat(salesResult[0].total);
+      
+      salesResult.forEach((sale: any) => {
+        const total = parseFloat(sale.total);
+        salesTotal += total;
+        
+        if (salesByPayment[sale.payment_method as keyof typeof salesByPayment] !== undefined) {
+          salesByPayment[sale.payment_method as keyof typeof salesByPayment] = total;
+        }
+      });
+      
+      // Buscar transações (sangrias/adições)
+      const transactionsResult = await sql`
+        SELECT * FROM cash_transactions
+        WHERE cash_register_id = ${currentRegister.id}
+        ORDER BY created_at DESC
+      `;
+      
+      currentRegister = {
+        ...currentRegister,
+        salesTotal,
+        salesByPayment,
+        transactions: transactionsResult,
+      };
     }
     
     // Buscar histórico dos últimos 10 fechamentos
@@ -41,7 +72,7 @@ export default defineEventHandler(async () => {
     `;
     
     return {
-      current: currentRegister ? { ...currentRegister, salesTotal } : null,
+      current: currentRegister,
       history
     };
   } catch (error) {

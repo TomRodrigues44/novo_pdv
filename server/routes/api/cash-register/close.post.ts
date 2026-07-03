@@ -27,18 +27,58 @@ export default defineEventHandler(async (event) => {
     
     const register = openRegister[0];
     
-    // Calcular total de vendas
+    // Calcular total de vendas por forma de pagamento
     const salesResult = await sql`
-      SELECT COALESCE(SUM(total_amount), 0) as total
+      SELECT 
+        payment_method,
+        COALESCE(SUM(total_amount), 0) as total
       FROM sales
       WHERE created_at >= ${register.opened_at}
+      GROUP BY payment_method
     `;
-    const salesTotal = parseFloat(salesResult[0].total);
+    
+    let salesTotal = 0;
+    let cashSales = 0;
+    
+    salesResult.forEach((sale: any) => {
+      const total = parseFloat(sale.total);
+      salesTotal += total;
+      
+      if (sale.payment_method === 'cash') {
+        cashSales += total;
+      }
+    });
+    
+    // Calcular transações (sangrias/adições)
+    const transactionsResult = await sql`
+      SELECT type, COALESCE(SUM(amount), 0) as total
+      FROM cash_transactions
+      WHERE cash_register_id = ${register.id}
+      GROUP BY type
+    `;
+    
+    let withdrawals = 0; // Sangrias
+    let additions = 0; // Adições
+    
+    transactionsResult.forEach((trans: any) => {
+      const total = parseFloat(trans.total);
+      if (trans.type === 'withdrawal') {
+        withdrawals += total;
+      } else if (trans.type === 'addition') {
+        additions += total;
+      }
+    });
     
     // Calcular valores
     const openingAmount = parseFloat(register.opening_amount);
-    const expectedAmount = openingAmount + salesTotal;
-    const difference = closingAmount - expectedAmount;
+    
+    // Valor esperado em dinheiro = Abertura + Vendas em Dinheiro + Adições - Sangrias
+    const expectedCashAmount = openingAmount + cashSales + additions - withdrawals;
+    
+    // Valor esperado total = Abertura + Todas as Vendas + Adições - Sangrias
+    const expectedTotalAmount = openingAmount + salesTotal + additions - withdrawals;
+    
+    const difference = closingAmount - expectedCashAmount;
     
     // Atualizar caixa
     await sql`
@@ -46,7 +86,7 @@ export default defineEventHandler(async (event) => {
       SET 
         closed_at = CURRENT_TIMESTAMP,
         closing_amount = ${closingAmount},
-        expected_amount = ${expectedAmount},
+        expected_amount = ${expectedCashAmount},
         difference = ${difference},
         status = 'closed',
         notes = ${notes || null}
@@ -56,7 +96,11 @@ export default defineEventHandler(async (event) => {
     return { 
       success: true, 
       salesTotal,
-      expectedAmount,
+      cashSales,
+      expectedCashAmount,
+      expectedTotalAmount,
+      withdrawals,
+      additions,
       difference
     };
   } catch (error) {

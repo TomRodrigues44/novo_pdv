@@ -28,6 +28,10 @@ import {
   Plus,
   Lock,
   Unlock,
+  Minus,
+  CreditCard,
+  QrCode,
+  Banknote,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -36,8 +40,12 @@ const CashRegister = () => {
   const queryClient = useQueryClient();
   const [isOpenDialogOpen, setIsOpenDialogOpen] = useState(false);
   const [isCloseDialogOpen, setIsCloseDialogOpen] = useState(false);
+  const [isWithdrawalDialogOpen, setIsWithdrawalDialogOpen] = useState(false);
+  const [isAdditionDialogOpen, setIsAdditionDialogOpen] = useState(false);
   const [openingAmount, setOpeningAmount] = useState('');
   const [closingAmount, setClosingAmount] = useState('');
+  const [transactionAmount, setTransactionAmount] = useState('');
+  const [transactionDescription, setTransactionDescription] = useState('');
   const [notes, setNotes] = useState('');
 
   // Buscar dados do caixa
@@ -48,7 +56,7 @@ const CashRegister = () => {
       if (!response.ok) throw new Error('Failed to fetch cash register');
       return response.json();
     },
-    refetchInterval: 30000, // Atualizar a cada 30 segundos
+    refetchInterval: 30000,
   });
 
   const currentRegister = cashData?.current;
@@ -95,7 +103,6 @@ const CashRegister = () => {
         const result = await response.json();
         toast.success('Caixa fechado com sucesso!');
         
-        // Mostrar resumo
         if (result.difference !== 0) {
           const diffType = result.difference > 0 ? 'Sobrou' : 'Faltou';
           toast.info(`${diffType}: R$ ${Math.abs(result.difference).toFixed(2)}`);
@@ -114,6 +121,40 @@ const CashRegister = () => {
     }
   };
 
+  const handleTransaction = async (type: 'withdrawal' | 'addition') => {
+    try {
+      const response = await fetch('/api/cash-transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          amount: parseFloat(transactionAmount) || 0,
+          description: transactionDescription,
+        }),
+      });
+
+      if (response.ok) {
+        const typeName = type === 'withdrawal' ? 'Sangria' : 'Adição';
+        toast.success(`${typeName} registrada com sucesso!`);
+        
+        if (type === 'withdrawal') {
+          setIsWithdrawalDialogOpen(false);
+        } else {
+          setIsAdditionDialogOpen(false);
+        }
+        
+        setTransactionAmount('');
+        setTransactionDescription('');
+        refetch();
+      } else {
+        const error = await response.json();
+        toast.error(error.statusMessage || 'Erro ao registrar transação');
+      }
+    } catch (error) {
+      toast.error('Erro ao registrar transação');
+    }
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -123,6 +164,16 @@ const CashRegister = () => {
 
   const formatDateTime = (date: string) => {
     return new Date(date).toLocaleString('pt-BR');
+  };
+
+  const getPaymentMethodLabel = (method: string) => {
+    switch (method) {
+      case 'cash': return 'Dinheiro';
+      case 'debit': return 'Débito';
+      case 'credit': return 'Crédito';
+      case 'pix': return 'Pix';
+      default: return method;
+    }
   };
 
   if (isLoading) {
@@ -185,7 +236,7 @@ const CashRegister = () => {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-gray-600">
-                    Vendas
+                    Total Vendas
                   </CardTitle>
                   <TrendingUp className="h-5 w-5 text-green-500" />
                 </CardHeader>
@@ -194,7 +245,7 @@ const CashRegister = () => {
                     {formatCurrency(currentRegister.salesTotal || 0)}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Total do período
+                    Todas as formas de pagamento
                   </p>
                 </CardContent>
               </Card>
@@ -202,18 +253,21 @@ const CashRegister = () => {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-gray-600">
-                    Esperado
+                    Esperado (Dinheiro)
                   </CardTitle>
                   <FileText className="h-5 w-5 text-orange-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-orange-600">
                     {formatCurrency(
-                      parseFloat(currentRegister.opening_amount) + (currentRegister.salesTotal || 0)
+                      parseFloat(currentRegister.opening_amount) +
+                      (currentRegister.salesByPayment?.cash || 0) +
+                      (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
+                      (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
                     )}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Abertura + Vendas
+                    Abertura + Dinheiro + Adições - Sangrias
                   </p>
                 </CardContent>
               </Card>
@@ -236,6 +290,235 @@ const CashRegister = () => {
               </Card>
             </div>
 
+            {/* Vendas por Forma de Pagamento */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Vendas por Forma de Pagamento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Banknote className="h-5 w-5 text-green-600" />
+                      <span className="font-semibold text-green-800">Dinheiro</span>
+                    </div>
+                    <p className="text-2xl font-bold text-green-700">
+                      {formatCurrency(currentRegister.salesByPayment?.cash || 0)}
+                    </p>
+                  </div>
+
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CreditCard className="h-5 w-5 text-blue-600" />
+                      <span className="font-semibold text-blue-800">Débito</span>
+                    </div>
+                    <p className="text-2xl font-bold text-blue-700">
+                      {formatCurrency(currentRegister.salesByPayment?.debit || 0)}
+                    </p>
+                  </div>
+
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CreditCard className="h-5 w-5 text-purple-600" />
+                      <span className="font-semibold text-purple-800">Crédito</span>
+                    </div>
+                    <p className="text-2xl font-bold text-purple-700">
+                      {formatCurrency(currentRegister.salesByPayment?.credit || 0)}
+                    </p>
+                  </div>
+
+                  <div className="bg-teal-50 p-4 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <QrCode className="h-5 w-5 text-teal-600" />
+                      <span className="font-semibold text-teal-800">Pix</span>
+                    </div>
+                    <p className="text-2xl font-bold text-teal-700">
+                      {formatCurrency(currentRegister.salesByPayment?.pix || 0)}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Sangrias e Adições */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="border-red-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-red-700">
+                    <Minus className="h-5 w-5" />
+                    Sangrias
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Total de Sangrias:</span>
+                      <span className="text-xl font-bold text-red-600">
+                        {formatCurrency(
+                          currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
+                        )}
+                      </span>
+                    </div>
+                    
+                    <Dialog open={isWithdrawalDialogOpen} onOpenChange={setIsWithdrawalDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="w-full bg-red-600 hover:bg-red-700">
+                          <Minus className="mr-2 h-4 w-4" />
+                          Nova Sangria
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Registrar Sangria</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Valor
+                            </label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={transactionAmount}
+                              onChange={(e) => setTransactionAmount(e.target.value)}
+                              placeholder="Ex: 50.00"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Descrição
+                            </label>
+                            <Textarea
+                              value={transactionDescription}
+                              onChange={(e) => setTransactionDescription(e.target.value)}
+                              placeholder="Ex: Pagamento de fornecedor..."
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setIsWithdrawalDialogOpen(false)}>
+                            Cancelar
+                          </Button>
+                          <Button
+                            onClick={() => handleTransaction('withdrawal')}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Confirmar Sangria
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+
+                    {currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').length > 0 && (
+                      <div className="space-y-2 mt-4">
+                        {currentRegister.transactions
+                          .filter((t: any) => t.type === 'withdrawal')
+                          .map((trans: any) => (
+                            <div key={trans.id} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
+                              <div>
+                                <p className="font-medium">{trans.description || 'Sem descrição'}</p>
+                                <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
+                              </div>
+                              <span className="font-bold text-red-600">
+                                -{formatCurrency(parseFloat(trans.amount))}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-green-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-green-700">
+                    <Plus className="h-5 w-5" />
+                    Adições
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Total de Adições:</span>
+                      <span className="text-xl font-bold text-green-600">
+                        {formatCurrency(
+                          currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
+                        )}
+                      </span>
+                    </div>
+                    
+                    <Dialog open={isAdditionDialogOpen} onOpenChange={setIsAdditionDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="w-full bg-green-600 hover:bg-green-700">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Nova Adição
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Registrar Adição</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Valor
+                            </label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={transactionAmount}
+                              onChange={(e) => setTransactionAmount(e.target.value)}
+                              placeholder="Ex: 100.00"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Descrição
+                            </label>
+                            <Textarea
+                              value={transactionDescription}
+                              onChange={(e) => setTransactionDescription(e.target.value)}
+                              placeholder="Ex: Troco de cliente..."
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setIsAdditionDialogOpen(false)}>
+                            Cancelar
+                          </Button>
+                          <Button
+                            onClick={() => handleTransaction('addition')}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Confirmar Adição
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+
+                    {currentRegister.transactions?.filter((t: any) => t.type === 'addition').length > 0 && (
+                      <div className="space-y-2 mt-4">
+                        {currentRegister.transactions
+                          .filter((t: any) => t.type === 'addition')
+                          .map((trans: any) => (
+                            <div key={trans.id} className="flex justify-between items-center p-2 bg-green-50 rounded text-sm">
+                              <div>
+                                <p className="font-medium">{trans.description || 'Sem descrição'}</p>
+                                <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
+                              </div>
+                              <span className="font-bold text-green-600">
+                                +{formatCurrency(parseFloat(trans.amount))}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             {/* Botão de Fechar Caixa */}
             <Card className="border-2 border-orange-200">
               <CardHeader>
@@ -247,7 +530,7 @@ const CashRegister = () => {
               <CardContent>
                 <p className="text-gray-600 mb-4">
                   Ao fechar o caixa, você precisará informar o valor total em dinheiro.
-                  O sistema calculará automaticamente a diferença.
+                  O sistema calculará automaticamente a diferença considerando apenas vendas em dinheiro, sangrias e adições.
                 </p>
                 <Dialog open={isCloseDialogOpen} onOpenChange={setIsCloseDialogOpen}>
                   <DialogTrigger asChild>
@@ -269,16 +552,35 @@ const CashRegister = () => {
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-sm">Total de Vendas:</span>
+                          <span className="text-sm">Vendas em Dinheiro:</span>
                           <span className="font-semibold text-green-600">
-                            {formatCurrency(currentRegister.salesTotal || 0)}
+                            {formatCurrency(currentRegister.salesByPayment?.cash || 0)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm">Adições:</span>
+                          <span className="font-semibold text-green-600">
+                            +{formatCurrency(
+                              currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm">Sangrias:</span>
+                          <span className="font-semibold text-red-600">
+                            -{formatCurrency(
+                              currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
+                            )}
                           </span>
                         </div>
                         <div className="border-t pt-2 flex justify-between font-bold">
-                          <span>Valor Esperado:</span>
+                          <span>Valor Esperado (Dinheiro):</span>
                           <span className="text-orange-600">
                             {formatCurrency(
-                              parseFloat(currentRegister.opening_amount) + (currentRegister.salesTotal || 0)
+                              parseFloat(currentRegister.opening_amount) +
+                              (currentRegister.salesByPayment?.cash || 0) +
+                              (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
+                              (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
                             )}
                           </span>
                         </div>
@@ -302,21 +604,41 @@ const CashRegister = () => {
                           <div className="flex justify-between items-center">
                             <span className="font-medium">Diferença:</span>
                             <span className={`text-lg font-bold ${
-                              (parseFloat(closingAmount) - (parseFloat(currentRegister.opening_amount) + (currentRegister.salesTotal || 0))) >= 0
+                              (parseFloat(closingAmount) - (
+                                parseFloat(currentRegister.opening_amount) +
+                                (currentRegister.salesByPayment?.cash || 0) +
+                                (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
+                                (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
+                              )) >= 0
                                 ? 'text-green-600'
                                 : 'text-red-600'
                             }`}>
                               {formatCurrency(
-                                parseFloat(closingAmount) - (parseFloat(currentRegister.opening_amount) + (currentRegister.salesTotal || 0))
+                                parseFloat(closingAmount) - (
+                                  parseFloat(currentRegister.opening_amount) +
+                                  (currentRegister.salesByPayment?.cash || 0) +
+                                  (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
+                                  (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
+                                )
                               )}
                             </span>
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
-                            {(parseFloat(closingAmount) - (parseFloat(currentRegister.opening_amount) + (currentRegister.salesTotal || 0))) > 0
+                            {(parseFloat(closingAmount) - (
+                              parseFloat(currentRegister.opening_amount) +
+                              (currentRegister.salesByPayment?.cash || 0) +
+                              (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
+                              (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
+                            )) > 0
                               ? 'Sobrou dinheiro (Suprimento)'
-                              : (parseFloat(closingAmount) - (parseFloat(currentRegister.opening_amount) + (currentRegister.salesTotal || 0))) < 0
+                              : (parseFloat(closingAmount) - (
+                                  parseFloat(currentRegister.opening_amount) +
+                                  (currentRegister.salesByPayment?.cash || 0) +
+                                  (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
+                                  (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
+                                )) < 0
                               ? 'Faltou dinheiro (Sangria)'
-                              : 'Caixa fechado corretamente'}
+                              : 'Caixa fechou exato'}
                           </p>
                         </div>
                       )}
