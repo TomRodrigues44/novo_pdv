@@ -108,22 +108,19 @@ const Kitchen = () => {
   const getTimeElapsed = (createdAt: string) => {
     const now = currentTime;
     const created = new Date(createdAt);
-    const diffInSeconds = Math.floor((now.getTime() - created.getTime()) / 1000);
+    const diffInMinutes = Math.floor((now.getTime() - created.getTime()) / 1000 / 60);
     
-    if (diffInSeconds < 60) {
-      return `${diffInSeconds}s`;
+    if (diffInMinutes < 1) {
+      return 'Agora mesmo';
     }
     
-    const minutes = Math.floor(diffInSeconds / 60);
-    const seconds = diffInSeconds % 60;
-    
-    if (minutes < 60) {
-      return `${minutes}m ${seconds}s`;
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} min`;
     }
     
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}h ${mins}m`;
+    const hours = Math.floor(diffInMinutes / 60);
+    const mins = diffInMinutes % 60;
+    return `${hours}h ${mins}min`;
   };
 
   const getTimeColor = (createdAt: string) => {
