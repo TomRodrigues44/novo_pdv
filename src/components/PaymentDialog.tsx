@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { CreditCard, QrCode, Banknote, Plus, Trash2, Check, Truck } from "lucide-react";
+import { CreditCard, QrCode, Banknote, Plus, Trash2, Check, Truck, User } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { CartItem } from "@/types/product";
 
@@ -27,10 +27,11 @@ interface PaymentDialogProps {
   total: number;
   freight: number;
   cartItems: CartItem[];
+  customerId: string | null;
   onPaymentConfirm: (payments: PaymentMethod[]) => void;
 }
 
-export const PaymentDialog = ({ open, onClose, total, freight, cartItems, onPaymentConfirm }: PaymentDialogProps) => {
+export const PaymentDialog = ({ open, onClose, total, freight, cartItems, customerId, onPaymentConfirm }: PaymentDialogProps) => {
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
   const [selectedType, setSelectedType] = useState<"debit" | "credit" | "pix" | "cash">("debit");
   const [amount, setAmount] = useState("");
@@ -112,6 +113,18 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, onPaym
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Coluna Esquerda - Resumo do Pedido */}
             <div className="space-y-4">
+              {/* Cliente Selecionado */}
+              {customerId && (
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <User className="h-5 w-5" />
+                      <span className="font-semibold">Venda vinculada a cliente</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card>
                 <CardHeader className="bg-orange-50 pb-3">
                   <h3 className="font-bold text-lg text-orange-800">Resumo do Pedido</h3>

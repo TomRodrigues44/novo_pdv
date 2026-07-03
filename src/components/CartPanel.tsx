@@ -4,6 +4,7 @@ import { useAdmin } from "@/hooks/use-admin";
 import { CartItemComponent } from "./CartItem";
 import { PaymentDialog } from "./PaymentDialog";
 import { DocumentDialog } from "./DocumentDialog";
+import { CustomerSelector } from "./CustomerSelector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,10 +16,26 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ShoppingCart, Trash2, Receipt, Truck, Plus, X } from "lucide-react";
+import { ShoppingCart, Trash2, Receipt, Truck, Plus, X, User } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
-export const CartPanel = () => {
+interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  email: string;
+  points: number;
+  total_spent: number;
+}
+
+interface CartPanelProps {
+  selectedCustomer: Customer | null;
+  onCustomerChange: (customer: Customer | null) => void;
+  onOpenCustomerForm?: () => void;
+}
+
+export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerForm }: CartPanelProps) => {
   const {
     cartItems,
     removeFromCart,
@@ -36,6 +53,7 @@ export const CartPanel = () => {
   const [freight, setFreight] = useState<number>(0);
   const [isFreightDialogOpen, setIsFreightDialogOpen] = useState(false);
   const [freightValue, setFreightValue] = useState("");
+  const [isCustomerSelectorOpen, setIsCustomerSelectorOpen] = useState(false);
 
   const totalWithFreight = cartTotal + freight;
 
@@ -75,6 +93,7 @@ export const CartPanel = () => {
       payments: payments,
       type: "pending",
       freight: freight,
+      customerId: selectedCustomer?.id || null,
     });
 
     setCurrentPayments(payments);
@@ -91,6 +110,7 @@ export const CartPanel = () => {
     setFreight(0);
     setCurrentPayments([]);
     setCurrentSaleId(null);
+    onCustomerChange(null); // Limpar cliente após venda
   };
 
   return (
@@ -108,6 +128,42 @@ export const CartPanel = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex-1 overflow-auto p-4">
+          {/* Seleção de Cliente */}
+          <div className="mb-4">
+            {selectedCustomer ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <p className="font-semibold text-blue-900">{selectedCustomer.name}</p>
+                      <p className="text-xs text-blue-700">
+                        {selectedCustomer.points} pontos • R$ {parseFloat(String(selectedCustomer.total_spent)).toFixed(2)} gasto
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsCustomerSelectorOpen(true)}
+                    className="text-blue-600 hover:text-blue-700"
+                  >
+                    Trocar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                className="w-full border-dashed border-2"
+                onClick={() => setIsCustomerSelectorOpen(true)}
+              >
+                <User className="h-4 w-4 mr-2" />
+                Selecionar Cliente
+              </Button>
+            )}
+          </div>
+
           {cartItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
               <ShoppingCart className="h-16 w-16 mb-4" />
@@ -227,12 +283,20 @@ export const CartPanel = () => {
         )}
       </Card>
 
+      <CustomerSelector
+        open={isCustomerSelectorOpen}
+        onOpenChange={setIsCustomerSelectorOpen}
+        onSelectCustomer={onCustomerChange}
+        onAddNewCustomer={onOpenCustomerForm}
+      />
+
       <PaymentDialog
         open={isPaymentDialogOpen}
         onClose={() => setIsPaymentDialogOpen(false)}
         total={totalWithFreight}
         freight={freight}
         cartItems={cartItems}
+        customerId={selectedCustomer?.id || null}
         onPaymentConfirm={handlePaymentConfirm}
       />
 

@@ -13,6 +13,7 @@ import { useCategories } from '@/hooks/use-categories';
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [usingLocalStorage, setUsingLocalStorage] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const { addToCart } = useCart();
   
   // Usar hooks do React Query
@@ -59,6 +60,11 @@ const Index = () => {
   const filteredProducts = selectedCategory === 'all'
     ? products.filter((p) => p.available)
     : products.filter((product) => product.category === selectedCategory && product.available);
+
+  const handleOpenCustomerForm = () => {
+    // Redirecionar para página de cadastro de clientes
+    window.location.href = '/admin/customers';
+  };
 
   if (isLoading) {
     return (
@@ -162,7 +168,11 @@ const Index = () => {
           {/* Cart Section */}
           <div className="lg:col-span-1">
             <div className="sticky top-6">
-              <CartPanel />
+              <CartPanel
+                selectedCustomer={selectedCustomer}
+                onCustomerChange={setSelectedCustomer}
+                onOpenCustomerForm={handleOpenCustomerForm}
+              />
             </div>
           </div>
         </div>
