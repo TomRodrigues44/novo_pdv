@@ -931,7 +931,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"10088-kKfaZKK9LOyn+VnQBgzODkS9tUg\"",
+    "mtime": "2026-07-03T13:13:29.781Z",
+    "size": 65672,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"37572-iUYEgL3iID1wBHE5UQg0y9F6O30\"",
+    "mtime": "2026-07-03T13:13:29.781Z",
+    "size": 226674,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1893,7 +1908,7 @@ const sales_get$1 = /*#__PURE__*/Object.freeze({
 });
 
 const sales_post = defineEventHandler(async (event) => {
-  var _a, _b;
+  var _a, _b, _c;
   try {
     const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
     const dbUrl = process.env.DATABASE_URL;
@@ -1902,38 +1917,55 @@ const sales_post = defineEventHandler(async (event) => {
     }
     const sql = neon(dbUrl);
     const saleData = await readBody(event);
+    const total = parseFloat(String(saleData.total || 0));
+    const freight = parseFloat(String(saleData.freight || 0));
+    const paymentMethod = ((_b = (_a = saleData.payments) == null ? void 0 : _a[0]) == null ? void 0 : _b.type) || "cash";
+    const createdAt = saleData.date || (/* @__PURE__ */ new Date()).toISOString();
+    console.log("Creating sale:", { total, freight, paymentMethod, itemsCount: (_c = saleData.items) == null ? void 0 : _c.length });
     const saleResult = await sql`
       INSERT INTO sales (total_amount, payment_method, freight, created_at)
       VALUES (
-        ${saleData.total}, 
-        ${((_b = (_a = saleData.payments) == null ? void 0 : _a[0]) == null ? void 0 : _b.type) || "cash"}, 
-        ${saleData.freight || 0}, 
-        ${saleData.date || (/* @__PURE__ */ new Date()).toISOString()}
+        ${total}, 
+        ${paymentMethod}, 
+        ${freight}, 
+        ${createdAt}
       )
       RETURNING id
     `;
     const saleId = saleResult[0].id;
+    console.log("Sale created with ID:", saleId);
     if (saleData.items && Array.isArray(saleData.items)) {
       for (const item of saleData.items) {
+        const itemPrice = parseFloat(String(item.price || 0));
+        const itemQuantity = parseInt(String(item.quantity || 0));
+        console.log("Adding sale item:", {
+          saleId,
+          productId: item.id,
+          productName: item.name,
+          quantity: itemQuantity,
+          price: itemPrice,
+          flavors: item.flavors
+        });
         await sql`
           INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, flavors)
           VALUES (
             ${saleId},
             ${item.id},
             ${item.name},
-            ${item.quantity},
-            ${item.price},
+            ${itemQuantity},
+            ${itemPrice},
             ${item.flavors ? JSON.stringify(item.flavors) : null}::jsonb
           )
         `;
         await sql`
           UPDATE products
-          SET stock = stock - ${item.quantity},
-              available = (stock - ${item.quantity}) > 0
+          SET stock = stock - ${itemQuantity},
+              available = (stock - ${itemQuantity}) > 0
           WHERE id = ${item.id}
         `;
       }
     }
+    console.log("Sale completed successfully");
     return { success: true, id: saleId };
   } catch (error) {
     console.error("Error creating sale:", error);
