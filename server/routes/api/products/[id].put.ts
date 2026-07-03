@@ -14,38 +14,47 @@ export default defineEventHandler(async (event) => {
     // Construir a query dinamicamente com apenas os campos fornecidos
     const updateFields: string[] = [];
     const updateValues: any[] = [];
+    let paramIndex = 1;
     
     if (updates.name !== undefined) {
-      updateFields.push('name = $1');
+      updateFields.push(`name = $${paramIndex}`);
       updateValues.push(updates.name);
+      paramIndex++;
     }
     if (updates.description !== undefined) {
-      updateFields.push('description = $' + (updateValues.length + 1));
+      updateFields.push(`description = $${paramIndex}`);
       updateValues.push(updates.description);
+      paramIndex++;
     }
     if (updates.price !== undefined) {
-      updateFields.push('price = $' + (updateValues.length + 1));
+      updateFields.push(`price = $${paramIndex}`);
       updateValues.push(updates.price);
+      paramIndex++;
     }
     if (updates.category !== undefined) {
-      updateFields.push('category = $' + (updateValues.length + 1));
+      updateFields.push(`category = $${paramIndex}`);
       updateValues.push(updates.category);
+      paramIndex++;
     }
     if (updates.image !== undefined) {
-      updateFields.push('image = $' + (updateValues.length + 1));
+      updateFields.push(`image = $${paramIndex}`);
       updateValues.push(updates.image);
+      paramIndex++;
     }
     if (updates.available !== undefined) {
-      updateFields.push('available = $' + (updateValues.length + 1));
+      updateFields.push(`available = $${paramIndex}`);
       updateValues.push(updates.available);
+      paramIndex++;
     }
     if (updates.stock !== undefined) {
-      updateFields.push('stock = $' + (updateValues.length + 1));
+      updateFields.push(`stock = $${paramIndex}`);
       updateValues.push(updates.stock);
+      paramIndex++;
     }
     if (updates.fiscal !== undefined) {
-      updateFields.push('fiscal = $' + (updateValues.length + 1));
+      updateFields.push(`fiscal = $${paramIndex}`);
       updateValues.push(JSON.stringify(updates.fiscal));
+      paramIndex++;
     }
     
     // Adicionar updated_at
@@ -58,9 +67,12 @@ export default defineEventHandler(async (event) => {
     const query = `
       UPDATE products
       SET ${updateFields.join(', ')}
-      WHERE id = $${updateValues.length}
+      WHERE id = $${paramIndex}
       RETURNING *
     `;
+    
+    console.log('Update query:', query);
+    console.log('Update values:', updateValues);
     
     const result = await sql(query, ...updateValues);
     

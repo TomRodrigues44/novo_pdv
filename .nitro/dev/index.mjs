@@ -934,16 +934,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"fbbc-7DNtB6AAU5XOQJ8AvV6x4wD5jF8\"",
-    "mtime": "2026-07-02T16:29:13.413Z",
-    "size": 64444,
+    "etag": "\"ff95-PYzOi9FR9SiL3a8trbISnArWds8\"",
+    "mtime": "2026-07-03T11:04:20.468Z",
+    "size": 65429,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"36653-ArN2YSzeKctuwwcCEy+EAsjH9Ww\"",
-    "mtime": "2026-07-02T16:29:13.413Z",
-    "size": 222803,
+    "etag": "\"37441-BhEza27t5l8pzal3px9ATLWe1Uo\"",
+    "mtime": "2026-07-03T11:04:20.468Z",
+    "size": 226369,
     "path": "index.mjs.map"
   }
 };
@@ -1793,46 +1793,57 @@ const _id__put = defineEventHandler(async (event) => {
     const updates = await readBody(event);
     const updateFields = [];
     const updateValues = [];
+    let paramIndex = 1;
     if (updates.name !== void 0) {
-      updateFields.push("name = $1");
+      updateFields.push(`name = $${paramIndex}`);
       updateValues.push(updates.name);
+      paramIndex++;
     }
     if (updates.description !== void 0) {
-      updateFields.push("description = $" + (updateValues.length + 1));
+      updateFields.push(`description = $${paramIndex}`);
       updateValues.push(updates.description);
+      paramIndex++;
     }
     if (updates.price !== void 0) {
-      updateFields.push("price = $" + (updateValues.length + 1));
+      updateFields.push(`price = $${paramIndex}`);
       updateValues.push(updates.price);
+      paramIndex++;
     }
     if (updates.category !== void 0) {
-      updateFields.push("category = $" + (updateValues.length + 1));
+      updateFields.push(`category = $${paramIndex}`);
       updateValues.push(updates.category);
+      paramIndex++;
     }
     if (updates.image !== void 0) {
-      updateFields.push("image = $" + (updateValues.length + 1));
+      updateFields.push(`image = $${paramIndex}`);
       updateValues.push(updates.image);
+      paramIndex++;
     }
     if (updates.available !== void 0) {
-      updateFields.push("available = $" + (updateValues.length + 1));
+      updateFields.push(`available = $${paramIndex}`);
       updateValues.push(updates.available);
+      paramIndex++;
     }
     if (updates.stock !== void 0) {
-      updateFields.push("stock = $" + (updateValues.length + 1));
+      updateFields.push(`stock = $${paramIndex}`);
       updateValues.push(updates.stock);
+      paramIndex++;
     }
     if (updates.fiscal !== void 0) {
-      updateFields.push("fiscal = $" + (updateValues.length + 1));
+      updateFields.push(`fiscal = $${paramIndex}`);
       updateValues.push(JSON.stringify(updates.fiscal));
+      paramIndex++;
     }
     updateFields.push("updated_at = CURRENT_TIMESTAMP");
     updateValues.push(id);
     const query = `
       UPDATE products
       SET ${updateFields.join(", ")}
-      WHERE id = $${updateValues.length}
+      WHERE id = $${paramIndex}
       RETURNING *
     `;
+    console.log("Update query:", query);
+    console.log("Update values:", updateValues);
     const result = await sql(query, ...updateValues);
     if (result.length === 0) {
       throw createError({
