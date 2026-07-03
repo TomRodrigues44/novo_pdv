@@ -931,7 +931,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"fbbc-7DNtB6AAU5XOQJ8AvV6x4wD5jF8\"",
+    "mtime": "2026-07-02T16:29:13.413Z",
+    "size": 64444,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"36653-ArN2YSzeKctuwwcCEy+EAsjH9Ww\"",
+    "mtime": "2026-07-02T16:29:13.413Z",
+    "size": 222803,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1767,7 +1782,6 @@ const _id__delete$1 = /*#__PURE__*/Object.freeze({
 });
 
 const _id__put = defineEventHandler(async (event) => {
-  var _a, _b;
   try {
     const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
     const dbUrl = process.env.DATABASE_URL;
@@ -1776,22 +1790,50 @@ const _id__put = defineEventHandler(async (event) => {
     }
     const sql = neon(dbUrl);
     const id = getRouterParam(event, "id");
-    const product = await readBody(event);
-    const result = await sql`
+    const updates = await readBody(event);
+    const updateFields = [];
+    const updateValues = [];
+    if (updates.name !== void 0) {
+      updateFields.push("name = $1");
+      updateValues.push(updates.name);
+    }
+    if (updates.description !== void 0) {
+      updateFields.push("description = $" + (updateValues.length + 1));
+      updateValues.push(updates.description);
+    }
+    if (updates.price !== void 0) {
+      updateFields.push("price = $" + (updateValues.length + 1));
+      updateValues.push(updates.price);
+    }
+    if (updates.category !== void 0) {
+      updateFields.push("category = $" + (updateValues.length + 1));
+      updateValues.push(updates.category);
+    }
+    if (updates.image !== void 0) {
+      updateFields.push("image = $" + (updateValues.length + 1));
+      updateValues.push(updates.image);
+    }
+    if (updates.available !== void 0) {
+      updateFields.push("available = $" + (updateValues.length + 1));
+      updateValues.push(updates.available);
+    }
+    if (updates.stock !== void 0) {
+      updateFields.push("stock = $" + (updateValues.length + 1));
+      updateValues.push(updates.stock);
+    }
+    if (updates.fiscal !== void 0) {
+      updateFields.push("fiscal = $" + (updateValues.length + 1));
+      updateValues.push(JSON.stringify(updates.fiscal));
+    }
+    updateFields.push("updated_at = CURRENT_TIMESTAMP");
+    updateValues.push(id);
+    const query = `
       UPDATE products
-      SET 
-        name = ${product.name},
-        description = ${product.description || null},
-        price = ${product.price},
-        category = ${product.category},
-        image = ${product.image},
-        available = ${(_a = product.available) != null ? _a : true},
-        stock = ${(_b = product.stock) != null ? _b : 0},
-        fiscal = ${product.fiscal ? JSON.stringify(product.fiscal) : null}::jsonb,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${id}
+      SET ${updateFields.join(", ")}
+      WHERE id = $${updateValues.length}
       RETURNING *
     `;
+    const result = await sql(query, ...updateValues);
     if (result.length === 0) {
       throw createError({
         statusCode: 404,
