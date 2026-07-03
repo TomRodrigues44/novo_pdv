@@ -934,16 +934,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"10088-kKfaZKK9LOyn+VnQBgzODkS9tUg\"",
-    "mtime": "2026-07-03T13:13:29.781Z",
-    "size": 65672,
+    "etag": "\"10386-CEIFkfUHOLF7Z3re5tUz1Tbm8hk\"",
+    "mtime": "2026-07-03T13:20:04.374Z",
+    "size": 66438,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"37572-iUYEgL3iID1wBHE5UQg0y9F6O30\"",
-    "mtime": "2026-07-03T13:13:29.781Z",
-    "size": 226674,
+    "etag": "\"3811d-fYXLsGPqv9lu2jsP+o8rbaCIyYc\"",
+    "mtime": "2026-07-03T13:20:04.374Z",
+    "size": 229661,
     "path": "index.mjs.map"
   }
 };
@@ -1946,6 +1946,7 @@ const sales_post = defineEventHandler(async (event) => {
           price: itemPrice,
           flavors: item.flavors
         });
+        const flavorsArray = item.flavors && Array.isArray(item.flavors) ? item.flavors : null;
         await sql`
           INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, flavors)
           VALUES (
@@ -1954,7 +1955,7 @@ const sales_post = defineEventHandler(async (event) => {
             ${item.name},
             ${itemQuantity},
             ${itemPrice},
-            ${item.flavors ? JSON.stringify(item.flavors) : null}::jsonb
+            ${flavorsArray}::text[]
           )
         `;
         await sql`

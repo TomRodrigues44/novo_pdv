@@ -48,6 +48,9 @@ export default defineEventHandler(async (event) => {
           flavors: item.flavors
         });
         
+        // Converter flavors para array de texto se existir
+        const flavorsArray = item.flavors && Array.isArray(item.flavors) ? item.flavors : null;
+        
         await sql`
           INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, flavors)
           VALUES (
@@ -56,7 +59,7 @@ export default defineEventHandler(async (event) => {
             ${item.name},
             ${itemQuantity},
             ${itemPrice},
-            ${item.flavors ? JSON.stringify(item.flavors) : null}::jsonb
+            ${flavorsArray}::text[]
           )
         `;
         
