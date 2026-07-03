@@ -74,7 +74,8 @@ export default defineEventHandler(async (event) => {
     console.log('Update query:', query);
     console.log('Update values:', updateValues);
     
-    const result = await sql(query, ...updateValues);
+    // Usar sql.query() para queries com placeholders
+    const result = await sql.query(query, ...updateValues);
     
     if (result.length === 0) {
       throw createError({
