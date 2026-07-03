@@ -188,7 +188,7 @@ export const useAdmin = () => {
     );
 
     const totalRevenue = recentSales.reduce(
-      (sum, sale) => sum + (sale.total_amount || sale.total || 0),
+      (sum, sale) => sum + parseFloat(sale.total_amount || sale.total || 0),
       0
     );
 
@@ -201,7 +201,7 @@ export const useAdmin = () => {
       sale.items?.forEach((item: any) => {
         const category = products.find((p) => p.id === item.product_id)?.category;
         if (category) {
-          acc[category] = (acc[category] || 0) + (item.price || 0) * item.quantity;
+          acc[category] = (acc[category] || 0) + parseFloat(item.price || 0) * item.quantity;
         }
       });
       return acc;
