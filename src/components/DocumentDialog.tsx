@@ -93,22 +93,25 @@ export const DocumentDialog = ({ open, onClose, total, freight, cartItems, payme
 
                     {/* Itens */}
                     <div className="space-y-2 mb-3">
-                      {cartItems.map((item, index) => (
-                        <div key={index} className="border-b border-dotted border-gray-300 pb-1">
-                          <div className="flex justify-between">
-                            <span className="font-semibold">{item.quantity}x {item.name}</span>
-                            <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
-                          </div>
-                          {(item as any).flavors && (item as any).flavors.length > 0 && (
-                            <div className="text-[10px] text-gray-600 mt-0.5">
-                              Sabores: {(item as any).flavors.join(", ")}
+                      {cartItems.map((item, index) => {
+                        const price = typeof item.price === 'number' ? item.price : parseFloat(String(item.price));
+                        return (
+                          <div key={index} className="border-b border-dotted border-gray-300 pb-1">
+                            <div className="flex justify-between">
+                              <span className="font-semibold">{item.quantity}x {item.name}</span>
+                              <span>R$ {(price * item.quantity).toFixed(2)}</span>
                             </div>
-                          )}
-                          <div className="text-[10px] text-gray-500">
-                            R$ {item.price.toFixed(2)} un.
+                            {(item as any).flavors && (item as any).flavors.length > 0 && (
+                              <div className="text-[10px] text-gray-600 mt-0.5">
+                                Sabores: {(item as any).flavors.join(", ")}
+                              </div>
+                            )}
+                            <div className="text-[10px] text-gray-500">
+                              R$ {price.toFixed(2)} un.
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     <Separator className="my-3" />
