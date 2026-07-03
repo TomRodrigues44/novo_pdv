@@ -931,7 +931,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"10a1c-ouTNBJJqYPAk8vwS+ifm8hc77go\"",
+    "mtime": "2026-07-03T13:34:19.992Z",
+    "size": 68124,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"3949d-lfVKodR6pRNjguW+dfB02lGkZC4\"",
+    "mtime": "2026-07-03T13:34:19.991Z",
+    "size": 234653,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1022,8 +1037,13 @@ const _ngUQxC = eventHandler((event) => {
 
 const _lazy__iU8wW = () => Promise.resolve().then(function () { return categories_get$1; });
 const _lazy_o1wo52 = () => Promise.resolve().then(function () { return categories_post$3; });
-const _lazy_b2VTWC = () => Promise.resolve().then(function () { return _id__delete$3; });
-const _lazy_eDpqQf = () => Promise.resolve().then(function () { return _id__put$3; });
+const _lazy_b2VTWC = () => Promise.resolve().then(function () { return _id__delete$5; });
+const _lazy_eDpqQf = () => Promise.resolve().then(function () { return _id__put$5; });
+const _lazy_thsE84 = () => Promise.resolve().then(function () { return customers_get$1; });
+const _lazy_krY3pv = () => Promise.resolve().then(function () { return customers_post$1; });
+const _lazy_H45_Wb = () => Promise.resolve().then(function () { return _id__delete$3; });
+const _lazy_h4GIBs = () => Promise.resolve().then(function () { return _id__put$3; });
+const _lazy_YtRTDx = () => Promise.resolve().then(function () { return sales_get$3; });
 const _lazy_zELk_7 = () => Promise.resolve().then(function () { return categories_post$1; });
 const _lazy_GwWEhE = () => Promise.resolve().then(function () { return products_post$3; });
 const _lazy_lNzaoz = () => Promise.resolve().then(function () { return sales_post$3; });
@@ -1042,6 +1062,11 @@ const handlers = [
   { route: '/api/categories', handler: _lazy_o1wo52, lazy: true, middleware: false, method: "post" },
   { route: '/api/categories/:id', handler: _lazy_b2VTWC, lazy: true, middleware: false, method: "delete" },
   { route: '/api/categories/:id', handler: _lazy_eDpqQf, lazy: true, middleware: false, method: "put" },
+  { route: '/api/customers', handler: _lazy_thsE84, lazy: true, middleware: false, method: "get" },
+  { route: '/api/customers', handler: _lazy_krY3pv, lazy: true, middleware: false, method: "post" },
+  { route: '/api/customers/:id', handler: _lazy_H45_Wb, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/customers/:id', handler: _lazy_h4GIBs, lazy: true, middleware: false, method: "put" },
+  { route: '/api/customers/:id/sales', handler: _lazy_YtRTDx, lazy: true, middleware: false, method: "get" },
   { route: '/api/migrate/categories', handler: _lazy_zELk_7, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/products', handler: _lazy_GwWEhE, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/sales', handler: _lazy_lNzaoz, lazy: true, middleware: false, method: "post" },
@@ -1386,7 +1411,7 @@ const categories_post$3 = /*#__PURE__*/Object.freeze({
   default: categories_post$2
 });
 
-const _id__delete$2 = defineEventHandler(async (event) => {
+const _id__delete$4 = defineEventHandler(async (event) => {
   try {
     const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
     const dbUrl = process.env.DATABASE_URL;
@@ -1417,12 +1442,12 @@ const _id__delete$2 = defineEventHandler(async (event) => {
   }
 });
 
-const _id__delete$3 = /*#__PURE__*/Object.freeze({
+const _id__delete$5 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: _id__delete$2
+  default: _id__delete$4
 });
 
-const _id__put$2 = defineEventHandler(async (event) => {
+const _id__put$4 = defineEventHandler(async (event) => {
   var _a;
   try {
     const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
@@ -1458,9 +1483,202 @@ const _id__put$2 = defineEventHandler(async (event) => {
   }
 });
 
+const _id__put$5 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _id__put$4
+});
+
+const customers_get = defineEventHandler(async () => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const customers = await sql`
+      SELECT 
+        c.*,
+        COUNT(s.id) as total_orders
+      FROM customers c
+      LEFT JOIN sales s ON c.id = s.customer_id
+      GROUP BY c.id
+      ORDER BY c.created_at DESC
+    `;
+    return customers;
+  } catch (error) {
+    console.error("Error fetching customers:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error fetching customers"
+    });
+  }
+});
+
+const customers_get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: customers_get
+});
+
+const customers_post = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const customer = await readBody(event);
+    const result = await sql`
+      INSERT INTO customers (id, name, phone, address, email, points, total_spent)
+      VALUES (
+        ${customer.id},
+        ${customer.name},
+        ${customer.phone || null},
+        ${customer.address || null},
+        ${customer.email || null},
+        ${customer.points || 0},
+        ${customer.total_spent || 0}
+      )
+      RETURNING *
+    `;
+    return result[0];
+  } catch (error) {
+    console.error("Error creating customer:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error creating customer"
+    });
+  }
+});
+
+const customers_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: customers_post
+});
+
+const _id__delete$2 = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const id = getRouterParam(event, "id");
+    await sql`UPDATE sales SET customer_id = NULL WHERE customer_id = ${id}`;
+    const result = await sql`
+      DELETE FROM customers
+      WHERE id = ${id}
+      RETURNING *
+    `;
+    if (result.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Customer not found"
+      });
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting customer:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error deleting customer"
+    });
+  }
+});
+
+const _id__delete$3 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _id__delete$2
+});
+
+const _id__put$2 = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const id = getRouterParam(event, "id");
+    const customer = await readBody(event);
+    const result = await sql`
+      UPDATE customers
+      SET 
+        name = ${customer.name},
+        phone = ${customer.phone || null},
+        address = ${customer.address || null},
+        email = ${customer.email || null},
+        points = ${customer.points || 0},
+        total_spent = ${customer.total_spent || 0},
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id}
+      RETURNING *
+    `;
+    if (result.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Customer not found"
+      });
+    }
+    return result[0];
+  } catch (error) {
+    console.error("Error updating customer:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error updating customer"
+    });
+  }
+});
+
 const _id__put$3 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: _id__put$2
+});
+
+const sales_get$2 = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const id = getRouterParam(event, "id");
+    const sales = await sql`
+      SELECT 
+        s.*,
+        json_agg(
+          json_build_object(
+            'id', si.id,
+            'product_id', si.product_id,
+            'product_name', si.product_name,
+            'quantity', si.quantity,
+            'price', si.price,
+            'flavors', si.flavors
+          )
+        ) as items
+      FROM sales s
+      LEFT JOIN sale_items si ON s.id = si.sale_id
+      WHERE s.customer_id = ${id}
+      GROUP BY s.id
+      ORDER BY s.created_at DESC
+      LIMIT 50
+    `;
+    return sales;
+  } catch (error) {
+    console.error("Error fetching customer sales:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error fetching customer sales"
+    });
+  }
+});
+
+const sales_get$3 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: sales_get$2
 });
 
 const categories_post = defineEventHandler(async (event) => {
@@ -1908,14 +2126,16 @@ const sales_post = defineEventHandler(async (event) => {
     const freight = parseFloat(String(saleData.freight || 0));
     const paymentMethod = ((_b = (_a = saleData.payments) == null ? void 0 : _a[0]) == null ? void 0 : _b.type) || "cash";
     const createdAt = saleData.date || (/* @__PURE__ */ new Date()).toISOString();
-    console.log("Creating sale:", { total, freight, paymentMethod, itemsCount: (_c = saleData.items) == null ? void 0 : _c.length });
+    const customerId = saleData.customerId || null;
+    console.log("Creating sale:", { total, freight, paymentMethod, customerId, itemsCount: (_c = saleData.items) == null ? void 0 : _c.length });
     const saleResult = await sql`
-      INSERT INTO sales (total_amount, payment_method, freight, created_at)
+      INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id)
       VALUES (
         ${total}, 
         ${paymentMethod}, 
         ${freight}, 
-        ${createdAt}
+        ${createdAt},
+        ${customerId}
       )
       RETURNING id
     `;
@@ -1952,6 +2172,18 @@ const sales_post = defineEventHandler(async (event) => {
           WHERE id = ${item.id}
         `;
       }
+    }
+    if (customerId) {
+      const pointsEarned = Math.floor(total);
+      await sql`
+        UPDATE customers
+        SET 
+          points = points + ${pointsEarned},
+          total_spent = total_spent + ${total},
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${customerId}
+      `;
+      console.log(`Updated customer ${customerId}: +${pointsEarned} points, +${total} total spent`);
     }
     console.log("Sale completed successfully");
     return { success: true, id: saleId };
