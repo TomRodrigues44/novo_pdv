@@ -1033,6 +1033,7 @@ const _lazy_q5qboF = () => Promise.resolve().then(function () { return _id__dele
 const _lazy_gmpj8W = () => Promise.resolve().then(function () { return _id__put$1; });
 const _lazy_nl6xh4 = () => Promise.resolve().then(function () { return sales_get$1; });
 const _lazy__VRAiA = () => Promise.resolve().then(function () { return sales_post$1; });
+const _lazy_aXzNxt = () => Promise.resolve().then(function () { return status_put$1; });
 const _lazy_C90ob_ = () => Promise.resolve().then(function () { return testDb_get$1; });
 
 const handlers = [
@@ -1050,6 +1051,7 @@ const handlers = [
   { route: '/api/products/:id', handler: _lazy_gmpj8W, lazy: true, middleware: false, method: "put" },
   { route: '/api/sales', handler: _lazy_nl6xh4, lazy: true, middleware: false, method: "get" },
   { route: '/api/sales', handler: _lazy__VRAiA, lazy: true, middleware: false, method: "post" },
+  { route: '/api/sales/:id/status', handler: _lazy_aXzNxt, lazy: true, middleware: false, method: "put" },
   { route: '/api/test-db', handler: _lazy_C90ob_, lazy: true, middleware: false, method: "get" }
 ];
 
@@ -1965,6 +1967,56 @@ const sales_post = defineEventHandler(async (event) => {
 const sales_post$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: sales_post
+});
+
+const status_put = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const id = getRouterParam(event, "id");
+    const { status } = await readBody(event);
+    const validStatuses = ["pending", "preparing", "ready", "delivered"];
+    if (!validStatuses.includes(status)) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Invalid status"
+      });
+    }
+    try {
+      await sql`
+        ALTER TABLE sales ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending'
+      `;
+    } catch (e) {
+    }
+    const result = await sql`
+      UPDATE sales
+      SET status = ${status}
+      WHERE id = ${id}
+      RETURNING *
+    `;
+    if (result.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Sale not found"
+      });
+    }
+    return result[0];
+  } catch (error) {
+    console.error("Error updating sale status:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error updating sale status"
+    });
+  }
+});
+
+const status_put$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: status_put
 });
 
 const testDb_get = defineEventHandler(async () => {

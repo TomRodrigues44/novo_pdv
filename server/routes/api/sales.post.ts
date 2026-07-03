@@ -15,17 +15,19 @@ export default defineEventHandler(async (event) => {
     const freight = parseFloat(String(saleData.freight || 0));
     const paymentMethod = saleData.payments?.[0]?.type || 'cash';
     const createdAt = saleData.date || new Date().toISOString();
+    const customerId = saleData.customerId || null;
     
-    console.log('Creating sale:', { total, freight, paymentMethod, itemsCount: saleData.items?.length });
+    console.log('Creating sale:', { total, freight, paymentMethod, customerId, itemsCount: saleData.items?.length });
     
     // Criar a venda
     const saleResult = await sql`
-      INSERT INTO sales (total_amount, payment_method, freight, created_at)
+      INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id)
       VALUES (
         ${total}, 
         ${paymentMethod}, 
         ${freight}, 
-        ${createdAt}
+        ${createdAt},
+        ${customerId}
       )
       RETURNING id
     `;
@@ -71,6 +73,20 @@ export default defineEventHandler(async (event) => {
           WHERE id = ${item.id}
         `;
       }
+    }
+    
+    // Atualizar pontos e total gasto do cliente
+    if (customerId) {
+      const pointsEarned = Math.floor(total); // 1 ponto por R$ 1 gasto
+      await sql`
+        UPDATE customers
+        SET 
+          points = points + ${pointsEarned},
+          total_spent = total_spent + ${total},
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${customerId}
+      `;
+      console.log(`Updated customer ${customerId}: +${pointsEarned} points, +${total} total spent`);
     }
     
     console.log('Sale completed successfully');
