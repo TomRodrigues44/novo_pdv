@@ -934,16 +934,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"10041-gFZ++eAvS/3YUmq8AHfDFdW49GA\"",
-    "mtime": "2026-07-03T11:06:37.608Z",
-    "size": 65601,
+    "etag": "\"10047-xRO421gCQ6lnWVBjRD+23Jk03R4\"",
+    "mtime": "2026-07-03T11:08:29.133Z",
+    "size": 65607,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"37419-s8Jx5ffpys1r2iw9khagOA/GIrc\"",
-    "mtime": "2026-07-03T11:06:37.608Z",
-    "size": 226329,
+    "etag": "\"37428-Q/X/1XCFSuWxRuBO1dcN42QHo/o\"",
+    "mtime": "2026-07-03T11:08:29.133Z",
+    "size": 226344,
     "path": "index.mjs.map"
   }
 };
@@ -1844,7 +1844,7 @@ const _id__put = defineEventHandler(async (event) => {
     `;
     console.log("Update query:", query);
     console.log("Update values:", updateValues);
-    const result = await sql.query(query, ...updateValues);
+    const result = await sql.query(query, updateValues);
     if (result.length === 0) {
       throw createError({
         statusCode: 404,

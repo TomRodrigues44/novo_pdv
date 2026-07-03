@@ -74,8 +74,8 @@ export default defineEventHandler(async (event) => {
     console.log('Update query:', query);
     console.log('Update values:', updateValues);
     
-    // Usar sql.query() para queries com placeholders
-    const result = await sql.query(query, ...updateValues);
+    // Usar sql.query() passando um array de valores
+    const result = await sql.query(query, updateValues);
     
     if (result.length === 0) {
       throw createError({
