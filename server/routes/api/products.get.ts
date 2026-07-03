@@ -23,11 +23,11 @@ export default defineEventHandler(async () => {
         CASE 
           WHEN category = 'salgados' THEN
             CASE name
-              WHEN 'Cento' THEN 1
-              WHEN 'Meio Cento' THEN 2
-              WHEN 'Copo G' THEN 3
-              WHEN 'Copo M' THEN 4
-              WHEN 'Copo P' THEN 5
+              WHEN 'Cento - 100 unidades' THEN 1
+              WHEN 'Meio Cento - 50 unidades' THEN 2
+              WHEN 'Copo G - 30 unidades' THEN 3
+              WHEN 'Copo M - 20 unidades' THEN 4
+              WHEN 'Copo P - 10 unidades' THEN 5
               ELSE 6
             END
           WHEN category = 'bolos' THEN

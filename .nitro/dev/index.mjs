@@ -934,15 +934,15 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"10044-vFqfRQwZtKl3FKguVMHFHiSoYsY\"",
-    "mtime": "2026-07-03T11:34:29.767Z",
+    "etag": "\"10044-vKMm/Epk3MF3xIMQcdChVDuOh4w\"",
+    "mtime": "2026-07-03T11:37:03.938Z",
     "size": 65604,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
     "etag": "\"3741e-9W6LwVgyC+gsoT/4EJ9mS5qTO+0\"",
-    "mtime": "2026-07-03T11:34:29.767Z",
+    "mtime": "2026-07-03T11:37:03.938Z",
     "size": 226334,
     "path": "index.mjs.map"
   }
@@ -1666,11 +1666,11 @@ const products_get = defineEventHandler(async () => {
         CASE 
           WHEN category = 'salgados' THEN
             CASE name
-              WHEN 'Cento' THEN 1
-              WHEN 'Meio Cento' THEN 2
-              WHEN 'Copo G' THEN 3
-              WHEN 'Copo M' THEN 4
-              WHEN 'Copo P' THEN 5
+              WHEN 'Cento - 100 unidades' THEN 1
+              WHEN 'Meio Cento - 50 unidades' THEN 2
+              WHEN 'Copo G - 30 unidades' THEN 3
+              WHEN 'Copo M - 20 unidades' THEN 4
+              WHEN 'Copo P - 10 unidades' THEN 5
               ELSE 6
             END
           WHEN category = 'bolos' THEN
