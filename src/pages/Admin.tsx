@@ -118,15 +118,15 @@ const Admin = () => {
                   >
                     <div>
                       <p className="font-medium">
-                        Venda #{sale.id.split("-")[1]}
+                        Venda #{String(sale.id).slice(-6)}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {new Date(sale.date).toLocaleString("pt-BR")}
+                        {new Date(sale.created_at).toLocaleString("pt-BR")}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-green-600">
-                        R$ {sale.total.toFixed(2)}
+                        R$ {parseFloat(sale.total_amount || sale.total || 0).toFixed(2)}
                       </p>
                       <p className="text-sm text-gray-500">
                         {sale.items.length} itens
