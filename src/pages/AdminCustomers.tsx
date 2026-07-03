@@ -168,6 +168,10 @@ const AdminCustomers = () => {
     customer.phone.includes(searchTerm)
   );
 
+  // Calcular totais convertendo para número
+  const totalPoints = customers.reduce((sum, c) => sum + (parseFloat(String(c.points)) || 0), 0);
+  const totalSpent = customers.reduce((sum, c) => sum + (parseFloat(String(c.total_spent)) || 0), 0);
+
   return (
     <div className="flex">
       <AdminSidebar />
@@ -273,9 +277,7 @@ const AdminCustomers = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">
-                {customers.reduce((sum, c) => sum + (c.points || 0), 0)}
-              </div>
+              <div className="text-3xl font-bold">{totalPoints}</div>
             </CardContent>
           </Card>
 
@@ -290,7 +292,7 @@ const AdminCustomers = () => {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
-                R$ {customers.reduce((sum, c) => sum + (c.total_spent || 0), 0).toFixed(2)}
+                R$ {totalSpent.toFixed(2)}
               </div>
             </CardContent>
           </Card>
@@ -346,7 +348,7 @@ const AdminCustomers = () => {
                           </div>
                         </TableCell>
                         <TableCell className="font-semibold text-green-600">
-                          R$ {(customer.total_spent || 0).toFixed(2)}
+                          R$ {(parseFloat(String(customer.total_spent)) || 0).toFixed(2)}
                         </TableCell>
                         <TableCell>{customer.total_orders || 0}</TableCell>
                         <TableCell className="text-right">
@@ -412,7 +414,7 @@ const AdminCustomers = () => {
                           </div>
                           <div className="text-right">
                             <p className="font-bold text-green-600">
-                              R$ {parseFloat(sale.total_amount || sale.total || 0).toFixed(2)}
+                              R$ {(parseFloat(String(sale.total_amount || sale.total || 0))).toFixed(2)}
                             </p>
                             <p className="text-xs text-gray-500">{sale.payment_method}</p>
                           </div>
@@ -423,7 +425,7 @@ const AdminCustomers = () => {
                           {sale.items?.map((item: any) => (
                             <div key={item.id} className="flex justify-between text-sm">
                               <span>{item.quantity}x {item.product_name}</span>
-                              <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
+                              <span>R$ {(parseFloat(String(item.price)) * item.quantity).toFixed(2)}</span>
                             </div>
                           ))}
                         </div>
