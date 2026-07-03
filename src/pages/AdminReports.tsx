@@ -43,9 +43,9 @@ const AdminReports = () => {
       ["Data", "ID", "Total", "Itens"].join(","),
       ...report.sales.map((sale) =>
         [
-          new Date(sale.date).toLocaleString("pt-BR"),
-          sale.id,
-          sale.total.toFixed(2),
+          new Date(sale.created_at).toLocaleString("pt-BR"),
+          String(sale.id),
+          parseFloat(sale.total_amount || sale.total || 0).toFixed(2),
           sale.items.length,
         ].join(",")
       ),
@@ -201,14 +201,14 @@ const AdminReports = () => {
                     {report.sales.map((sale) => (
                       <tr key={sale.id} className="border-b hover:bg-gray-50">
                         <td className="p-3">
-                          {new Date(sale.date).toLocaleString("pt-BR")}
+                          {new Date(sale.created_at).toLocaleString("pt-BR")}
                         </td>
                         <td className="p-3 font-medium">
-                          #{sale.id.split("-")[1]}
+                          #{String(sale.id).slice(-6)}
                         </td>
                         <td className="p-3">{sale.items.length} itens</td>
                         <td className="p-3 text-right font-bold text-green-600">
-                          R$ {sale.total.toFixed(2)}
+                          R$ {parseFloat(sale.total_amount || sale.total || 0).toFixed(2)}
                         </td>
                       </tr>
                     ))}
