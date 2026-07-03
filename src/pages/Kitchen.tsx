@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, Bell, AlertTriangle, ChefHat } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Bell, AlertTriangle, ChefHat, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,10 +23,15 @@ interface Sale {
   created_at: string;
   items: SaleItem[];
   status?: 'pending' | 'preparing' | 'ready' | 'delivered';
+  customer_name?: string;
 }
 
 const Kitchen = () => {
   const [status, setStatus] = useState<'pending' | 'preparing' | 'ready'>('pending');
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Configuração de tempo de atraso (em minutos)
+  const DELAY_THRESHOLD_MINUTES = 15;
 
   // Buscar vendas
   const { data: sales = [], refetch } = useQuery({
@@ -38,6 +43,15 @@ const Kitchen = () => {
     },
     refetchInterval: 30000, // Atualizar a cada 30 segundos
   });
+
+  // Atualizar o tempo atual a cada segundo para o contador funcionar
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, []);
 
   // Filtrar vendas pelo status e apenas de hoje
   const today = new Date().toISOString().split('T')[0];
@@ -92,25 +106,45 @@ const Kitchen = () => {
   };
 
   const getTimeElapsed = (createdAt: string) => {
-    const now = new Date();
+    const now = currentTime;
     const created = new Date(createdAt);
-    const diff = Math.floor((now.getTime() - created.getTime()) / 1000 / 60); // minutos
+    const diffInSeconds = Math.floor((now.getTime() - created.getTime()) / 1000);
     
-    if (diff < 1) return 'Agora mesmo';
-    if (diff < 60) return `${diff} min`;
-    const hours = Math.floor(diff / 60);
-    const mins = diff % 60;
-    return `${hours}h ${mins}min`;
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds}s`;
+    }
+    
+    const minutes = Math.floor(diffInSeconds / 60);
+    const seconds = diffInSeconds % 60;
+    
+    if (minutes < 60) {
+      return `${minutes}m ${seconds}s`;
+    }
+    
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}m`;
   };
 
   const getTimeColor = (createdAt: string) => {
-    const now = new Date();
+    const now = currentTime;
     const created = new Date(createdAt);
-    const diff = Math.floor((now.getTime() - created.getTime()) / 1000 / 60);
+    const diffInMinutes = Math.floor((now.getTime() - created.getTime()) / 1000 / 60);
     
-    if (diff > 30) return 'text-red-600 font-bold';
-    if (diff > 15) return 'text-orange-600';
+    if (diffInMinutes >= DELAY_THRESHOLD_MINUTES) {
+      return 'text-red-600 font-bold animate-pulse';
+    }
+    if (diffInMinutes >= DELAY_THRESHOLD_MINUTES - 5) {
+      return 'text-orange-600 font-semibold';
+    }
     return 'text-green-600';
+  };
+
+  const isDelayed = (createdAt: string) => {
+    const now = currentTime;
+    const created = new Date(createdAt);
+    const diffInMinutes = Math.floor((now.getTime() - created.getTime()) / 1000 / 60);
+    return diffInMinutes >= DELAY_THRESHOLD_MINUTES;
   };
 
   return (
@@ -178,13 +212,22 @@ const Kitchen = () => {
           filteredSales.map((sale: Sale) => (
             <Card
               key={sale.id}
-              className={`${getStatusColor(sale.status)} border-2 overflow-hidden`}
+              className={`${getStatusColor(sale.status)} border-2 overflow-hidden ${isDelayed(sale.created_at) ? 'border-red-500 shadow-lg shadow-red-200' : ''}`}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Clock className="h-5 w-5" />
                     Pedido #{String(sale.id).slice(-6)}
+                    {sale.customer_name && (
+                      <>
+                        <span className="text-gray-400">•</span>
+                        <span className="flex items-center gap-1">
+                          <User className="h-4 w-4" />
+                          {sale.customer_name}
+                        </span>
+                      </>
+                    )}
                   </CardTitle>
                   <Badge variant="outline" className="text-sm">
                     {getStatusLabel(sale.status)}
@@ -193,6 +236,11 @@ const Kitchen = () => {
                 <div className={`flex items-center gap-2 text-sm ${getTimeColor(sale.created_at)}`}>
                   <Clock className="h-4 w-4" />
                   <span>{getTimeElapsed(sale.created_at)}</span>
+                  {isDelayed(sale.created_at) && (
+                    <span className="ml-2 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                      ATRASADO
+                    </span>
+                  )}
                 </div>
                 {sale.freight > 0 && (
                   <div className="flex items-center gap-2 text-sm text-blue-600">

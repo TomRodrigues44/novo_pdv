@@ -11,6 +11,7 @@ export default defineEventHandler(async () => {
     const sales = await sql`
       SELECT 
         s.*,
+        c.name as customer_name,
         json_agg(
           json_build_object(
             'id', si.id,
@@ -23,7 +24,8 @@ export default defineEventHandler(async () => {
         ) as items
       FROM sales s
       LEFT JOIN sale_items si ON s.id = si.sale_id
-      GROUP BY s.id
+      LEFT JOIN customers c ON s.customer_id = c.id
+      GROUP BY s.id, c.name
       ORDER BY s.created_at DESC
     `;
     return sales;

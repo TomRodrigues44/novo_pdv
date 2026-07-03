@@ -931,7 +931,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"12694-d5EytjBk9ofCJffT25joCu61jjo\"",
+    "mtime": "2026-07-03T14:09:57.210Z",
+    "size": 75412,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"3e463-DgRikb01/dD766TZbj/J8wA9Jw0\"",
+    "mtime": "2026-07-03T14:09:57.210Z",
+    "size": 255075,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -2067,6 +2082,7 @@ const sales_get = defineEventHandler(async () => {
     const sales = await sql`
       SELECT 
         s.*,
+        c.name as customer_name,
         json_agg(
           json_build_object(
             'id', si.id,
@@ -2079,7 +2095,8 @@ const sales_get = defineEventHandler(async () => {
         ) as items
       FROM sales s
       LEFT JOIN sale_items si ON s.id = si.sale_id
-      GROUP BY s.id
+      LEFT JOIN customers c ON s.customer_id = c.id
+      GROUP BY s.id, c.name
       ORDER BY s.created_at DESC
     `;
     return sales;
