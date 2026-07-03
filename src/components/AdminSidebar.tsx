@@ -8,6 +8,7 @@ import {
   ShoppingCart,
   Settings,
   LogOut,
+  ChefHat,
 } from "lucide-react";
 
 const AdminSidebar = () => {
@@ -18,6 +19,7 @@ const AdminSidebar = () => {
     { path: "/admin/products", icon: Package, label: "Produtos" },
     { path: "/admin/categories", icon: Tags, label: "Categorias" },
     { path: "/admin/reports", icon: BarChart3, label: "Relatórios" },
+    { path: "/kitchen", icon: ChefHat, label: "Cozinha" },
     { path: "/", icon: ShoppingCart, label: "Ir para PDV" },
   ];
 

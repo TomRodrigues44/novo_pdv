@@ -10,6 +10,7 @@ import Admin from "./pages/Admin";
 import AdminCategories from "./pages/AdminCategories";
 import AdminProducts from "./pages/AdminProducts";
 import AdminReports from "./pages/AdminReports";
+import Kitchen from "./pages/Kitchen";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/kitchen" element={<Kitchen />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/categories" element={<AdminCategories />} />
             <Route path="/admin/products" element={<AdminProducts />} />
