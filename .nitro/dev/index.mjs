@@ -934,16 +934,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"12888-MnWzqtCJQxHP3zmsD1X2eUgdazg\"",
-    "mtime": "2026-07-03T14:30:55.461Z",
-    "size": 75912,
+    "etag": "\"13cf4-hxhJ3vp0hETDoDrOGWXIU3hKDXE\"",
+    "mtime": "2026-07-03T14:55:44.588Z",
+    "size": 81140,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"3e639-TsMaQwY8UhG6chiMPjVIQILVH5Y\"",
-    "mtime": "2026-07-03T14:30:55.462Z",
-    "size": 255545,
+    "etag": "\"426a5-k2WAIPIqlLJ8yZl06UaHV/pY1No\"",
+    "mtime": "2026-07-03T14:55:44.589Z",
+    "size": 272037,
     "path": "index.mjs.map"
   }
 };
@@ -1038,6 +1038,8 @@ const _ngUQxC = eventHandler((event) => {
 const _lazy_zyPM9J = () => Promise.resolve().then(function () { return cashRegister_get$1; });
 const _lazy_s4P548 = () => Promise.resolve().then(function () { return close_post$1; });
 const _lazy_rID8to = () => Promise.resolve().then(function () { return open_post$1; });
+const _lazy_4uV9wR = () => Promise.resolve().then(function () { return cashTransactions_get$1; });
+const _lazy_cQiAIV = () => Promise.resolve().then(function () { return cashTransactions_post$1; });
 const _lazy__iU8wW = () => Promise.resolve().then(function () { return categories_get$1; });
 const _lazy_o1wo52 = () => Promise.resolve().then(function () { return categories_post$3; });
 const _lazy_b2VTWC = () => Promise.resolve().then(function () { return _id__delete$5; });
@@ -1064,6 +1066,8 @@ const handlers = [
   { route: '/api/cash-register', handler: _lazy_zyPM9J, lazy: true, middleware: false, method: "get" },
   { route: '/api/cash-register/close', handler: _lazy_s4P548, lazy: true, middleware: false, method: "post" },
   { route: '/api/cash-register/open', handler: _lazy_rID8to, lazy: true, middleware: false, method: "post" },
+  { route: '/api/cash-transactions', handler: _lazy_4uV9wR, lazy: true, middleware: false, method: "get" },
+  { route: '/api/cash-transactions', handler: _lazy_cQiAIV, lazy: true, middleware: false, method: "post" },
   { route: '/api/categories', handler: _lazy__iU8wW, lazy: true, middleware: false, method: "get" },
   { route: '/api/categories', handler: _lazy_o1wo52, lazy: true, middleware: false, method: "post" },
   { route: '/api/categories/:id', handler: _lazy_b2VTWC, lazy: true, middleware: false, method: "delete" },
@@ -1366,14 +1370,40 @@ const cashRegister_get = defineEventHandler(async () => {
     `;
     let currentRegister = null;
     let salesTotal = 0;
+    let salesByPayment = {
+      cash: 0,
+      debit: 0,
+      credit: 0,
+      pix: 0
+    };
     if (openRegister.length > 0) {
       currentRegister = openRegister[0];
       const salesResult = await sql`
-        SELECT COALESCE(SUM(total_amount), 0) as total
+        SELECT 
+          payment_method,
+          COALESCE(SUM(total_amount), 0) as total
         FROM sales
         WHERE created_at >= ${currentRegister.opened_at}
+        GROUP BY payment_method
       `;
-      salesTotal = parseFloat(salesResult[0].total);
+      salesResult.forEach((sale) => {
+        const total = parseFloat(sale.total);
+        salesTotal += total;
+        if (salesByPayment[sale.payment_method] !== void 0) {
+          salesByPayment[sale.payment_method] = total;
+        }
+      });
+      const transactionsResult = await sql`
+        SELECT * FROM cash_transactions
+        WHERE cash_register_id = ${currentRegister.id}
+        ORDER BY created_at DESC
+      `;
+      currentRegister = {
+        ...currentRegister,
+        salesTotal,
+        salesByPayment,
+        transactions: transactionsResult
+      };
     }
     const history = await sql`
       SELECT * FROM cash_registers
@@ -1382,7 +1412,7 @@ const cashRegister_get = defineEventHandler(async () => {
       LIMIT 10
     `;
     return {
-      current: currentRegister ? { ...currentRegister, salesTotal } : null,
+      current: currentRegister,
       history
     };
   } catch (error) {
@@ -1422,20 +1452,48 @@ const close_post = defineEventHandler(async (event) => {
     }
     const register = openRegister[0];
     const salesResult = await sql`
-      SELECT COALESCE(SUM(total_amount), 0) as total
+      SELECT 
+        payment_method,
+        COALESCE(SUM(total_amount), 0) as total
       FROM sales
       WHERE created_at >= ${register.opened_at}
+      GROUP BY payment_method
     `;
-    const salesTotal = parseFloat(salesResult[0].total);
+    let salesTotal = 0;
+    let cashSales = 0;
+    salesResult.forEach((sale) => {
+      const total = parseFloat(sale.total);
+      salesTotal += total;
+      if (sale.payment_method === "cash") {
+        cashSales += total;
+      }
+    });
+    const transactionsResult = await sql`
+      SELECT type, COALESCE(SUM(amount), 0) as total
+      FROM cash_transactions
+      WHERE cash_register_id = ${register.id}
+      GROUP BY type
+    `;
+    let withdrawals = 0;
+    let additions = 0;
+    transactionsResult.forEach((trans) => {
+      const total = parseFloat(trans.total);
+      if (trans.type === "withdrawal") {
+        withdrawals += total;
+      } else if (trans.type === "addition") {
+        additions += total;
+      }
+    });
     const openingAmount = parseFloat(register.opening_amount);
-    const expectedAmount = openingAmount + salesTotal;
-    const difference = closingAmount - expectedAmount;
+    const expectedCashAmount = openingAmount + cashSales + additions - withdrawals;
+    const expectedTotalAmount = openingAmount + salesTotal + additions - withdrawals;
+    const difference = closingAmount - expectedCashAmount;
     await sql`
       UPDATE cash_registers
       SET 
         closed_at = CURRENT_TIMESTAMP,
         closing_amount = ${closingAmount},
-        expected_amount = ${expectedAmount},
+        expected_amount = ${expectedCashAmount},
         difference = ${difference},
         status = 'closed',
         notes = ${notes || null}
@@ -1444,7 +1502,11 @@ const close_post = defineEventHandler(async (event) => {
     return {
       success: true,
       salesTotal,
-      expectedAmount,
+      cashSales,
+      expectedCashAmount,
+      expectedTotalAmount,
+      withdrawals,
+      additions,
       difference
     };
   } catch (error) {
@@ -1499,6 +1561,86 @@ const open_post = defineEventHandler(async (event) => {
 const open_post$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: open_post
+});
+
+const cashTransactions_get = defineEventHandler(async () => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const openRegister = await sql`
+      SELECT * FROM cash_registers
+      WHERE status = 'open'
+      ORDER BY opened_at DESC
+      LIMIT 1
+    `;
+    if (openRegister.length === 0) {
+      return { transactions: [] };
+    }
+    const cashRegisterId = openRegister[0].id;
+    const transactions = await sql`
+      SELECT * FROM cash_transactions
+      WHERE cash_register_id = ${cashRegisterId}
+      ORDER BY created_at DESC
+    `;
+    return { transactions };
+  } catch (error) {
+    console.error("Error fetching cash transactions:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error fetching cash transactions"
+    });
+  }
+});
+
+const cashTransactions_get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: cashTransactions_get
+});
+
+const cashTransactions_post = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const { type, amount, description } = await readBody(event);
+    const openRegister = await sql`
+      SELECT * FROM cash_registers
+      WHERE status = 'open'
+      ORDER BY opened_at DESC
+      LIMIT 1
+    `;
+    if (openRegister.length === 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Nenhum caixa aberto encontrado"
+      });
+    }
+    const cashRegisterId = openRegister[0].id;
+    const id = `trans-${Date.now()}`;
+    await sql`
+      INSERT INTO cash_transactions (id, cash_register_id, type, amount, description)
+      VALUES (${id}, ${cashRegisterId}, ${type}, ${amount}, ${description || null})
+    `;
+    return { success: true, id };
+  } catch (error) {
+    console.error("Error creating cash transaction:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error creating cash transaction"
+    });
+  }
+});
+
+const cashTransactions_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: cashTransactions_post
 });
 
 const categories_get = defineEventHandler(async () => {
