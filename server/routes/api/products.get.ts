@@ -35,7 +35,7 @@ export default defineEventHandler(async () => {
               WHEN 'Bolo de Chocolate' THEN 1
               WHEN 'Bolo de Limão' THEN 2
               WHEN 'Bolo de Milho' THEN 3
-              WHEN 'Bolo de Romeu e Julieta' THEN 4
+              WHEN 'Bolo Romeu & Julieta' THEN 4
               WHEN 'Bolo de Café' THEN 5
               WHEN 'Bolo Mesclado' THEN 6
               ELSE 7
