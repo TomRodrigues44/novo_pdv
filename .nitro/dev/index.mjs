@@ -934,16 +934,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"10047-xRO421gCQ6lnWVBjRD+23Jk03R4\"",
-    "mtime": "2026-07-03T11:08:29.133Z",
-    "size": 65607,
+    "etag": "\"10044-vKMm/Epk3MF3xIMQcdChVDuOh4w\"",
+    "mtime": "2026-07-03T11:22:38.599Z",
+    "size": 65604,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"37428-Q/X/1XCFSuWxRuBO1dcN42QHo/o\"",
-    "mtime": "2026-07-03T11:08:29.133Z",
-    "size": 226344,
+    "etag": "\"3741e-9W6LwVgyC+gsoT/4EJ9mS5qTO+0\"",
+    "mtime": "2026-07-03T11:22:38.600Z",
+    "size": 226334,
     "path": "index.mjs.map"
   }
 };
@@ -1667,7 +1667,7 @@ const products_get = defineEventHandler(async () => {
           WHEN category = 'salgados' THEN
             CASE name
               WHEN 'Cento' THEN 1
-              WHEN 'Meio Cento' THEN 2
+              WHEN 'Meio cento' THEN 2
               WHEN 'Copo G' THEN 3
               WHEN 'Copo M' THEN 4
               WHEN 'Copo P' THEN 5
