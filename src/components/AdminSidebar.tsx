@@ -10,6 +10,7 @@ import {
   LogOut,
   ChefHat,
   Users,
+  DollarSign,
 } from "lucide-react";
 
 const AdminSidebar = () => {
@@ -20,6 +21,7 @@ const AdminSidebar = () => {
     { path: "/admin/products", icon: Package, label: "Produtos" },
     { path: "/admin/categories", icon: Tags, label: "Categorias" },
     { path: "/admin/customers", icon: Users, label: "Clientes" },
+    { path: "/admin/cash-register", icon: DollarSign, label: "Fluxo de Caixa" },
     { path: "/admin/reports", icon: BarChart3, label: "Relatórios" },
     { path: "/kitchen", icon: ChefHat, label: "Cozinha" },
     { path: "/", icon: ShoppingCart, label: "Ir para PDV" },
