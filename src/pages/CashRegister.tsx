@@ -31,6 +31,7 @@ import {
   QrCode,
   Banknote,
   Printer,
+  XCircle,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -39,6 +40,7 @@ const CashRegister = () => {
   const queryClient = useQueryClient();
   const [isOpenDialogOpen, setIsOpenDialogOpen] = useState(false);
   const [isCloseDialogOpen, setIsCloseDialogOpen] = useState(false);
+  const [isCloseSuccessDialogOpen, setIsCloseSuccessDialogOpen] = useState(false);
   const [isWithdrawalDialogOpen, setIsWithdrawalDialogOpen] = useState(false);
   const [isAdditionDialogOpen, setIsAdditionDialogOpen] = useState(false);
   const [openingAmount, setOpeningAmount] = useState('');
@@ -46,6 +48,7 @@ const CashRegister = () => {
   const [transactionAmount, setTransactionAmount] = useState('');
   const [transactionDescription, setTransactionDescription] = useState('');
   const [notes, setNotes] = useState('');
+  const [closeResult, setCloseResult] = useState<any>(null);
 
   // Buscar dados do caixa
   const { data: cashData, isLoading, refetch } = useQuery({
@@ -100,13 +103,8 @@ const CashRegister = () => {
 
       if (response.ok) {
         const result = await response.json();
-        toast.success('Caixa fechado com sucesso!');
-        
-        if (result.difference !== 0) {
-          const diffType = result.difference > 0 ? 'Sobrou' : 'Faltou';
-          toast.info(`${diffType}: R$ ${Math.abs(result.difference).toFixed(2)}`);
-        }
-        
+        setCloseResult(result);
+        setIsCloseSuccessDialogOpen(true);
         setIsCloseDialogOpen(false);
         setClosingAmount('');
         setNotes('');
@@ -501,6 +499,7 @@ const CashRegister = () => {
               <CardContent>
                 <p className="text-gray-600 mb-4">
                   Ao fechar o caixa, você precisará informar o valor total em dinheiro.
+                  O sistema calculará a diferença apenas após a confirmação.
                 </p>
                 <Dialog open={isCloseDialogOpen} onOpenChange={setIsCloseDialogOpen}>
                   <DialogTrigger asChild>
@@ -509,231 +508,40 @@ const CashRegister = () => {
                       Fechar Caixa
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col">
+                  <DialogContent>
                     <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
-                        <Printer className="h-5 w-5" />
-                        Fechar Caixa - Relatório de Fechamento
-                      </DialogTitle>
+                      <DialogTitle>Confirmar Fechamento de Caixa</DialogTitle>
                     </DialogHeader>
                     
-                    <div className="flex-1 overflow-y-auto p-6">
-                      {/* Cabeçalho do Relatório */}
-                      <div className="text-center mb-6 pb-4 border-b">
-                        <h2 className="text-2xl font-bold">EMPÓRIO DAS COXINHAS</h2>
-                        <p className="text-gray-600">Relatório de Fechamento de Caixa</p>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {formatDateTime(new Date().toISOString())}
-                        </p>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Valor em Dinheiro (Contado)
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={closingAmount}
+                          onChange={(e) => setClosingAmount(e.target.value)}
+                          placeholder="Ex: 1500.00"
+                        />
                       </div>
 
-                      {/* Resumo Financeiro */}
-                      <div className="space-y-4 mb-6">
-                        <h3 className="font-bold text-lg border-b pb-2">RESUMO FINANCEIRO</h3>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-blue-50 p-3 rounded">
-                            <p className="text-sm text-gray-600">Valor de Abertura:</p>
-                            <p className="text-xl font-bold text-blue-700">
-                              {formatCurrency(parseFloat(currentRegister.opening_amount))}
-                            </p>
-                          </div>
-                          
-                          <div className="bg-green-50 p-3 rounded">
-                            <p className="text-sm text-gray-600">Total de Vendas:</p>
-                            <p className="text-xl font-bold text-green-700">
-                              {formatCurrency(currentRegister.salesTotal || 0)}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Vendas por Forma de Pagamento */}
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <h4 className="font-semibold mb-3">Vendas por Forma de Pagamento:</h4>
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="flex items-center gap-2">
-                                <Banknote className="h-4 w-4 text-green-600" />
-                                Dinheiro:
-                              </span>
-                              <span className="font-bold text-green-700">
-                                {formatCurrency(currentRegister.salesByPayment?.cash || 0)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="flex items-center gap-2">
-                                <CreditCard className="h-4 w-4 text-blue-600" />
-                                Débito:
-                              </span>
-                              <span className="font-bold text-blue-700">
-                                {formatCurrency(currentRegister.salesByPayment?.debit || 0)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="flex items-center gap-2">
-                                <CreditCard className="h-4 w-4 text-purple-600" />
-                                Crédito:
-                              </span>
-                              <span className="font-bold text-purple-700">
-                                {formatCurrency(currentRegister.salesByPayment?.credit || 0)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="flex items-center gap-2">
-                                <QrCode className="h-4 w-4 text-teal-600" />
-                                Pix:
-                              </span>
-                              <span className="font-bold text-teal-700">
-                                {formatCurrency(currentRegister.salesByPayment?.pix || 0)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Sangrias */}
-                        {currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').length > 0 && (
-                          <div className="bg-red-50 p-4 rounded-lg">
-                            <h4 className="font-semibold mb-3 text-red-800">SANGRIAS:</h4>
-                            <div className="space-y-2">
-                              {currentRegister.transactions
-                                .filter((t: any) => t.type === 'withdrawal')
-                                .map((trans: any) => (
-                                  <div key={trans.id} className="flex justify-between text-sm">
-                                    <div>
-                                      <p className="font-medium">{trans.description || 'Sem descrição'}</p>
-                                      <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
-                                    </div>
-                                    <span className="font-bold text-red-600">
-                                      -{formatCurrency(parseFloat(trans.amount))}
-                                    </span>
-                                  </div>
-                                ))}
-                              <div className="border-t pt-2 mt-2 flex justify-between font-bold">
-                                <span>Total de Sangrias:</span>
-                                <span className="text-red-600">
-                                  -{formatCurrency(
-                                    currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
-                                  )}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Adições */}
-                        {currentRegister.transactions?.filter((t: any) => t.type === 'addition').length > 0 && (
-                          <div className="bg-green-50 p-4 rounded-lg">
-                            <h4 className="font-semibold mb-3 text-green-800">ADIÇÕES:</h4>
-                            <div className="space-y-2">
-                              {currentRegister.transactions
-                                .filter((t: any) => t.type === 'addition')
-                                .map((trans: any) => (
-                                  <div key={trans.id} className="flex justify-between text-sm">
-                                    <div>
-                                      <p className="font-medium">{trans.description || 'Sem descrição'}</p>
-                                      <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
-                                    </div>
-                                    <span className="font-bold text-green-600">
-                                      +{formatCurrency(parseFloat(trans.amount))}
-                                    </span>
-                                  </div>
-                                ))}
-                              <div className="border-t pt-2 mt-2 flex justify-between font-bold">
-                                <span>Total de Adições:</span>
-                                <span className="text-green-600">
-                                  +{formatCurrency(
-                                    currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
-                                  )}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Formulário de Fechamento */}
-                      <div className="space-y-4 pt-4 border-t">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">
-                            Valor em Dinheiro (Contado)
-                          </label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={closingAmount}
-                            onChange={(e) => setClosingAmount(e.target.value)}
-                            placeholder="Ex: 1500.00"
-                          />
-                        </div>
-
-                        {closingAmount && (
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium">Diferença:</span>
-                              <span className={`text-lg font-bold ${
-                                (parseFloat(closingAmount) - (
-                                  parseFloat(currentRegister.opening_amount) +
-                                  (currentRegister.salesByPayment?.cash || 0) +
-                                  (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
-                                  (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
-                                )) >= 0
-                                ? 'text-green-600'
-                                : 'text-red-600'
-                              }`}>
-                                {formatCurrency(
-                                  parseFloat(closingAmount) - (
-                                    parseFloat(currentRegister.opening_amount) +
-                                    (currentRegister.salesByPayment?.cash || 0) +
-                                    (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
-                                    (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
-                                  )
-                                )}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {(parseFloat(closingAmount) - (
-                                parseFloat(currentRegister.opening_amount) +
-                                (currentRegister.salesByPayment?.cash || 0) +
-                                (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
-                                (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
-                              )) > 0
-                                ? 'Sobrou dinheiro (Suprimento)'
-                                : (parseFloat(closingAmount) - (
-                                    parseFloat(currentRegister.opening_amount) +
-                                    (currentRegister.salesByPayment?.cash || 0) +
-                                    (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
-                                    (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
-                                  )) < 0
-                                ? 'Faltou dinheiro (Sangria)'
-                                : 'Caixa fechou exato'}
-                            </p>
-                          </div>
-                        )}
-
-                        <div>
-                          <label className="block text-sm font-medium mb-2">
-                            Observações
-                          </label>
-                          <Textarea
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Ex: Troco quebrado, notas rasgadas..."
-                          />
-                        </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Observações
+                        </label>
+                        <Textarea
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="Ex: Troco quebrado, notas rasgadas..."
+                        />
                       </div>
                     </div>
 
-                    <DialogFooter className="px-6 py-4 border-t bg-gray-50 gap-2">
+                    <DialogFooter>
                       <Button variant="outline" onClick={() => setIsCloseDialogOpen(false)}>
                         Cancelar
-                      </Button>
-                      <Button
-                        onClick={handlePrint}
-                        variant="outline"
-                        className="flex-1"
-                      >
-                        <Printer className="h-4 w-4 mr-2" />
-                        Imprimir
                       </Button>
                       <Button
                         onClick={handleCloseRegister}
@@ -885,16 +693,144 @@ const CashRegister = () => {
         )}
       </div>
 
+      {/* Dialog de Sucesso do Fechamento com Impressão Térmica */}
+      <Dialog open={isCloseSuccessDialogOpen} onOpenChange={setIsCloseSuccessDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              Caixa Fechado com Sucesso!
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="printable-receipt">
+            {/* Cabeçalho do Cupom */}
+            <div className="text-center mb-4 pb-2 border-b-2 border-dashed">
+              <h2 className="text-xl font-bold">EMPÓRIO DAS COXINHAS</h2>
+              <p className="text-sm text-gray-600">Relatório de Fechamento de Caixa</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {formatDateTime(new Date().toISOString())}
+              </p>
+            </div>
+
+            {/* Resumo Financeiro */}
+            <div className="space-y-2 mb-4 text-sm">
+              <div className="flex justify-between">
+                <span>Abertura:</span>
+                <span className="font-semibold">{formatCurrency(parseFloat(currentRegister?.opening_amount || 0))}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Vendas:</span>
+                <span className="font-semibold text-green-600">{formatCurrency(closeResult?.salesTotal || 0)}</span>
+              </div>
+            </div>
+
+            {/* Vendas por Forma de Pagamento */}
+            <div className="mb-4 pb-2 border-b-2 border-dashed">
+              <h4 className="font-bold text-sm mb-2">Vendas por Forma:</h4>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span>Dinheiro:</span>
+                  <span>{formatCurrency(closeResult?.cashSales || 0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Débito:</span>
+                  <span>{formatCurrency((closeResult?.salesTotal || 0) - (closeResult?.cashSales || 0) - (closeResult?.withdrawals || 0) + (closeResult?.additions || 0) - (closeResult?.cashSales || 0))}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Crédito:</span>
+                  <span>{formatCurrency(currentRegister?.salesByPayment?.credit || 0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Pix:</span>
+                  <span>{formatCurrency(currentRegister?.salesByPayment?.pix || 0)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Sangrias */}
+            {closeResult?.withdrawals > 0 && (
+              <div className="mb-4 pb-2 border-b-2 border-dashed">
+                <h4 className="font-bold text-sm mb-2 text-red-700">SANGRIAS:</h4>
+                <div className="space-y-1 text-sm">
+                  {currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal').map((trans: any) => (
+                    <div key={trans.id} className="flex justify-between">
+                      <span className="truncate max-w-[150px]">{trans.description || 'Sem descrição'}</span>
+                      <span className="text-red-600">-{formatCurrency(parseFloat(trans.amount))}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between font-bold pt-1 border-t">
+                    <span>Total:</span>
+                    <span className="text-red-600">-{formatCurrency(closeResult?.withdrawals || 0)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Adições */}
+            {closeResult?.additions > 0 && (
+              <div className="mb-4 pb-2 border-b-2 border-dashed">
+                <h4 className="font-bold text-sm mb-2 text-green-700">ADIÇÕES:</h4>
+                <div className="space-y-1 text-sm">
+                  {currentRegister?.transactions?.filter((t: any) => t.type === 'addition').map((trans: any) => (
+                    <div key={trans.id} className="flex justify-between">
+                      <span className="truncate max-w-[150px]">{trans.description || 'Sem descrição'}</span>
+                      <span className="text-green-600">+{formatCurrency(parseFloat(trans.amount))}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between font-bold pt-1 border-t">
+                    <span>Total:</span>
+                    <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Diferença */}
+            <div className="mb-4 pb-2 border-b-2 border-dashed">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-sm">DIFERENÇA:</span>
+                <span className={`font-bold text-lg ${
+                  (closeResult?.difference || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {formatCurrency(closeResult?.difference || 0)}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 text-center mt-1">
+                {(closeResult?.difference || 0) > 0 ? 'Sobrou dinheiro' : 
+                 (closeResult?.difference || 0) < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}
+              </p>
+            </div>
+
+            {/* Rodapé */}
+            <div className="text-center text-xs text-gray-500 pt-2">
+              <p>*** OBRIGADO PELA PREFERÊNCIA ***</p>
+              <p>Empório das Coxinhas</p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCloseSuccessDialogOpen(false)}>
+              Fechar
+            </Button>
+            <Button onClick={handlePrint} className="flex-1">
+              <Printer className="h-4 w-4 mr-2" />
+              Imprimir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Estilos de Impressão para Impressora Térmica */}
       <style>{`
         @media print {
           body * {
             visibility: hidden;
           }
-          .print-content, .print-content * {
+          .printable-receipt, .printable-receipt * {
             visibility: visible;
           }
-          .print-content {
+          .printable-receipt {
             position: absolute;
             left: 0;
             top: 0;
@@ -904,56 +840,49 @@ const CashRegister = () => {
             padding: 5mm;
             background: white;
             color: black;
+            line-height: 1.4;
           }
-          .print-content h2 {
+          .printable-receipt h2 {
             font-size: 16px;
             text-align: center;
             margin-bottom: 5px;
+            font-weight: bold;
           }
-          .print-content p {
+          .printable-receipt p {
             margin: 2px 0;
           }
-          .print-content .border-b {
-            border-bottom: 1px dashed black;
-            margin: 5px 0;
+          .printable-receipt .border-b-2,
+          .printable-receipt .border-t {
+            border-bottom: 2px dashed black !important;
+            border-top: 2px dashed black !important;
           }
-          .print-content .flex {
+          .printable-receipt .flex {
             display: flex;
             justify-content: space-between;
           }
-          .print-content .font-bold {
+          .printable-receipt .font-bold {
             font-weight: bold;
           }
-          .print-content .text-center {
+          .printable-receipt .text-center {
             text-align: center;
           }
-          .print-content .text-right {
-            text-align: right;
-          }
-          .print-content .text-sm {
+          .printable-receipt .text-sm {
             font-size: 10px;
           }
-          .print-content .text-xs {
+          .printable-receipt .text-xs {
             font-size: 9px;
           }
-          .print-content .bg-gray-50,
-          .print-content .bg-blue-50,
-          .print-content .bg-green-50,
-          .print-content .bg-red-50,
-          .print-content .bg-orange-50 {
-            background: white !important;
-            border: none !important;
-            padding: 2px 0 !important;
+          .printable-receipt .text-gray-500,
+          .printable-receipt .text-gray-600,
+          .printable-receipt .text-red-600,
+          .printable-receipt .text-red-700,
+          .printable-receipt .text-green-600,
+          .printable-receipt .text-green-700 {
+            color: black !important;
           }
-          .print-content .space-y-2 > * {
-            margin: 2px 0;
-          }
-          .print-content .space-y-4 > * {
-            margin: 4px 0;
-          }
-          .print-content button,
-          .print-content .dialog-header,
-          .print-content .dialog-footer {
+          .printable-receipt button,
+          .printable-receipt .dialog-header,
+          .printable-receipt .dialog-footer {
             display: none !important;
           }
         }
