@@ -109,7 +109,7 @@ const CashRegister = () => {
         setCloseResult(result);
         setIsCloseSuccessDialogOpen(true);
         setIsCloseDialogOpen(false);
-        setClosingAmount('');
+        // NÃO limpamos o closingAmount aqui, pois precisamos dele no relatório
         setNotes('');
         refetch();
       } else {
@@ -798,12 +798,12 @@ const CashRegister = () => {
               <h4 className="font-bold text-sm mb-2">CONFERÊNCIA:</h4>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span>Valor Esperado:</span>
-                  <span className="font-semibold">{formatCurrency(closeResult?.expectedCashAmount || 0)}</span>
+                  <span>Valor Informado:</span>
+                  <span className="font-semibold">{formatCurrency(parseFloat(closingAmount || 0))}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Valor Informado:</span>
-                  <span className="font-semibold">{formatCurrency(parseFloat(closedRegisterData?.closing_amount || 0))}</span>
+                  <span>Valor Esperado:</span>
+                  <span className="font-semibold">{formatCurrency(closeResult?.expectedCashAmount || 0)}</span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t">
                   <span className="font-bold">DIFERENÇA:</span>
