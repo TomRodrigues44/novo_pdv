@@ -934,16 +934,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"155ab-uyLkaE9Gd+2EOoYAv7cjqZ29M94\"",
-    "mtime": "2026-07-06T14:21:24.444Z",
-    "size": 87467,
+    "etag": "\"156d4-DeOLEF13s37EL+DUr9KV8d9hfqk\"",
+    "mtime": "2026-07-06T15:11:03.867Z",
+    "size": 87764,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"4784d-Z/wvajT97X/MGYhU/H4BBL/g2jM\"",
-    "mtime": "2026-07-06T14:21:24.445Z",
-    "size": 292941,
+    "etag": "\"47d0c-5x3I4/NrjOHZHFLknEAq6CpnHaY\"",
+    "mtime": "2026-07-06T15:11:03.869Z",
+    "size": 294156,
     "path": "index.mjs.map"
   }
 };
@@ -1530,6 +1530,7 @@ const close_post = defineEventHandler(async (event) => {
       }
     });
     const openingAmount = parseFloat(register.opening_amount);
+    const closingCash = salesTotal - withdrawals;
     const expectedCashAmount = openingAmount + cashSales + additions - withdrawals;
     const expectedTotalAmount = openingAmount + salesTotal + additions - withdrawals;
     const difference = closingAmount - expectedCashAmount;
@@ -1548,6 +1549,8 @@ const close_post = defineEventHandler(async (event) => {
       success: true,
       salesTotal,
       cashSales,
+      closingCash,
+      // NOVO: Fechamento do Caixa
       expectedCashAmount,
       expectedTotalAmount,
       withdrawals,

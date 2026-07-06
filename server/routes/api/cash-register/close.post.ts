@@ -81,6 +81,9 @@ export default defineEventHandler(async (event) => {
     
     const openingAmount = parseFloat(register.opening_amount);
     
+    // Fechamento do Caixa = Total Vendas - Total Sangrias
+    const closingCash = salesTotal - withdrawals;
+    
     // Valor esperado em dinheiro = Abertura + Vendas em Dinheiro + Adições - Sangrias
     const expectedCashAmount = openingAmount + cashSales + additions - withdrawals;
     
@@ -106,6 +109,7 @@ export default defineEventHandler(async (event) => {
       success: true, 
       salesTotal,
       cashSales,
+      closingCash, // NOVO: Fechamento do Caixa
       expectedCashAmount,
       expectedTotalAmount,
       withdrawals,

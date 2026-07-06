@@ -726,6 +726,10 @@ const CashRegister = () => {
                 <span>Total Vendas:</span>
                 <span className="font-semibold text-green-600">{formatCurrency(closeResult?.salesTotal || 0)}</span>
               </div>
+              <div className="flex justify-between">
+                <span>Fechamento do Caixa:</span>
+                <span className="font-semibold text-blue-600">{formatCurrency(closeResult?.closingCash || 0)}</span>
+              </div>
             </div>
 
             {/* Vendas por Forma de Pagamento */}
@@ -789,15 +793,26 @@ const CashRegister = () => {
               </div>
             )}
 
-            {/* Diferença */}
+            {/* Resumo de Conferência */}
             <div className="mb-4 pb-2 border-b-2 border-dashed">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-sm">DIFERENÇA:</span>
-                <span className={`font-bold text-lg ${
-                  (closeResult?.difference || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {formatCurrency(closeResult?.difference || 0)}
-                </span>
+              <h4 className="font-bold text-sm mb-2">CONFERÊNCIA:</h4>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span>Valor Esperado:</span>
+                  <span className="font-semibold">{formatCurrency(closeResult?.expectedCashAmount || 0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Valor Informado:</span>
+                  <span className="font-semibold">{formatCurrency(parseFloat(closedRegisterData?.closing_amount || 0))}</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="font-bold">DIFERENÇA:</span>
+                  <span className={`font-bold text-lg ${
+                    (closeResult?.difference || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {formatCurrency(closeResult?.difference || 0)}
+                  </span>
+                </div>
               </div>
               <p className="text-xs text-gray-500 text-center mt-1">
                 {(closeResult?.difference || 0) > 0 ? 'Sobrou dinheiro' : 
