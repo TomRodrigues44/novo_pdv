@@ -110,7 +110,7 @@ const CashRegister = () => {
         setCloseResult(result);
         setIsCloseSuccessDialogOpen(true);
         setIsCloseDialogOpen(false);
-        setClosingAmount('');
+        // NÃO limpamos o closingAmount aqui, pois precisamos dele no relatório
         setNotes('');
         refetch();
       } else {
