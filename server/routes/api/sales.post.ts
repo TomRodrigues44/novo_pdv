@@ -10,24 +10,37 @@ export default defineEventHandler(async (event) => {
     const sql = neon(dbUrl);
     const saleData = await readBody(event);
     
-    // Garantir que os valores sejam números
     const total = parseFloat(String(saleData.total || 0));
     const freight = parseFloat(String(saleData.freight || 0));
-    const paymentMethod = saleData.payments?.[0]?.type || 'cash';
+    const payments = saleData.payments || [];
     const createdAt = saleData.date || new Date().toISOString();
     const customerId = saleData.customerId || null;
     
-    console.log('Creating sale:', { total, freight, paymentMethod, customerId, itemsCount: saleData.items?.length });
+    // Criar resumo das formas de pagamento para o campo payment_method
+    const paymentMethodSummary = payments
+      .map((p: any) => {
+        switch (p.type) {
+          case 'debit': return 'Débito';
+          case 'credit': return 'Crédito';
+          case 'pix': return 'Pix';
+          case 'cash': return 'Dinheiro';
+          default: return p.type;
+        }
+      })
+      .join(', ') || 'Dinheiro';
+    
+    console.log('Creating sale:', { total, freight, paymentMethodSummary, customerId, itemsCount: saleData.items?.length });
     
     // Criar a venda
     const saleResult = await sql`
-      INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id)
+      INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id, payments)
       VALUES (
         ${total}, 
-        ${paymentMethod}, 
+        ${paymentMethodSummary}, 
         ${freight}, 
         ${createdAt},
-        ${customerId}
+        ${customerId},
+        ${JSON.stringify(payments)}::jsonb
       )
       RETURNING id
     `;
@@ -50,7 +63,6 @@ export default defineEventHandler(async (event) => {
           flavors: item.flavors
         });
         
-        // Converter flavors para array de texto se existir
         const flavorsArray = item.flavors && Array.isArray(item.flavors) ? item.flavors : null;
         
         await sql`
@@ -77,7 +89,7 @@ export default defineEventHandler(async (event) => {
     
     // Atualizar pontos e total gasto do cliente
     if (customerId) {
-      const pointsEarned = Math.floor(total); // 1 ponto por R$ 1 gasto
+      const pointsEarned = Math.floor(total);
       await sql`
         UPDATE customers
         SET 

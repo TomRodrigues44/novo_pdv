@@ -29,22 +29,41 @@ export default defineEventHandler(async () => {
     if (openRegister.length > 0) {
       currentRegister = openRegister[0];
       
-      // Calcular total de vendas por forma de pagamento
-      const salesResult = await sql`
-        SELECT 
-          payment_method,
-          COALESCE(SUM(total_amount), 0) as total
-        FROM sales
+      // Buscar todas as vendas do período
+      const sales = await sql`
+        SELECT * FROM sales
         WHERE created_at >= ${currentRegister.opened_at}
-        GROUP BY payment_method
       `;
       
-      salesResult.forEach((sale: any) => {
-        const total = parseFloat(sale.total);
+      // Calcular totais por forma de pagamento a partir do JSON
+      sales.forEach((sale: any) => {
+        const total = parseFloat(sale.total_amount);
         salesTotal += total;
         
-        if (salesByPayment[sale.payment_method as keyof typeof salesByPayment] !== undefined) {
-          salesByPayment[sale.payment_method as keyof typeof salesByPayment] = total;
+        // Se tiver o campo payments (JSON), usar ele
+        if (sale.payments && Array.isArray(sale.payments)) {
+          sale.payments.forEach((payment: any) => {
+            const amount = parseFloat(payment.amount);
+            if (salesByPayment[payment.type] !== undefined) {
+              salesByPayment[payment.type] += amount;
+            }
+          });
+        } else {
+          // Fallback para o campo payment_method antigo (string)
+          // Tenta identificar a forma pelo texto
+          const method = sale.payment_method.toLowerCase();
+          if (method.includes('dinheiro') || method.includes('cash')) {
+            salesByPayment.cash += total;
+          } else if (method.includes('débito') || method.includes('debit')) {
+            salesByPayment.debit += total;
+          } else if (method.includes('crédito') || method.includes('credit')) {
+            salesByPayment.credit += total;
+          } else if (method.includes('pix')) {
+            salesByPayment.pix += total;
+          } else {
+            // Se não conseguir identificar, assume dinheiro
+            salesByPayment.cash += total;
+          }
         }
       });
       

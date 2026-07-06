@@ -934,16 +934,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"14d6c-s0gcuknaQSzA7W2JSPaVsxoiXQs\"",
-    "mtime": "2026-07-06T11:46:59.654Z",
-    "size": 85356,
+    "etag": "\"155ab-8+dy94+88EqW4W4dFNRFAyMKkO0\"",
+    "mtime": "2026-07-06T14:21:23.268Z",
+    "size": 87467,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"46191-DwxmW1A4F8e3Sad15hM9KAi8GYE\"",
-    "mtime": "2026-07-06T11:46:59.655Z",
-    "size": 287121,
+    "etag": "\"4784d-Z/wvajT97X/MGYhU/H4BBL/g2jM\"",
+    "mtime": "2026-07-06T14:21:23.268Z",
+    "size": 292941,
     "path": "index.mjs.map"
   }
 };
@@ -1402,19 +1402,33 @@ const cashRegister_get = defineEventHandler(async () => {
     };
     if (openRegister.length > 0) {
       currentRegister = openRegister[0];
-      const salesResult = await sql`
-        SELECT 
-          payment_method,
-          COALESCE(SUM(total_amount), 0) as total
-        FROM sales
+      const sales = await sql`
+        SELECT * FROM sales
         WHERE created_at >= ${currentRegister.opened_at}
-        GROUP BY payment_method
       `;
-      salesResult.forEach((sale) => {
-        const total = parseFloat(sale.total);
+      sales.forEach((sale) => {
+        const total = parseFloat(sale.total_amount);
         salesTotal += total;
-        if (salesByPayment[sale.payment_method] !== void 0) {
-          salesByPayment[sale.payment_method] = total;
+        if (sale.payments && Array.isArray(sale.payments)) {
+          sale.payments.forEach((payment) => {
+            const amount = parseFloat(payment.amount);
+            if (salesByPayment[payment.type] !== void 0) {
+              salesByPayment[payment.type] += amount;
+            }
+          });
+        } else {
+          const method = sale.payment_method.toLowerCase();
+          if (method.includes("dinheiro") || method.includes("cash")) {
+            salesByPayment.cash += total;
+          } else if (method.includes("d\xE9bito") || method.includes("debit")) {
+            salesByPayment.debit += total;
+          } else if (method.includes("cr\xE9dito") || method.includes("credit")) {
+            salesByPayment.credit += total;
+          } else if (method.includes("pix")) {
+            salesByPayment.pix += total;
+          } else {
+            salesByPayment.cash += total;
+          }
         }
       });
       const transactionsResult = await sql`
@@ -2438,7 +2452,7 @@ const sales_get$1 = /*#__PURE__*/Object.freeze({
 });
 
 const sales_post = defineEventHandler(async (event) => {
-  var _a, _b, _c;
+  var _a;
   try {
     const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
     const dbUrl = process.env.DATABASE_URL;
@@ -2449,18 +2463,33 @@ const sales_post = defineEventHandler(async (event) => {
     const saleData = await readBody(event);
     const total = parseFloat(String(saleData.total || 0));
     const freight = parseFloat(String(saleData.freight || 0));
-    const paymentMethod = ((_b = (_a = saleData.payments) == null ? void 0 : _a[0]) == null ? void 0 : _b.type) || "cash";
+    const payments = saleData.payments || [];
     const createdAt = saleData.date || (/* @__PURE__ */ new Date()).toISOString();
     const customerId = saleData.customerId || null;
-    console.log("Creating sale:", { total, freight, paymentMethod, customerId, itemsCount: (_c = saleData.items) == null ? void 0 : _c.length });
+    const paymentMethodSummary = payments.map((p) => {
+      switch (p.type) {
+        case "debit":
+          return "D\xE9bito";
+        case "credit":
+          return "Cr\xE9dito";
+        case "pix":
+          return "Pix";
+        case "cash":
+          return "Dinheiro";
+        default:
+          return p.type;
+      }
+    }).join(", ") || "Dinheiro";
+    console.log("Creating sale:", { total, freight, paymentMethodSummary, customerId, itemsCount: (_a = saleData.items) == null ? void 0 : _a.length });
     const saleResult = await sql`
-      INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id)
+      INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id, payments)
       VALUES (
         ${total}, 
-        ${paymentMethod}, 
+        ${paymentMethodSummary}, 
         ${freight}, 
         ${createdAt},
-        ${customerId}
+        ${customerId},
+        ${JSON.stringify(payments)}::jsonb
       )
       RETURNING id
     `;

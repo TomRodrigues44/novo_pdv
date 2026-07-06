@@ -23,8 +23,6 @@ import {
   TrendingDown,
   Clock,
   CheckCircle,
-  XCircle,
-  FileText,
   Plus,
   Lock,
   Unlock,
@@ -167,16 +165,6 @@ const CashRegister = () => {
     return new Date(date).toLocaleString('pt-BR');
   };
 
-  const getPaymentMethodLabel = (method: string) => {
-    switch (method) {
-      case 'cash': return 'Dinheiro';
-      case 'debit': return 'Débito';
-      case 'credit': return 'Crédito';
-      case 'pix': return 'Pix';
-      default: return method;
-    }
-  };
-
   const handlePrint = () => {
     window.print();
   };
@@ -251,28 +239,6 @@ const CashRegister = () => {
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     Todas as formas de pagamento
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">
-                    Esperado (Dinheiro)
-                  </CardTitle>
-                  <FileText className="h-5 w-5 text-orange-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-orange-600">
-                    {formatCurrency(
-                      parseFloat(currentRegister.opening_amount) +
-                      (currentRegister.salesByPayment?.cash || 0) +
-                      (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
-                      (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Abertura + Dinheiro + Adições - Sangrias
                   </p>
                 </CardContent>
               </Card>
@@ -535,7 +501,6 @@ const CashRegister = () => {
               <CardContent>
                 <p className="text-gray-600 mb-4">
                   Ao fechar o caixa, você precisará informar o valor total em dinheiro.
-                  O sistema calculará automaticamente a diferença considerando apenas vendas em dinheiro, sangrias e adições.
                 </p>
                 <Dialog open={isCloseDialogOpen} onOpenChange={setIsCloseDialogOpen}>
                   <DialogTrigger asChild>
@@ -684,44 +649,6 @@ const CashRegister = () => {
                             </div>
                           </div>
                         )}
-
-                        {/* Valor Esperado */}
-                        <div className="bg-orange-50 p-4 rounded-lg border-2 border-orange-200">
-                          <h4 className="font-semibold mb-3 text-orange-800">CÁLCULO DO VALOR ESPERADO (DINHEIRO):</h4>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span>Abertura:</span>
-                              <span>{formatCurrency(parseFloat(currentRegister.opening_amount))}</span>
-                            </div>
-                            <div className="flex justify-between text-green-600">
-                              <span>+ Vendas em Dinheiro:</span>
-                              <span>+{formatCurrency(currentRegister.salesByPayment?.cash || 0)}</span>
-                            </div>
-                            <div className="flex justify-between text-green-600">
-                              <span>+ Adições:</span>
-                              <span>+{formatCurrency(
-                                currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
-                              )}</span>
-                            </div>
-                            <div className="flex justify-between text-red-600">
-                              <span>- Sangrias:</span>
-                              <span>-{formatCurrency(
-                                currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
-                              )}</span>
-                            </div>
-                            <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
-                              <span className="text-orange-800">VALOR ESPERADO:</span>
-                              <span className="text-orange-700">
-                                {formatCurrency(
-                                  parseFloat(currentRegister.opening_amount) +
-                                  (currentRegister.salesByPayment?.cash || 0) +
-                                  (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
-                                  (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
-                                )}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
                       </div>
 
                       {/* Formulário de Fechamento */}
@@ -957,6 +884,80 @@ const CashRegister = () => {
           </div>
         )}
       </div>
+
+      {/* Estilos de Impressão para Impressora Térmica */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-content, .print-content * {
+            visibility: visible;
+          }
+          .print-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 80mm;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 5mm;
+            background: white;
+            color: black;
+          }
+          .print-content h2 {
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 5px;
+          }
+          .print-content p {
+            margin: 2px 0;
+          }
+          .print-content .border-b {
+            border-bottom: 1px dashed black;
+            margin: 5px 0;
+          }
+          .print-content .flex {
+            display: flex;
+            justify-content: space-between;
+          }
+          .print-content .font-bold {
+            font-weight: bold;
+          }
+          .print-content .text-center {
+            text-align: center;
+          }
+          .print-content .text-right {
+            text-align: right;
+          }
+          .print-content .text-sm {
+            font-size: 10px;
+          }
+          .print-content .text-xs {
+            font-size: 9px;
+          }
+          .print-content .bg-gray-50,
+          .print-content .bg-blue-50,
+          .print-content .bg-green-50,
+          .print-content .bg-red-50,
+          .print-content .bg-orange-50 {
+            background: white !important;
+            border: none !important;
+            padding: 2px 0 !important;
+          }
+          .print-content .space-y-2 > * {
+            margin: 2px 0;
+          }
+          .print-content .space-y-4 > * {
+            margin: 4px 0;
+          }
+          .print-content button,
+          .print-content .dialog-header,
+          .print-content .dialog-footer {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
