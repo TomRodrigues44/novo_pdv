@@ -21,31 +21,41 @@ export default defineEventHandler(async (event) => {
     if (openRegister.length === 0) {
       throw createError({
         statusCode: 400,
-        statusMessage: 'Nenhum caixa aberto encontrado',
+        statusMessage: 'Nenhum caixa aberto encontrado'
       });
     }
     
     const register = openRegister[0];
     
-    // Calcular total de vendas por forma de pagamento
-    const salesResult = await sql`
-      SELECT 
-        payment_method,
-        COALESCE(SUM(total_amount), 0) as total
+    // Buscar todas as vendas do período com a coluna payments
+    const sales = await sql`
+      SELECT payment_method, payments, total_amount
       FROM sales
       WHERE created_at >= ${register.opened_at}
-      GROUP BY payment_method
     `;
     
     let salesTotal = 0;
     let cashSales = 0;
     
-    salesResult.forEach((sale: any) => {
-      const total = parseFloat(sale.total);
+    // Calcular totais a partir do JSON de pagamentos
+    sales.forEach((sale) => {
+      const total = parseFloat(sale.total_amount);
       salesTotal += total;
       
-      if (sale.payment_method === 'cash') {
-        cashSales += total;
+      // Se tiver o campo payments (JSON), usar ele
+      if (sale.payments && Array.isArray(sale.payments)) {
+        sale.payments.forEach((payment) => {
+          const amount = parseFloat(payment.amount);
+          if (payment.type === 'cash') {
+            cashSales += amount;
+          }
+        });
+      } else {
+        // Fallback para o campo payment_method antigo (string)
+        const method = sale.payment_method.toLowerCase();
+        if (method.includes('dinheiro') || method.includes('cash')) {
+          cashSales += total;
+        }
       }
     });
     
@@ -57,10 +67,10 @@ export default defineEventHandler(async (event) => {
       GROUP BY type
     `;
     
-    let withdrawals = 0; // Sangrias
-    let additions = 0; // Adições
+    let withdrawals = 0;
+    let additions = 0;
     
-    transactionsResult.forEach((trans: any) => {
+    transactionsResult.forEach((trans) => {
       const total = parseFloat(trans.total);
       if (trans.type === 'withdrawal') {
         withdrawals += total;
@@ -69,7 +79,6 @@ export default defineEventHandler(async (event) => {
       }
     });
     
-    // Calcular valores
     const openingAmount = parseFloat(register.opening_amount);
     
     // Valor esperado em dinheiro = Abertura + Vendas em Dinheiro + Adições - Sangrias

@@ -934,15 +934,15 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"155ab-8+dy94+88EqW4W4dFNRFAyMKkO0\"",
-    "mtime": "2026-07-06T14:21:23.268Z",
+    "etag": "\"155ab-uyLkaE9Gd+2EOoYAv7cjqZ29M94\"",
+    "mtime": "2026-07-06T14:21:24.444Z",
     "size": 87467,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
     "etag": "\"4784d-Z/wvajT97X/MGYhU/H4BBL/g2jM\"",
-    "mtime": "2026-07-06T14:21:23.268Z",
+    "mtime": "2026-07-06T14:21:24.445Z",
     "size": 292941,
     "path": "index.mjs.map"
   }
@@ -1489,21 +1489,28 @@ const close_post = defineEventHandler(async (event) => {
       });
     }
     const register = openRegister[0];
-    const salesResult = await sql`
-      SELECT 
-        payment_method,
-        COALESCE(SUM(total_amount), 0) as total
+    const sales = await sql`
+      SELECT payment_method, payments, total_amount
       FROM sales
       WHERE created_at >= ${register.opened_at}
-      GROUP BY payment_method
     `;
     let salesTotal = 0;
     let cashSales = 0;
-    salesResult.forEach((sale) => {
-      const total = parseFloat(sale.total);
+    sales.forEach((sale) => {
+      const total = parseFloat(sale.total_amount);
       salesTotal += total;
-      if (sale.payment_method === "cash") {
-        cashSales += total;
+      if (sale.payments && Array.isArray(sale.payments)) {
+        sale.payments.forEach((payment) => {
+          const amount = parseFloat(payment.amount);
+          if (payment.type === "cash") {
+            cashSales += amount;
+          }
+        });
+      } else {
+        const method = sale.payment_method.toLowerCase();
+        if (method.includes("dinheiro") || method.includes("cash")) {
+          cashSales += total;
+        }
       }
     });
     const transactionsResult = await sql`
