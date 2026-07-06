@@ -31,7 +31,6 @@ import {
   QrCode,
   Banknote,
   Printer,
-  XCircle,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -49,6 +48,7 @@ const CashRegister = () => {
   const [transactionDescription, setTransactionDescription] = useState('');
   const [notes, setNotes] = useState('');
   const [closeResult, setCloseResult] = useState<any>(null);
+  const [closedRegisterData, setClosedRegisterData] = useState<any>(null); // Captura dados antes de fechar
 
   // Buscar dados do caixa
   const { data: cashData, isLoading, refetch } = useQuery({
@@ -92,6 +92,9 @@ const CashRegister = () => {
 
   const handleCloseRegister = async () => {
     try {
+      // CAPTURAR DADOS ANTES DE FECHAR (snapshot)
+      setClosedRegisterData(currentRegister);
+
       const response = await fetch('/api/cash-register/close', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -717,7 +720,7 @@ const CashRegister = () => {
             <div className="space-y-2 mb-4 text-sm">
               <div className="flex justify-between">
                 <span>Abertura:</span>
-                <span className="font-semibold">{formatCurrency(parseFloat(currentRegister?.opening_amount || 0))}</span>
+                <span className="font-semibold">{formatCurrency(parseFloat(closedRegisterData?.opening_amount || 0))}</span>
               </div>
               <div className="flex justify-between">
                 <span>Total Vendas:</span>
@@ -735,15 +738,15 @@ const CashRegister = () => {
                 </div>
                 <div className="flex justify-between">
                   <span>Débito:</span>
-                  <span>{formatCurrency((closeResult?.salesTotal || 0) - (closeResult?.cashSales || 0) - (closeResult?.withdrawals || 0) + (closeResult?.additions || 0) - (closeResult?.cashSales || 0))}</span>
+                  <span>{formatCurrency(closedRegisterData?.salesByPayment?.debit || 0)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Crédito:</span>
-                  <span>{formatCurrency(currentRegister?.salesByPayment?.credit || 0)}</span>
+                  <span>{formatCurrency(closedRegisterData?.salesByPayment?.credit || 0)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Pix:</span>
-                  <span>{formatCurrency(currentRegister?.salesByPayment?.pix || 0)}</span>
+                  <span>{formatCurrency(closedRegisterData?.salesByPayment?.pix || 0)}</span>
                 </div>
               </div>
             </div>
@@ -753,7 +756,7 @@ const CashRegister = () => {
               <div className="mb-4 pb-2 border-b-2 border-dashed">
                 <h4 className="font-bold text-sm mb-2 text-red-700">SANGRIAS:</h4>
                 <div className="space-y-1 text-sm">
-                  {currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal').map((trans: any) => (
+                  {closedRegisterData?.transactions?.filter((t: any) => t.type === 'withdrawal').map((trans: any) => (
                     <div key={trans.id} className="flex justify-between">
                       <span className="truncate max-w-[150px]">{trans.description || 'Sem descrição'}</span>
                       <span className="text-red-600">-{formatCurrency(parseFloat(trans.amount))}</span>
@@ -772,7 +775,7 @@ const CashRegister = () => {
               <div className="mb-4 pb-2 border-b-2 border-dashed">
                 <h4 className="font-bold text-sm mb-2 text-green-700">ADIÇÕES:</h4>
                 <div className="space-y-1 text-sm">
-                  {currentRegister?.transactions?.filter((t: any) => t.type === 'addition').map((trans: any) => (
+                  {closedRegisterData?.transactions?.filter((t: any) => t.type === 'addition').map((trans: any) => (
                     <div key={trans.id} className="flex justify-between">
                       <span className="truncate max-w-[150px]">{trans.description || 'Sem descrição'}</span>
                       <span className="text-green-600">+{formatCurrency(parseFloat(trans.amount))}</span>
