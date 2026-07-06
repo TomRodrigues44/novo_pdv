@@ -32,6 +32,7 @@ import {
   CreditCard,
   QrCode,
   Banknote,
+  Printer,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -174,6 +175,10 @@ const CashRegister = () => {
       case 'pix': return 'Pix';
       default: return method;
     }
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   if (isLoading) {
@@ -539,128 +544,273 @@ const CashRegister = () => {
                       Fechar Caixa
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col">
                     <DialogHeader>
-                      <DialogTitle>Fechar Caixa</DialogTitle>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Printer className="h-5 w-5" />
+                        Fechar Caixa - Relatório de Fechamento
+                      </DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="bg-blue-50 p-4 rounded-lg space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm">Valor de Abertura:</span>
-                          <span className="font-semibold">
-                            {formatCurrency(parseFloat(currentRegister.opening_amount))}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Vendas em Dinheiro:</span>
-                          <span className="font-semibold text-green-600">
-                            {formatCurrency(currentRegister.salesByPayment?.cash || 0)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Adições:</span>
-                          <span className="font-semibold text-green-600">
-                            +{formatCurrency(
-                              currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
-                            )}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Sangrias:</span>
-                          <span className="font-semibold text-red-600">
-                            -{formatCurrency(
-                              currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
-                            )}
-                          </span>
-                        </div>
-                        <div className="border-t pt-2 flex justify-between font-bold">
-                          <span>Valor Esperado (Dinheiro):</span>
-                          <span className="text-orange-600">
-                            {formatCurrency(
-                              parseFloat(currentRegister.opening_amount) +
-                              (currentRegister.salesByPayment?.cash || 0) +
-                              (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
-                              (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
-                            )}
-                          </span>
-                        </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-6">
+                      {/* Cabeçalho do Relatório */}
+                      <div className="text-center mb-6 pb-4 border-b">
+                        <h2 className="text-2xl font-bold">EMPÓRIO DAS COXINHAS</h2>
+                        <p className="text-gray-600">Relatório de Fechamento de Caixa</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {formatDateTime(new Date().toISOString())}
+                        </p>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Valor em Dinheiro (Contado)
-                        </label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={closingAmount}
-                          onChange={(e) => setClosingAmount(e.target.value)}
-                          placeholder="Ex: 1500.00"
-                        />
-                      </div>
+                      {/* Resumo Financeiro */}
+                      <div className="space-y-4 mb-6">
+                        <h3 className="font-bold text-lg border-b pb-2">RESUMO FINANCEIRO</h3>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-blue-50 p-3 rounded">
+                            <p className="text-sm text-gray-600">Valor de Abertura:</p>
+                            <p className="text-xl font-bold text-blue-700">
+                              {formatCurrency(parseFloat(currentRegister.opening_amount))}
+                            </p>
+                          </div>
+                          
+                          <div className="bg-green-50 p-3 rounded">
+                            <p className="text-sm text-gray-600">Total de Vendas:</p>
+                            <p className="text-xl font-bold text-green-700">
+                              {formatCurrency(currentRegister.salesTotal || 0)}
+                            </p>
+                          </div>
+                        </div>
 
-                      {closingAmount && (
+                        {/* Vendas por Forma de Pagamento */}
                         <div className="bg-gray-50 p-4 rounded-lg">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">Diferença:</span>
-                            <span className={`text-lg font-bold ${
-                              (parseFloat(closingAmount) - (
+                          <h4 className="font-semibold mb-3">Vendas por Forma de Pagamento:</h4>
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span className="flex items-center gap-2">
+                                <Banknote className="h-4 w-4 text-green-600" />
+                                Dinheiro:
+                              </span>
+                              <span className="font-bold text-green-700">
+                                {formatCurrency(currentRegister.salesByPayment?.cash || 0)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="flex items-center gap-2">
+                                <CreditCard className="h-4 w-4 text-blue-600" />
+                                Débito:
+                              </span>
+                              <span className="font-bold text-blue-700">
+                                {formatCurrency(currentRegister.salesByPayment?.debit || 0)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="flex items-center gap-2">
+                                <CreditCard className="h-4 w-4 text-purple-600" />
+                                Crédito:
+                              </span>
+                              <span className="font-bold text-purple-700">
+                                {formatCurrency(currentRegister.salesByPayment?.credit || 0)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="flex items-center gap-2">
+                                <QrCode className="h-4 w-4 text-teal-600" />
+                                Pix:
+                              </span>
+                              <span className="font-bold text-teal-700">
+                                {formatCurrency(currentRegister.salesByPayment?.pix || 0)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Sangrias */}
+                        {currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').length > 0 && (
+                          <div className="bg-red-50 p-4 rounded-lg">
+                            <h4 className="font-semibold mb-3 text-red-800">SANGRIAS:</h4>
+                            <div className="space-y-2">
+                              {currentRegister.transactions
+                                .filter((t: any) => t.type === 'withdrawal')
+                                .map((trans: any) => (
+                                  <div key={trans.id} className="flex justify-between text-sm">
+                                    <div>
+                                      <p className="font-medium">{trans.description || 'Sem descrição'}</p>
+                                      <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
+                                    </div>
+                                    <span className="font-bold text-red-600">
+                                      -{formatCurrency(parseFloat(trans.amount))}
+                                    </span>
+                                  </div>
+                                ))}
+                              <div className="border-t pt-2 mt-2 flex justify-between font-bold">
+                                <span>Total de Sangrias:</span>
+                                <span className="text-red-600">
+                                  -{formatCurrency(
+                                    currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Adições */}
+                        {currentRegister.transactions?.filter((t: any) => t.type === 'addition').length > 0 && (
+                          <div className="bg-green-50 p-4 rounded-lg">
+                            <h4 className="font-semibold mb-3 text-green-800">ADIÇÕES:</h4>
+                            <div className="space-y-2">
+                              {currentRegister.transactions
+                                .filter((t: any) => t.type === 'addition')
+                                .map((trans: any) => (
+                                  <div key={trans.id} className="flex justify-between text-sm">
+                                    <div>
+                                      <p className="font-medium">{trans.description || 'Sem descrição'}</p>
+                                      <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
+                                    </div>
+                                    <span className="font-bold text-green-600">
+                                      +{formatCurrency(parseFloat(trans.amount))}
+                                    </span>
+                                  </div>
+                                ))}
+                              <div className="border-t pt-2 mt-2 flex justify-between font-bold">
+                                <span>Total de Adições:</span>
+                                <span className="text-green-600">
+                                  +{formatCurrency(
+                                    currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Valor Esperado */}
+                        <div className="bg-orange-50 p-4 rounded-lg border-2 border-orange-200">
+                          <h4 className="font-semibold mb-3 text-orange-800">CÁLCULO DO VALOR ESPERADO (DINHEIRO):</h4>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span>Abertura:</span>
+                              <span>{formatCurrency(parseFloat(currentRegister.opening_amount))}</span>
+                            </div>
+                            <div className="flex justify-between text-green-600">
+                              <span>+ Vendas em Dinheiro:</span>
+                              <span>+{formatCurrency(currentRegister.salesByPayment?.cash || 0)}</span>
+                            </div>
+                            <div className="flex justify-between text-green-600">
+                              <span>+ Adições:</span>
+                              <span>+{formatCurrency(
+                                currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
+                              )}</span>
+                            </div>
+                            <div className="flex justify-between text-red-600">
+                              <span>- Sangrias:</span>
+                              <span>-{formatCurrency(
+                                currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
+                              )}</span>
+                            </div>
+                            <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
+                              <span className="text-orange-800">VALOR ESPERADO:</span>
+                              <span className="text-orange-700">
+                                {formatCurrency(
+                                  parseFloat(currentRegister.opening_amount) +
+                                  (currentRegister.salesByPayment?.cash || 0) +
+                                  (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
+                                  (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Formulário de Fechamento */}
+                      <div className="space-y-4 pt-4 border-t">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            Valor em Dinheiro (Contado)
+                          </label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={closingAmount}
+                            onChange={(e) => setClosingAmount(e.target.value)}
+                            placeholder="Ex: 1500.00"
+                          />
+                        </div>
+
+                        {closingAmount && (
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">Diferença:</span>
+                              <span className={`text-lg font-bold ${
+                                (parseFloat(closingAmount) - (
+                                  parseFloat(currentRegister.opening_amount) +
+                                  (currentRegister.salesByPayment?.cash || 0) +
+                                  (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
+                                  (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
+                                )) >= 0
+                                ? 'text-green-600'
+                                : 'text-red-600'
+                              }`}>
+                                {formatCurrency(
+                                  parseFloat(closingAmount) - (
+                                    parseFloat(currentRegister.opening_amount) +
+                                    (currentRegister.salesByPayment?.cash || 0) +
+                                    (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
+                                    (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
+                                  )
+                                )}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {(parseFloat(closingAmount) - (
                                 parseFloat(currentRegister.opening_amount) +
                                 (currentRegister.salesByPayment?.cash || 0) +
                                 (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
                                 (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
-                              )) >= 0
-                                ? 'text-green-600'
-                                : 'text-red-600'
-                            }`}>
-                              {formatCurrency(
-                                parseFloat(closingAmount) - (
-                                  parseFloat(currentRegister.opening_amount) +
-                                  (currentRegister.salesByPayment?.cash || 0) +
-                                  (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
-                                  (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
-                                )
-                              )}
-                            </span>
+                              )) > 0
+                                ? 'Sobrou dinheiro (Suprimento)'
+                                : (parseFloat(closingAmount) - (
+                                    parseFloat(currentRegister.opening_amount) +
+                                    (currentRegister.salesByPayment?.cash || 0) +
+                                    (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
+                                    (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
+                                  )) < 0
+                                ? 'Faltou dinheiro (Sangria)'
+                                : 'Caixa fechou exato'}
+                            </p>
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {(parseFloat(closingAmount) - (
-                              parseFloat(currentRegister.opening_amount) +
-                              (currentRegister.salesByPayment?.cash || 0) +
-                              (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
-                              (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
-                            )) > 0
-                              ? 'Sobrou dinheiro (Suprimento)'
-                              : (parseFloat(closingAmount) - (
-                                  parseFloat(currentRegister.opening_amount) +
-                                  (currentRegister.salesByPayment?.cash || 0) +
-                                  (currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0) -
-                                  (currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0)
-                                )) < 0
-                              ? 'Faltou dinheiro (Sangria)'
-                              : 'Caixa fechou exato'}
-                          </p>
-                        </div>
-                      )}
+                        )}
 
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Observações
-                        </label>
-                        <Textarea
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          placeholder="Ex: Troco quebrado, notas rasgadas..."
-                        />
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            Observações
+                          </label>
+                          <Textarea
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            placeholder="Ex: Troco quebrado, notas rasgadas..."
+                          />
+                        </div>
                       </div>
                     </div>
-                    <DialogFooter>
+
+                    <DialogFooter className="px-6 py-4 border-t bg-gray-50 gap-2">
                       <Button variant="outline" onClick={() => setIsCloseDialogOpen(false)}>
                         Cancelar
                       </Button>
                       <Button
+                        onClick={handlePrint}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        <Printer className="h-4 w-4 mr-2" />
+                        Imprimir
+                      </Button>
+                      <Button
                         onClick={handleCloseRegister}
-                        className="bg-orange-600 hover:bg-orange-700"
+                        className="flex-1 bg-orange-600 hover:bg-orange-700"
                         disabled={!closingAmount}
                       >
                         Confirmar Fechamento

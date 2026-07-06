@@ -16,7 +16,7 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ShoppingCart, Trash2, Receipt, Truck, Plus, X, User } from "lucide-react";
+import { ShoppingCart, Trash2, Receipt, Truck, Plus, X, User, Lock } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 interface Customer {
@@ -33,9 +33,10 @@ interface CartPanelProps {
   selectedCustomer: Customer | null;
   onCustomerChange: (customer: Customer | null) => void;
   onOpenCustomerForm?: () => void;
+  isCashRegisterOpen?: boolean;
 }
 
-export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerForm }: CartPanelProps) => {
+export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerForm, isCashRegisterOpen = false }: CartPanelProps) => {
   const {
     cartItems,
     removeFromCart,
@@ -72,6 +73,10 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
 
   const handleCheckout = () => {
     if (cartItems.length === 0) return;
+    if (!isCashRegisterOpen) {
+      alert("Caixa fechado! Abra o caixa para iniciar as vendas.");
+      return;
+    }
     setIsPaymentDialogOpen(true);
   };
 
@@ -265,9 +270,19 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
               <Button
                 onClick={handleCheckout}
                 className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-lg"
+                disabled={!isCashRegisterOpen}
               >
-                <Receipt className="mr-2 h-5 w-5" />
-                Finalizar Pedido
+                {!isCashRegisterOpen ? (
+                  <>
+                    <Lock className="mr-2 h-5 w-5" />
+                    Caixa Fechado
+                  </>
+                ) : (
+                  <>
+                    <Receipt className="mr-2 h-5 w-5" />
+                    Finalizar Pedido
+                  </>
+                )}
               </Button>
               
               <Button

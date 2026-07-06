@@ -3,18 +3,20 @@ import { useCart } from '@/contexts/CartContext';
 import { ProductCard } from '@/components/ProductCard';
 import { CartPanel } from '@/components/CartPanel';
 import { CategoryFilter } from '@/components/CategoryFilter';
-import { Store, Clock, Loader2, Database, HardDrive, RefreshCw } from 'lucide-react';
+import { Store, Clock, Loader2, Database, HardDrive, RefreshCw, Lock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product, Category } from '@/types';
 import { toast } from 'sonner';
 import { useProducts } from '@/hooks/use-products';
 import { useCategories } from '@/hooks/use-categories';
+import { useCashRegister } from '@/hooks/use-cash-register';
 
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [usingLocalStorage, setUsingLocalStorage] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const { addToCart } = useCart();
+  const { isOpen: isCashRegisterOpen } = useCashRegister();
   
   // Usar hooks do React Query
   const { products, isLoading: productsLoading, error: productsError, invalidateProducts } = useProducts();
@@ -66,6 +68,19 @@ const Index = () => {
     window.location.href = '/admin/customers';
   };
 
+  const handleAddToCart = (product: Product, flavors?: string[]) => {
+    if (!isCashRegisterOpen) {
+      toast.error('Caixa fechado! Abra o caixa para iniciar as vendas.', {
+        action: {
+          label: 'Abrir Caixa',
+          onClick: () => window.location.href = '/admin/cash-register'
+        }
+      });
+      return;
+    }
+    addToCart(product, flavors);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
@@ -107,13 +122,24 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {usingLocalStorage ? (
+              {isCashRegisterOpen ? (
+                <div className="flex items-center gap-2 bg-green-500/20 border border-green-400/50 rounded-lg px-3 py-2 text-sm">
+                  <Database className="h-4 w-4" />
+                  <span>Caixa Aberto</span>
+                </div>
+              ) : (
                 <div className="flex items-center gap-2 bg-red-500/20 border border-red-400/50 rounded-lg px-3 py-2 text-sm">
+                  <Lock className="h-4 w-4" />
+                  <span>Caixa Fechado</span>
+                </div>
+              )}
+              {usingLocalStorage ? (
+                <div className="flex items-center gap-2 bg-yellow-500/20 border border-yellow-400/50 rounded-lg px-3 py-2 text-sm">
                   <HardDrive className="h-4 w-4" />
                   <span>Modo Cache</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 bg-green-500/20 border border-green-400/50 rounded-lg px-3 py-2 text-sm">
+                <div className="flex items-center gap-2 bg-blue-500/20 border border-blue-400/50 rounded-lg px-3 py-2 text-sm">
                   <Database className="h-4 w-4" />
                   <span>Banco de Dados</span>
                 </div>
@@ -139,6 +165,27 @@ const Index = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6">
+        {!isCashRegisterOpen && (
+          <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+              <div className="flex-1">
+                <h3 className="font-bold text-red-800">Caixa Fechado</h3>
+                <p className="text-sm text-red-700">
+                  O caixa está fechado. Abra o caixa para iniciar as vendas.
+                </p>
+              </div>
+              <Button
+                onClick={() => window.location.href = '/admin/cash-register'}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                <Lock className="h-4 w-4 mr-2" />
+                Abrir Caixa
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Products Section */}
           <div className="lg:col-span-2 space-y-6">
@@ -153,7 +200,7 @@ const Index = () => {
                 <ProductCard
                   key={product.id}
                   product={product}
-                  onAddToCart={addToCart}
+                  onAddToCart={handleAddToCart}
                 />
               ))}
             </div>
@@ -172,6 +219,7 @@ const Index = () => {
                 selectedCustomer={selectedCustomer}
                 onCustomerChange={setSelectedCustomer}
                 onOpenCustomerForm={handleOpenCustomerForm}
+                isCashRegisterOpen={isCashRegisterOpen}
               />
             </div>
           </div>
