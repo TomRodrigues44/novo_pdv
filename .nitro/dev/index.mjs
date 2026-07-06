@@ -934,16 +934,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"156d4-DeOLEF13s37EL+DUr9KV8d9hfqk\"",
-    "mtime": "2026-07-06T15:11:03.867Z",
-    "size": 87764,
+    "etag": "\"1573c-aVP8WWe7LjQM9mS4NV6q/KXe4Ks\"",
+    "mtime": "2026-07-06T15:31:45.509Z",
+    "size": 87868,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"47d0c-5x3I4/NrjOHZHFLknEAq6CpnHaY\"",
-    "mtime": "2026-07-06T15:11:03.869Z",
-    "size": 294156,
+    "etag": "\"47eec-v+YgFa0U6PUo6+daF1iBLaXmfjI\"",
+    "mtime": "2026-07-06T15:31:45.509Z",
+    "size": 294636,
     "path": "index.mjs.map"
   }
 };
@@ -1521,18 +1521,21 @@ const close_post = defineEventHandler(async (event) => {
     `;
     let withdrawals = 0;
     let additions = 0;
+    let vouchers = 0;
     transactionsResult.forEach((trans) => {
       const total = parseFloat(trans.total);
       if (trans.type === "withdrawal") {
         withdrawals += total;
       } else if (trans.type === "addition") {
         additions += total;
+      } else if (trans.type === "voucher") {
+        vouchers += total;
       }
     });
     const openingAmount = parseFloat(register.opening_amount);
     const closingCash = salesTotal - withdrawals;
-    const expectedCashAmount = openingAmount + cashSales + additions - withdrawals;
-    const expectedTotalAmount = openingAmount + salesTotal + additions - withdrawals;
+    const expectedCashAmount = openingAmount + cashSales + additions - withdrawals - vouchers;
+    const expectedTotalAmount = openingAmount + salesTotal + additions - withdrawals - vouchers;
     const difference = closingAmount - expectedCashAmount;
     await sql`
       UPDATE cash_registers
@@ -1550,11 +1553,12 @@ const close_post = defineEventHandler(async (event) => {
       salesTotal,
       cashSales,
       closingCash,
-      // NOVO: Fechamento do Caixa
       expectedCashAmount,
       expectedTotalAmount,
       withdrawals,
       additions,
+      vouchers,
+      // NOVO: Total de Vales
       difference
     };
   } catch (error) {

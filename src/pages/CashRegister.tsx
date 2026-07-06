@@ -31,6 +31,7 @@ import {
   QrCode,
   Banknote,
   Printer,
+  Receipt,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -42,13 +43,14 @@ const CashRegister = () => {
   const [isCloseSuccessDialogOpen, setIsCloseSuccessDialogOpen] = useState(false);
   const [isWithdrawalDialogOpen, setIsWithdrawalDialogOpen] = useState(false);
   const [isAdditionDialogOpen, setIsAdditionDialogOpen] = useState(false);
+  const [isVoucherDialogOpen, setIsVoucherDialogOpen] = useState(false);
   const [openingAmount, setOpeningAmount] = useState('');
   const [closingAmount, setClosingAmount] = useState('');
   const [transactionAmount, setTransactionAmount] = useState('');
   const [transactionDescription, setTransactionDescription] = useState('');
   const [notes, setNotes] = useState('');
   const [closeResult, setCloseResult] = useState<any>(null);
-  const [closedRegisterData, setClosedRegisterData] = useState<any>(null); // Captura dados antes de fechar
+  const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
 
   // Buscar dados do caixa
   const { data: cashData, isLoading, refetch } = useQuery({
@@ -92,7 +94,6 @@ const CashRegister = () => {
 
   const handleCloseRegister = async () => {
     try {
-      // CAPTURAR DADOS ANTES DE FECHAR (snapshot)
       setClosedRegisterData(currentRegister);
 
       const response = await fetch('/api/cash-register/close', {
@@ -109,7 +110,7 @@ const CashRegister = () => {
         setCloseResult(result);
         setIsCloseSuccessDialogOpen(true);
         setIsCloseDialogOpen(false);
-        // NÃO limpamos o closingAmount aqui, pois precisamos dele no relatório
+        setClosingAmount('');
         setNotes('');
         refetch();
       } else {
@@ -121,7 +122,7 @@ const CashRegister = () => {
     }
   };
 
-  const handleTransaction = async (type: 'withdrawal' | 'addition') => {
+  const handleTransaction = async (type: 'withdrawal' | 'addition' | 'voucher') => {
     try {
       const response = await fetch('/api/cash-transactions', {
         method: 'POST',
@@ -134,13 +135,15 @@ const CashRegister = () => {
       });
 
       if (response.ok) {
-        const typeName = type === 'withdrawal' ? 'Sangria' : 'Adição';
-        toast.success(`${typeName} registrada com sucesso!`);
+        const typeName = type === 'withdrawal' ? 'Sangria' : type === 'addition' ? 'Adição' : 'Vale';
+        toast.success(`${typeName} registrado com sucesso!`);
         
         if (type === 'withdrawal') {
           setIsWithdrawalDialogOpen(false);
-        } else {
+        } else if (type === 'addition') {
           setIsAdditionDialogOpen(false);
+        } else {
+          setIsVoucherDialogOpen(false);
         }
         
         setTransactionAmount('');
@@ -312,8 +315,9 @@ const CashRegister = () => {
               </CardContent>
             </Card>
 
-            {/* Sangrias e Adições */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Sangrias, Vales e Adições */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Sangrias */}
               <Card className="border-red-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-red-700">
@@ -402,6 +406,96 @@ const CashRegister = () => {
                 </CardContent>
               </Card>
 
+              {/* Vales */}
+              <Card className="border-amber-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-amber-700">
+                    <Receipt className="h-5 w-5" />
+                    Vales
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Total de Vales:</span>
+                      <span className="text-xl font-bold text-amber-600">
+                        {formatCurrency(
+                          currentRegister.transactions?.filter((t: any) => t.type === 'voucher').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
+                        )}
+                      </span>
+                    </div>
+                    
+                    <Dialog open={isVoucherDialogOpen} onOpenChange={setIsVoucherDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="w-full bg-amber-600 hover:bg-amber-700">
+                          <Receipt className="mr-2 h-4 w-4" />
+                          Novo Vale
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Registrar Vale</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Valor
+                            </label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={transactionAmount}
+                              onChange={(e) => setTransactionAmount(e.target.value)}
+                              placeholder="Ex: 100.00"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Descrição
+                            </label>
+                            <Textarea
+                              value={transactionDescription}
+                              onChange={(e) => setTransactionDescription(e.target.value)}
+                              placeholder="Ex: Diária funcionário João..."
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setIsVoucherDialogOpen(false)}>
+                            Cancelar
+                          </Button>
+                          <Button
+                            onClick={() => handleTransaction('voucher')}
+                            className="bg-amber-600 hover:bg-amber-700"
+                          >
+                            Confirmar Vale
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+
+                    {currentRegister.transactions?.filter((t: any) => t.type === 'voucher').length > 0 && (
+                      <div className="space-y-2 mt-4">
+                        {currentRegister.transactions
+                          .filter((t: any) => t.type === 'voucher')
+                          .map((trans: any) => (
+                            <div key={trans.id} className="flex justify-between items-center p-2 bg-amber-50 rounded text-sm">
+                              <div>
+                                <p className="font-medium">{trans.description || 'Sem descrição'}</p>
+                                <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
+                              </div>
+                              <span className="font-bold text-amber-600">
+                                -{formatCurrency(parseFloat(trans.amount))}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Adições */}
               <Card className="border-green-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-green-700">
@@ -774,6 +868,25 @@ const CashRegister = () => {
               </div>
             )}
 
+            {/* Vales */}
+            {closeResult?.vouchers > 0 && (
+              <div className="mb-4 pb-2 border-b-2 border-dashed">
+                <h4 className="font-bold text-sm mb-2 text-amber-700">VALES:</h4>
+                <div className="space-y-1 text-sm">
+                  {closedRegisterData?.transactions?.filter((t: any) => t.type === 'voucher').map((trans: any) => (
+                    <div key={trans.id} className="flex justify-between">
+                      <span className="truncate max-w-[150px]">{trans.description || 'Sem descrição'}</span>
+                      <span className="text-amber-600">-{formatCurrency(parseFloat(trans.amount))}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between font-bold pt-1 border-t">
+                    <span>Total:</span>
+                    <span className="text-amber-600">-{formatCurrency(closeResult?.vouchers || 0)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Adições */}
             {closeResult?.additions > 0 && (
               <div className="mb-4 pb-2 border-b-2 border-dashed">
@@ -895,7 +1008,9 @@ const CashRegister = () => {
           .printable-receipt .text-red-600,
           .printable-receipt .text-red-700,
           .printable-receipt .text-green-600,
-          .printable-receipt .text-green-700 {
+          .printable-receipt .text-green-700,
+          .printable-receipt .text-amber-600,
+          .printable-receipt .text-amber-700 {
             color: black !important;
           }
           .printable-receipt button,

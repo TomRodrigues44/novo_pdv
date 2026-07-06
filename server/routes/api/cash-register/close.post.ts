@@ -59,7 +59,7 @@ export default defineEventHandler(async (event) => {
       }
     });
     
-    // Calcular transações (sangrias/adições)
+    // Calcular transações (sangrias/adições/vales)
     const transactionsResult = await sql`
       SELECT type, COALESCE(SUM(amount), 0) as total
       FROM cash_transactions
@@ -67,8 +67,9 @@ export default defineEventHandler(async (event) => {
       GROUP BY type
     `;
     
-    let withdrawals = 0;
-    let additions = 0;
+    let withdrawals = 0;  // Sangrias
+    let additions = 0;   // Adições
+    let vouchers = 0;    // Vales
     
     transactionsResult.forEach((trans) => {
       const total = parseFloat(trans.total);
@@ -76,19 +77,21 @@ export default defineEventHandler(async (event) => {
         withdrawals += total;
       } else if (trans.type === 'addition') {
         additions += total;
+      } else if (trans.type === 'voucher') {
+        vouchers += total;
       }
     });
     
     const openingAmount = parseFloat(register.opening_amount);
     
-    // Fechamento do Caixa = Total Vendas - Total Sangrias
+    // Fechamento do Caixa = Total Vendas - Apenas Sangrias (Vales não entram aqui)
     const closingCash = salesTotal - withdrawals;
     
-    // Valor esperado em dinheiro = Abertura + Vendas em Dinheiro + Adições - Sangrias
-    const expectedCashAmount = openingAmount + cashSales + additions - withdrawals;
+    // Valor esperado em dinheiro = Abertura + Vendas em Dinheiro + Adições - Sangrias - Vales
+    const expectedCashAmount = openingAmount + cashSales + additions - withdrawals - vouchers;
     
-    // Valor esperado total = Abertura + Todas as Vendas + Adições - Sangrias
-    const expectedTotalAmount = openingAmount + salesTotal + additions - withdrawals;
+    // Valor esperado total = Abertura + Todas as Vendas + Adições - Sangrias - Vales
+    const expectedTotalAmount = openingAmount + salesTotal + additions - withdrawals - vouchers;
     
     const difference = closingAmount - expectedCashAmount;
     
@@ -109,11 +112,12 @@ export default defineEventHandler(async (event) => {
       success: true, 
       salesTotal,
       cashSales,
-      closingCash, // NOVO: Fechamento do Caixa
+      closingCash,
       expectedCashAmount,
       expectedTotalAmount,
       withdrawals,
       additions,
+      vouchers, // NOVO: Total de Vales
       difference
     };
   } catch (error) {
