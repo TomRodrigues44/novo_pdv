@@ -18,6 +18,13 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   DollarSign,
   TrendingUp,
   TrendingDown,
@@ -32,7 +39,9 @@ import {
   Banknote,
   Printer,
   Receipt,
-  Motorcycle,
+  Bike,
+  Utensils,
+  Smartphone,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -47,9 +56,10 @@ const CashRegister = () => {
   const [isVoucherDialogOpen, setIsVoucherDialogOpen] = useState(false);
   const [openingAmount, setOpeningAmount] = useState('');
   const [closingAmount, setClosingAmount] = useState('');
-  const [finalClosingAmount, setFinalClosingAmount] = useState(0); // NOVO: Salvar valor informado
+  const [finalClosingAmount, setFinalClosingAmount] = useState(0);
   const [transactionAmount, setTransactionAmount] = useState('');
   const [transactionDescription, setTransactionDescription] = useState('');
+  const [transactionCategory, setTransactionCategory] = useState<'taxa_entrega' | 'ifood' | 'brigadeiros' | 'outros'>('taxa_entrega');
   const [notes, setNotes] = useState('');
   const [closeResult, setCloseResult] = useState<any>(null);
   const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
@@ -67,6 +77,24 @@ const CashRegister = () => {
 
   const currentRegister = cashData?.current;
   const history = cashData?.history || [];
+
+  // Helper para extrair categoria da descrição
+  const getCategoryFromDescription = (desc: string | null | undefined): 'taxa_entrega' | 'ifood' | 'brigadeiros' | 'outros' => {
+    if (!desc) return 'outros';
+    if (desc.startsWith('Taxa Entrega')) return 'taxa_entrega';
+    if (desc.startsWith('iFood')) return 'ifood';
+    if (desc.startsWith('Brigadeiros')) return 'brigadeiros';
+    return 'outros';
+  };
+
+  // Helper para extrair descrição limpa (sem o prefixo da categoria)
+  const getCleanDescription = (desc: string | null | undefined): string => {
+    if (!desc) return 'Sem descrição';
+    if (desc.startsWith('Taxa Entrega: ')) return desc.replace('Taxa Entrega: ', '');
+    if (desc.startsWith('iFood: ')) return desc.replace('iFood: ', '');
+    if (desc.startsWith('Brigadeiros: ')) return desc.replace('Brigadeiros: ', '');
+    return desc;
+  };
 
   const handleOpenRegister = async () => {
     try {
@@ -97,7 +125,7 @@ const CashRegister = () => {
   const handleCloseRegister = async () => {
     try {
       const amount = parseFloat(closingAmount) || 0;
-      setFinalClosingAmount(amount); // Salvar o valor informado antes de limpar
+      setFinalClosingAmount(amount);
       setClosedRegisterData(currentRegister);
 
       const response = await fetch('/api/cash-register/close', {
@@ -116,7 +144,7 @@ const CashRegister = () => {
         setIsCloseDialogOpen(false);
         setClosingAmount('');
         setNotes('');
-        refetch(); // Atualizar dados para pegar transações mais recentes
+        refetch();
       } else {
         const error = await response.json();
         toast.error(error.statusMessage || 'Erro ao fechar caixa');
@@ -128,13 +156,29 @@ const CashRegister = () => {
 
   const handleTransaction = async (type: 'withdrawal' | 'addition' | 'voucher') => {
     try {
+      let finalDescription = transactionDescription;
+      
+      // Se for sangria, adicionar prefixo da categoria
+      if (type === 'withdrawal') {
+        const categoryPrefix = {
+          taxa_entrega: 'Taxa Entrega',
+          ifood: 'iFood',
+          brigadeiros: 'Brigadeiros',
+          outros: 'Outros'
+        }[transactionCategory];
+        
+        finalDescription = transactionCategory === 'outros' 
+          ? transactionDescription 
+          : `${categoryPrefix}: ${transactionDescription}`;
+      }
+
       const response = await fetch('/api/cash-transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type,
           amount: parseFloat(transactionAmount) || 0,
-          description: transactionDescription,
+          description: finalDescription,
         }),
       });
 
@@ -152,6 +196,7 @@ const CashRegister = () => {
         
         setTransactionAmount('');
         setTransactionDescription('');
+        setTransactionCategory('taxa_entrega');
         refetch();
       } else {
         const error = await response.json();
@@ -190,10 +235,14 @@ const CashRegister = () => {
     );
   }
 
-  // Filtrar transações de Taxa de Entrega
-  const deliveryTransactions = currentRegister?.transactions?.filter((t: any) => 
-    t.type === 'withdrawal' && t.description?.startsWith('Taxa Entrega')
-  ) || [];
+  const withdrawals = currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || [];
+  
+  // Calcular totais por categoria
+  const totalsByCategory = withdrawals.reduce((acc: any, t: any) => {
+    const cat = getCategoryFromDescription(t.description);
+    acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
+    return acc;
+  }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
 
   return (
     <div className="flex">
@@ -336,12 +385,30 @@ const CashRegister = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Total de Sangrias:</span>
+                    {/* Totais por Categoria */}
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      <div className="bg-orange-50 p-2 rounded text-center">
+                        <p className="text-xs text-orange-700 font-medium">Taxa Entrega</p>
+                        <p className="font-bold text-orange-600">{formatCurrency(totalsByCategory.taxa_entrega)}</p>
+                      </div>
+                      <div className="bg-red-50 p-2 rounded text-center">
+                        <p className="text-xs text-red-700 font-medium">iFood</p>
+                        <p className="font-bold text-red-600">{formatCurrency(totalsByCategory.ifood)}</p>
+                      </div>
+                      <div className="bg-amber-50 p-2 rounded text-center">
+                        <p className="text-xs text-amber-700 font-medium">Brigadeiros</p>
+                        <p className="font-bold text-amber-600">{formatCurrency(totalsByCategory.brigadeiros)}</p>
+                      </div>
+                      <div className="bg-gray-50 p-2 rounded text-center">
+                        <p className="text-xs text-gray-700 font-medium">Outros</p>
+                        <p className="font-bold text-gray-600">{formatCurrency(totalsByCategory.outros)}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center border-t pt-2">
+                      <span className="text-gray-600 font-medium">Total de Sangrias:</span>
                       <span className="text-xl font-bold text-red-600">
-                        {formatCurrency(
-                          currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
-                        )}
+                        {formatCurrency(withdrawals.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0))}
                       </span>
                     </div>
                     
@@ -357,6 +424,45 @@ const CashRegister = () => {
                           <DialogTitle>Registrar Sangria</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Categoria
+                            </label>
+                            <Select
+                              value={transactionCategory}
+                              onValueChange={(value: any) => setTransactionCategory(value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione a categoria" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="taxa_entrega">
+                                  <div className="flex items-center gap-2">
+                                    <Bike className="h-4 w-4" />
+                                    Taxa Entrega
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="ifood">
+                                  <div className="flex items-center gap-2">
+                                    <Smartphone className="h-4 w-4" />
+                                    Taxas de iFood
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="brigadeiros">
+                                  <div className="flex items-center gap-2">
+                                    <Utensils className="h-4 w-4" />
+                                    Taxas de Brigadeiros
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="outros">
+                                  <div className="flex items-center gap-2">
+                                    <Minus className="h-4 w-4" />
+                                    Outros
+                                  </div>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                           <div>
                             <label className="block text-sm font-medium mb-2">
                               Valor
@@ -376,7 +482,7 @@ const CashRegister = () => {
                             <Textarea
                               value={transactionDescription}
                               onChange={(e) => setTransactionDescription(e.target.value)}
-                              placeholder="Ex: Pagamento de fornecedor..."
+                              placeholder={transactionCategory === 'taxa_entrega' ? 'Ex: Pedro' : 'Ex: Taxa, Comissão...'}
                             />
                           </div>
                         </div>
@@ -394,21 +500,19 @@ const CashRegister = () => {
                       </DialogContent>
                     </Dialog>
 
-                    {currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').length > 0 && (
-                      <div className="space-y-2 mt-4">
-                        {currentRegister.transactions
-                          .filter((t: any) => t.type === 'withdrawal')
-                          .map((trans: any) => (
-                            <div key={trans.id} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
-                              <div className="flex-1">
-                                <p className="font-medium">{trans.description || 'Sem descrição'}</p>
-                                <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
-                              </div>
-                              <span className="font-bold text-red-600">
-                                -{formatCurrency(parseFloat(trans.amount))}
-                              </span>
+                    {withdrawals.length > 0 && (
+                      <div className="space-y-2 mt-4 max-h-48 overflow-y-auto">
+                        {withdrawals.map((trans: any) => (
+                          <div key={trans.id} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{getCleanDescription(trans.description)}</p>
+                              <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
                             </div>
-                          ))}
+                            <span className="font-bold text-red-600 ml-2">
+                              -{formatCurrency(parseFloat(trans.amount))}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -858,21 +962,78 @@ const CashRegister = () => {
               </div>
             </div>
 
-            {/* Sangrias (incluindo Taxas de Entrega) */}
+            {/* Sangrias por Categoria */}
             {closeResult?.withdrawals > 0 && (
               <div className="mb-4 pb-2 border-b-2 border-dashed">
                 <h4 className="font-bold text-sm mb-2 text-red-700">SANGRIAS:</h4>
-                <div className="space-y-1 text-sm">
-                  {closedRegisterData?.transactions?.filter((t: any) => t.type === 'withdrawal').map((trans: any) => (
-                    <div key={trans.id} className="flex justify-between">
-                      <span className="truncate max-w-[150px]">{trans.description || 'Sem descrição'}</span>
-                      <span className="text-red-600">-{formatCurrency(parseFloat(trans.amount))}</span>
+                
+                {/* Taxa Entrega */}
+                {totalsByCategory.taxa_entrega > 0 && (
+                  <div className="mb-2">
+                    <div className="flex justify-between font-semibold text-orange-700 text-xs mb-1">
+                      <span>Taxa Entrega:</span>
+                      <span>-{formatCurrency(totalsByCategory.taxa_entrega)}</span>
                     </div>
-                  ))}
-                  <div className="flex justify-between font-bold pt-1 border-t">
-                    <span>Total:</span>
-                    <span className="text-red-600">-{formatCurrency(closeResult?.withdrawals || 0)}</span>
+                    {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'taxa_entrega').map((trans: any) => (
+                      <div key={trans.id} className="flex justify-between text-xs">
+                        <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
+                        <span>-{formatCurrency(parseFloat(trans.amount))}</span>
+                      </div>
+                    ))}
                   </div>
+                )}
+
+                {/* iFood */}
+                {totalsByCategory.ifood > 0 && (
+                  <div className="mb-2">
+                    <div className="flex justify-between font-semibold text-red-700 text-xs mb-1">
+                      <span>iFood:</span>
+                      <span>-{formatCurrency(totalsByCategory.ifood)}</span>
+                    </div>
+                    {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'ifood').map((trans: any) => (
+                      <div key={trans.id} className="flex justify-between text-xs">
+                        <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
+                        <span>-{formatCurrency(parseFloat(trans.amount))}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Brigadeiros */}
+                {totalsByCategory.brigadeiros > 0 && (
+                  <div className="mb-2">
+                    <div className="flex justify-between font-semibold text-amber-700 text-xs mb-1">
+                      <span>Brigadeiros:</span>
+                      <span>-{formatCurrency(totalsByCategory.brigadeiros)}</span>
+                    </div>
+                    {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'brigadeiros').map((trans: any) => (
+                      <div key={trans.id} className="flex justify-between text-xs">
+                        <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
+                        <span>-{formatCurrency(parseFloat(trans.amount))}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Outros */}
+                {totalsByCategory.outros > 0 && (
+                  <div className="mb-2">
+                    <div className="flex justify-between font-semibold text-gray-700 text-xs mb-1">
+                      <span>Outros:</span>
+                      <span>-{formatCurrency(totalsByCategory.outros)}</span>
+                    </div>
+                    {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'outros').map((trans: any) => (
+                      <div key={trans.id} className="flex justify-between text-xs">
+                        <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
+                        <span>-{formatCurrency(parseFloat(trans.amount))}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex justify-between font-bold pt-1 border-t text-sm">
+                  <span>Total:</span>
+                  <span className="text-red-600">-{formatCurrency(closeResult?.withdrawals || 0)}</span>
                 </div>
               </div>
             )}
@@ -1021,7 +1182,9 @@ const CashRegister = () => {
           .printable-receipt .text-amber-600,
           .printable-receipt .text-amber-700,
           .printable-receipt .text-blue-600,
-          .printable-receipt .text-blue-700 {
+          .printable-receipt .text-blue-700,
+          .printable-receipt .text-orange-600,
+          .printable-receipt .text-orange-700 {
             color: black !important;
           }
           .printable-receipt button,
