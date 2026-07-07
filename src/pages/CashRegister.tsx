@@ -962,7 +962,7 @@ const CashRegister = () => {
               </div>
             </div>
 
-            {/* Sangrias por Categoria */}
+            {/* Sangrias por Categoria - DETALHADO */}
             {closeResult?.withdrawals > 0 && (
               <div className="mb-4 pb-2 border-b-2 border-dashed">
                 <h4 className="font-bold text-sm mb-2 text-red-700">SANGRIAS:</h4>
