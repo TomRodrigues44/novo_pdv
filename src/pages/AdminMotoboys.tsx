@@ -19,7 +19,7 @@ import {
   Plus,
   Edit,
   Trash2,
-  Motorcycle,
+  Bike,
   Phone,
   Search,
 } from "lucide-react";
@@ -192,7 +192,7 @@ const AdminMotoboys = () => {
                 Total de Motoboys
               </CardTitle>
               <div className="p-2 rounded-full bg-orange-500">
-                <Motorcycle className="h-5 w-5 text-white" />
+                <Bike className="h-5 w-5 text-white" />
               </div>
             </CardHeader>
             <CardContent>
@@ -237,7 +237,7 @@ const AdminMotoboys = () => {
                   >
                     <div className="flex items-center gap-4">
                       <div className="bg-orange-100 p-3 rounded-full">
-                        <Motorcycle className="h-6 w-6 text-orange-600" />
+                        <Bike className="h-6 w-6 text-orange-600" />
                       </div>
                       <div>
                         <p className="font-semibold text-lg">{motoboy.name}</p>
