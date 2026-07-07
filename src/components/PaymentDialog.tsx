@@ -334,7 +334,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                     <TabsContent value="cash" className="space-y-3">
                       <Input
                         type="number"
-                        step="0. categoria_entrega' ? 'Taxa Entrega' : 'Taxas de iFood'}
+                        step="0.01"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
