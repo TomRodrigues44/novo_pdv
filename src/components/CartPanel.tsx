@@ -25,7 +25,7 @@ import {
   X,
   User,
   Lock,
-  Motorcycle,
+  Bike,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -335,7 +335,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
                             {motoboys.map((motoboy) => (
                               <SelectItem key={motoboy.id} value={motoboy.id}>
                                 <div className="flex items-center gap-2">
-                                  <Motorcycle className="h-4 w-4" />
+                                  <Bike className="h-4 w-4" />
                                   {motoboy.name}
                                 </div>
                               </SelectItem>
