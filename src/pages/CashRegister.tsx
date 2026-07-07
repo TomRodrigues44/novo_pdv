@@ -1043,18 +1043,13 @@ const CashRegister = () => {
                         ))}
                       </div>
                     )}
-
-                    <div className="flex justify-between font-bold pt-1 border-t text-sm">
-                      <span>Total:</span>
-                      <span className="text-red-600">-{formatCurrency(closeResult?.withdrawals || 0)}</span>
-                    </div>
                   </div>
                 )}
 
                 {/* Vales */}
                 {closeResult?.vouchers > 0 && (
                   <div className="mb-4 pb-2 border-b-2 border-dashed">
-                    <h4 className="font-bold text-sm mb-2 text-am-700">VALES:</h4>
+                    <h4 className="font-bold text-sm mb-2 text-amber-700">VALES:</h4>
                     <div className="space-y-1 text-sm">
                       {closedRegisterData?.transactions?.filter((t: any) => t.type === 'voucher').map((trans: any) => (
                         <div key={trans.id} className="flex justify-between">
@@ -1083,7 +1078,7 @@ const CashRegister = () => {
                       ))}
                       <div className="flex justify-between font-bold pt-1 border-t">
                         <span>Total:</span>
-                          <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
+                        <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
                       </div>
                     </div>
                   </div>

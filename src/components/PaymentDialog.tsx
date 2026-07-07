@@ -33,7 +33,7 @@ interface PaymentDialogProps {
 
 export const PaymentDialog = ({ open, onClose, total, freight, cartItems, customerId, onPaymentConfirm }: PaymentDialogProps) => {
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
-  const [selectedType, setSelectedType] = useState<"debit" | "credit" | "auto">("auto");
+  const [selectedType, setSelectedType] = useState<"debit" | "credit" | "pix" | "cash">("debit");
   const [amount, setAmount] = useState("");
   const [cashReceived, setCashReceived] = useState("");
 
@@ -48,7 +48,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
 
     const newPayment: PaymentMethod = {
       id: `pay-${Date.now()}`,
-      type: selectedType === "auto" ? "debit" : selectedType,
+      type: selectedType,
       amount: paymentAmount,
     };
 
@@ -268,10 +268,6 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                   
                   <Tabs value={selectedType} onValueChange={(v) => setSelectedType(v as any)}>
                     <TabsList className="grid w-full grid-cols-4">
-                      <TabsTrigger value="auto" className="text-xs">
-                        <CreditCard className="h-3 w-3 mr-1" />
-                        Auto
-                      </TabsTrigger>
                       <TabsTrigger value="debit" className="text-xs">
                         <CreditCard className="h-3 w-3 mr-1" />
                         Débito
@@ -280,7 +276,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                         <CreditCard className="h-3 w-3 mr-1" />
                         Crédito
                       </TabsTrigger>
-                      <TabsTrigger value="pix" className="xs">
+                      <TabsTrigger value="pix" className="text-xs">
                         <QrCode className="h-3 w-3 mr-1" />
                         Pix
                       </TabsTrigger>
@@ -289,16 +285,6 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                         Dinheiro
                       </TabsTrigger>
                     </TabsList>
-
-                    <TabsContent value="auto" className="space-y-3">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
-                      />
-                    </TabsContent>
 
                     <TabsContent value="debit" className="space-y-3">
                       <Input
