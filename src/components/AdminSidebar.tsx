@@ -11,6 +11,7 @@ import {
   ChefHat,
   Users,
   DollarSign,
+  Motorcycle,
 } from "lucide-react";
 
 const AdminSidebar = () => {
@@ -21,6 +22,7 @@ const AdminSidebar = () => {
     { path: "/admin/products", icon: Package, label: "Produtos" },
     { path: "/admin/categories", icon: Tags, label: "Categorias" },
     { path: "/admin/customers", icon: Users, label: "Clientes" },
+    { path: "/admin/motoboys", icon: Motorcycle, label: "Motoboys" },
     { path: "/admin/cash-register", icon: DollarSign, label: "Fluxo de Caixa" },
     { path: "/admin/reports", icon: BarChart3, label: "Relatórios" },
     { path: "/kitchen", icon: ChefHat, label: "Cozinha" },

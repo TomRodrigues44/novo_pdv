@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useAdmin } from "@/hooks/use-admin";
 import { CartItemComponent } from "./CartItem";
@@ -16,8 +16,26 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ShoppingCart, Trash2, Receipt, Truck, Plus, X, User, Lock } from "lucide-react";
+import {
+  ShoppingCart,
+  Trash2,
+  Receipt,
+  Truck,
+  Plus,
+  X,
+  User,
+  Lock,
+  Motorcycle,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
 
 interface Customer {
   id: string;
@@ -27,6 +45,12 @@ interface Customer {
   email: string;
   points: number;
   total_spent: number;
+}
+
+interface Motoboy {
+  id: string;
+  name: string;
+  phone: string;
 }
 
 interface CartPanelProps {
@@ -44,6 +68,10 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
     clearCart,
     cartTotal,
     cartCount,
+    freight,
+    setFreight,
+    selectedMotoboy,
+    setSelectedMotoboy,
   } = useCart();
   
   const { recordSale } = useAdmin();
@@ -51,24 +79,93 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
   const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
   const [currentPayments, setCurrentPayments] = useState<any[]>([]);
   const [currentSaleId, setCurrentSaleId] = useState<string | null>(null);
-  const [freight, setFreight] = useState<number>(0);
   const [isFreightDialogOpen, setIsFreightDialogOpen] = useState(false);
   const [freightValue, setFreightValue] = useState("");
   const [isCustomerSelectorOpen, setIsCustomerSelectorOpen] = useState(false);
+  const [motoboys, setMotoboys] = useState<Motoboy[]>([]);
 
   const totalWithFreight = cartTotal + freight;
 
-  const handleAddFreight = () => {
+  // Buscar motoboys
+  useEffect(() => {
+    const fetchMotoboys = async () => {
+      try {
+        const response = await fetch('/api/motoboys');
+        if (response.ok) {
+          const data = await response.json();
+          setMotoboys(data);
+        }
+      } catch (error) {
+        console.error('Error fetching motoboys:', error);
+      }
+    };
+    fetchMotoboys();
+  }, []);
+
+  const handleAddFreight = async () => {
     const value = parseFloat(freightValue);
-    if (value && value >= 0) {
-      setFreight(value);
-      setFreightValue("");
-      setIsFreightDialogOpen(false);
+    if (!value || value <= 0) {
+      toast.error('Informe um valor válido para o frete');
+      return;
+    }
+    
+    if (!selectedMotoboy) {
+      toast.error('Selecione um motoboy para a entrega');
+      return;
+    }
+
+    // Criar sangria automática
+    try {
+      const response = await fetch('/api/cash-transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'withdrawal',
+          amount: value,
+          description: `Taxa Entrega - ${selectedMotoboy.name}`,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success(`Frete de R$ ${value.toFixed(2)} adicionado para ${selectedMotoboy.name}`);
+        setFreight(value);
+        setFreightValue("");
+        setIsFreightDialogOpen(false);
+      } else {
+        toast.error('Erro ao registrar frete');
+      }
+    } catch (error) {
+      toast.error('Erro ao registrar frete');
     }
   };
 
-  const handleRemoveFreight = () => {
+  const handleRemoveFreight = async () => {
+    // Remover a sangria correspondente
+    try {
+      const response = await fetch('/api/cash-transactions');
+      if (response.ok) {
+        const data = await response.json();
+        const transactions = data.transactions || [];
+        
+        // Encontrar a sangria de frete mais recente
+        const freightTransaction = transactions.find((t: any) => 
+          t.description?.startsWith('Taxa Entrega') && 
+          t.amount === freight
+        );
+
+        if (freightTransaction) {
+          await fetch(`/api/cash-transactions/${freightTransaction.id}`, {
+            method: 'DELETE',
+          });
+          toast.success('Frete removido');
+        }
+      }
+    } catch (error) {
+      console.error('Error removing freight:', error);
+    }
+
     setFreight(0);
+    setSelectedMotoboy(null);
   };
 
   const handleCheckout = () => {
@@ -112,10 +209,9 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
     
     setIsDocumentDialogOpen(false);
     clearCart();
-    setFreight(0);
     setCurrentPayments([]);
     setCurrentSaleId(null);
-    onCustomerChange(null); // Limpar cliente após venda
+    onCustomerChange(null);
   };
 
   return (
@@ -221,9 +317,35 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
                           placeholder="Ex: 10.00"
                         />
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Motoboy Responsável
+                        </label>
+                        <Select
+                          value={selectedMotoboy?.id || ""}
+                          onValueChange={(value) => {
+                            const motoboy = motoboys.find(m => m.id === value);
+                            setSelectedMotoboy(motoboy || null);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um motoboy" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {motoboys.map((motoboy) => (
+                              <SelectItem key={motoboy.id} value={motoboy.id}>
+                                <div className="flex items-center gap-2">
+                                  <Motorcycle className="h-4 w-4" />
+                                  {motoboy.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <Button onClick={handleAddFreight} className="w-full bg-blue-600">
                         <Plus className="mr-2 h-4 w-4" />
-                        Adicionar
+                        Adicionar Frete
                       </Button>
                     </div>
                   </DialogContent>

@@ -19,6 +19,9 @@ declare module "nitropack/types" {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/cash-transactions.get').default>>>>
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/cash-transactions.post').default>>>>
     }
+    '/api/cash-transactions/:id': {
+      'delete': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/cash-transactions/[id].delete').default>>>>
+    }
     '/api/categories': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/categories.get').default>>>>
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/categories.post').default>>>>
@@ -46,6 +49,14 @@ declare module "nitropack/types" {
     }
     '/api/migrate/sales': {
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/migrate/sales.post').default>>>>
+    }
+    '/api/motoboys': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/motoboys.get').default>>>>
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/motoboys.post').default>>>>
+    }
+    '/api/motoboys/:id': {
+      'delete': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/motoboys/[id].delete').default>>>>
+      'put': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/motoboys/[id].put').default>>>>
     }
     '/api/products': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/products.get').default>>>>

@@ -13,12 +13,18 @@ interface CartContextType {
   clearCart: () => void;
   cartTotal: number;
   cartCount: number;
+  freight: number;
+  setFreight: (value: number) => void;
+  selectedMotoboy: { id: string; name: string } | null;
+  setSelectedMotoboy: (motoboy: { id: string; name: string } | null) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cartItems, setCartItems] = useState<CartItemWithFlavors[]>([]);
+  const [freight, setFreight] = useState<number>(0);
+  const [selectedMotoboy, setSelectedMotoboy] = useState<{ id: string; name: string } | null>(null);
 
   const addToCart = useCallback((product: Product, flavors?: string[]) => {
     setCartItems((prevItems) => {
@@ -60,6 +66,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const clearCart = useCallback(() => {
     setCartItems([]);
+    setFreight(0);
+    setSelectedMotoboy(null);
   }, []);
 
   const cartTotal = cartItems.reduce(
@@ -82,6 +90,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         clearCart,
         cartTotal,
         cartCount,
+        freight,
+        setFreight,
+        selectedMotoboy,
+        setSelectedMotoboy,
       }}
     >
       {children}

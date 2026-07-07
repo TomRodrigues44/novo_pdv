@@ -934,16 +934,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1573c-aVP8WWe7LjQM9mS4NV6q/KXe4Ks\"",
-    "mtime": "2026-07-06T15:31:45.509Z",
-    "size": 87868,
+    "etag": "\"157bb-1JyIWbif8NXrqYvIWIsT/x3oF7g\"",
+    "mtime": "2026-07-06T15:55:45.264Z",
+    "size": 87995,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"47eec-v+YgFa0U6PUo6+daF1iBLaXmfjI\"",
-    "mtime": "2026-07-06T15:31:45.509Z",
-    "size": 294636,
+    "etag": "\"481c4-4lS0z9SPa9a3iDMZCNozAITiWDA\"",
+    "mtime": "2026-07-06T15:55:45.264Z",
+    "size": 295364,
     "path": "index.mjs.map"
   }
 };
@@ -1041,18 +1041,23 @@ const _lazy_s4P548 = () => Promise.resolve().then(function () { return close_pos
 const _lazy_rID8to = () => Promise.resolve().then(function () { return open_post$1; });
 const _lazy_4uV9wR = () => Promise.resolve().then(function () { return cashTransactions_get$1; });
 const _lazy_cQiAIV = () => Promise.resolve().then(function () { return cashTransactions_post$1; });
+const _lazy_EvjcMH = () => Promise.resolve().then(function () { return _id__delete$9; });
 const _lazy__iU8wW = () => Promise.resolve().then(function () { return categories_get$1; });
 const _lazy_o1wo52 = () => Promise.resolve().then(function () { return categories_post$3; });
-const _lazy_b2VTWC = () => Promise.resolve().then(function () { return _id__delete$5; });
-const _lazy_eDpqQf = () => Promise.resolve().then(function () { return _id__put$5; });
+const _lazy_b2VTWC = () => Promise.resolve().then(function () { return _id__delete$7; });
+const _lazy_eDpqQf = () => Promise.resolve().then(function () { return _id__put$7; });
 const _lazy_thsE84 = () => Promise.resolve().then(function () { return customers_get$1; });
 const _lazy_krY3pv = () => Promise.resolve().then(function () { return customers_post$1; });
-const _lazy_H45_Wb = () => Promise.resolve().then(function () { return _id__delete$3; });
-const _lazy_h4GIBs = () => Promise.resolve().then(function () { return _id__put$3; });
+const _lazy_H45_Wb = () => Promise.resolve().then(function () { return _id__delete$5; });
+const _lazy_h4GIBs = () => Promise.resolve().then(function () { return _id__put$5; });
 const _lazy_YtRTDx = () => Promise.resolve().then(function () { return sales_get$3; });
 const _lazy_zELk_7 = () => Promise.resolve().then(function () { return categories_post$1; });
 const _lazy_GwWEhE = () => Promise.resolve().then(function () { return products_post$3; });
 const _lazy_lNzaoz = () => Promise.resolve().then(function () { return sales_post$3; });
+const _lazy_lqSuRD = () => Promise.resolve().then(function () { return motoboys_get$1; });
+const _lazy_zC6TWw = () => Promise.resolve().then(function () { return motoboys_post$1; });
+const _lazy_ykGK35 = () => Promise.resolve().then(function () { return _id__delete$3; });
+const _lazy_RateJQ = () => Promise.resolve().then(function () { return _id__put$3; });
 const _lazy_9dG2yK = () => Promise.resolve().then(function () { return products_get$1; });
 const _lazy_C0_k4l = () => Promise.resolve().then(function () { return products_post$1; });
 const _lazy_q5qboF = () => Promise.resolve().then(function () { return _id__delete$1; });
@@ -1070,6 +1075,7 @@ const handlers = [
   { route: '/api/cash-register/open', handler: _lazy_rID8to, lazy: true, middleware: false, method: "post" },
   { route: '/api/cash-transactions', handler: _lazy_4uV9wR, lazy: true, middleware: false, method: "get" },
   { route: '/api/cash-transactions', handler: _lazy_cQiAIV, lazy: true, middleware: false, method: "post" },
+  { route: '/api/cash-transactions/:id', handler: _lazy_EvjcMH, lazy: true, middleware: false, method: "delete" },
   { route: '/api/categories', handler: _lazy__iU8wW, lazy: true, middleware: false, method: "get" },
   { route: '/api/categories', handler: _lazy_o1wo52, lazy: true, middleware: false, method: "post" },
   { route: '/api/categories/:id', handler: _lazy_b2VTWC, lazy: true, middleware: false, method: "delete" },
@@ -1082,6 +1088,10 @@ const handlers = [
   { route: '/api/migrate/categories', handler: _lazy_zELk_7, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/products', handler: _lazy_GwWEhE, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/sales', handler: _lazy_lNzaoz, lazy: true, middleware: false, method: "post" },
+  { route: '/api/motoboys', handler: _lazy_lqSuRD, lazy: true, middleware: false, method: "get" },
+  { route: '/api/motoboys', handler: _lazy_zC6TWw, lazy: true, middleware: false, method: "post" },
+  { route: '/api/motoboys/:id', handler: _lazy_ykGK35, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/motoboys/:id', handler: _lazy_RateJQ, lazy: true, middleware: false, method: "put" },
   { route: '/api/products', handler: _lazy_9dG2yK, lazy: true, middleware: false, method: "get" },
   { route: '/api/products', handler: _lazy_C0_k4l, lazy: true, middleware: false, method: "post" },
   { route: '/api/products/:id', handler: _lazy_q5qboF, lazy: true, middleware: false, method: "delete" },
@@ -1695,6 +1705,41 @@ const cashTransactions_post$1 = /*#__PURE__*/Object.freeze({
   default: cashTransactions_post
 });
 
+const _id__delete$8 = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const id = getRouterParam(event, "id");
+    const result = await sql`
+      DELETE FROM cash_transactions
+      WHERE id = ${id}
+      RETURNING *
+    `;
+    if (result.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Transaction not found"
+      });
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting transaction:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error deleting transaction"
+    });
+  }
+});
+
+const _id__delete$9 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _id__delete$8
+});
+
 const categories_get = defineEventHandler(async () => {
   try {
     const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
@@ -1762,7 +1807,7 @@ const categories_post$3 = /*#__PURE__*/Object.freeze({
   default: categories_post$2
 });
 
-const _id__delete$4 = defineEventHandler(async (event) => {
+const _id__delete$6 = defineEventHandler(async (event) => {
   try {
     const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
     const dbUrl = process.env.DATABASE_URL;
@@ -1793,12 +1838,12 @@ const _id__delete$4 = defineEventHandler(async (event) => {
   }
 });
 
-const _id__delete$5 = /*#__PURE__*/Object.freeze({
+const _id__delete$7 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: _id__delete$4
+  default: _id__delete$6
 });
 
-const _id__put$4 = defineEventHandler(async (event) => {
+const _id__put$6 = defineEventHandler(async (event) => {
   var _a;
   try {
     const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
@@ -1834,9 +1879,9 @@ const _id__put$4 = defineEventHandler(async (event) => {
   }
 });
 
-const _id__put$5 = /*#__PURE__*/Object.freeze({
+const _id__put$7 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: _id__put$4
+  default: _id__put$6
 });
 
 const customers_get = defineEventHandler(async () => {
@@ -1908,7 +1953,7 @@ const customers_post$1 = /*#__PURE__*/Object.freeze({
   default: customers_post
 });
 
-const _id__delete$2 = defineEventHandler(async (event) => {
+const _id__delete$4 = defineEventHandler(async (event) => {
   try {
     const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
     const dbUrl = process.env.DATABASE_URL;
@@ -1939,12 +1984,12 @@ const _id__delete$2 = defineEventHandler(async (event) => {
   }
 });
 
-const _id__delete$3 = /*#__PURE__*/Object.freeze({
+const _id__delete$5 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: _id__delete$2
+  default: _id__delete$4
 });
 
-const _id__put$2 = defineEventHandler(async (event) => {
+const _id__put$4 = defineEventHandler(async (event) => {
   try {
     const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
     const dbUrl = process.env.DATABASE_URL;
@@ -1983,9 +2028,9 @@ const _id__put$2 = defineEventHandler(async (event) => {
   }
 });
 
-const _id__put$3 = /*#__PURE__*/Object.freeze({
+const _id__put$5 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: _id__put$2
+  default: _id__put$4
 });
 
 const sales_get$2 = defineEventHandler(async (event) => {
@@ -2197,6 +2242,136 @@ const sales_post$2 = defineEventHandler(async (event) => {
 const sales_post$3 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: sales_post$2
+});
+
+const motoboys_get = defineEventHandler(async () => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const motoboys = await sql`
+      SELECT * FROM motoboys
+      ORDER BY name ASC
+    `;
+    return motoboys;
+  } catch (error) {
+    console.error("Error fetching motoboys:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error fetching motoboys"
+    });
+  }
+});
+
+const motoboys_get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: motoboys_get
+});
+
+const motoboys_post = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const motoboy = await readBody(event);
+    const result = await sql`
+      INSERT INTO motoboys (id, name, phone)
+      VALUES (${motoboy.id}, ${motoboy.name}, ${motoboy.phone || null})
+      RETURNING *
+    `;
+    return result[0];
+  } catch (error) {
+    console.error("Error creating motoboy:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error creating motoboy"
+    });
+  }
+});
+
+const motoboys_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: motoboys_post
+});
+
+const _id__delete$2 = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const id = getRouterParam(event, "id");
+    const result = await sql`
+      DELETE FROM motoboys
+      WHERE id = ${id}
+      RETURNING *
+    `;
+    if (result.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Motoboy not found"
+      });
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting motoboy:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error deleting motoboy"
+    });
+  }
+});
+
+const _id__delete$3 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _id__delete$2
+});
+
+const _id__put$2 = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const id = getRouterParam(event, "id");
+    const motoboy = await readBody(event);
+    const result = await sql`
+      UPDATE motoboys
+      SET 
+        name = ${motoboy.name},
+        phone = ${motoboy.phone || null}
+      WHERE id = ${id}
+      RETURNING *
+    `;
+    if (result.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Motoboy not found"
+      });
+    }
+    return result[0];
+  } catch (error) {
+    console.error("Error updating motoboy:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error updating motoboy"
+    });
+  }
+});
+
+const _id__put$3 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _id__put$2
 });
 
 const products_get = defineEventHandler(async () => {

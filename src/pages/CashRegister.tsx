@@ -32,6 +32,7 @@ import {
   Banknote,
   Printer,
   Receipt,
+  Motorcycle,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -110,7 +111,7 @@ const CashRegister = () => {
         setCloseResult(result);
         setIsCloseSuccessDialogOpen(true);
         setIsCloseDialogOpen(false);
-        // NÃO limpamos o closingAmount aqui, pois precisamos dele no relatório
+        setClosingAmount('');
         setNotes('');
         refetch();
       } else {
@@ -136,7 +137,7 @@ const CashRegister = () => {
 
       if (response.ok) {
         const typeName = type === 'withdrawal' ? 'Sangria' : type === 'addition' ? 'Adição' : 'Vale';
-        toast.success(`${typeName} registrado com sucesso!`);
+        toast.success(`${typeName} registrada com sucesso!`);
         
         if (type === 'withdrawal') {
           setIsWithdrawalDialogOpen(false);
@@ -185,6 +186,11 @@ const CashRegister = () => {
       </div>
     );
   }
+
+  // Filtrar transações de Taxa de Entrega
+  const deliveryTransactions = currentRegister?.transactions?.filter((t: any) => 
+    t.type === 'withdrawal' && t.description?.startsWith('Taxa Entrega')
+  ) || [];
 
   return (
     <div className="flex">
@@ -331,7 +337,7 @@ const CashRegister = () => {
                       <span className="text-gray-600">Total de Sangrias:</span>
                       <span className="text-xl font-bold text-red-600">
                         {formatCurrency(
-                          currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
+                          currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal' && !t.description?.startsWith('Taxa Entrega')).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
                         )}
                       </span>
                     </div>
@@ -385,10 +391,10 @@ const CashRegister = () => {
                       </DialogContent>
                     </Dialog>
 
-                    {currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').length > 0 && (
+                    {currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal' && !t.description?.startsWith('Taxa Entrega')).length > 0 && (
                       <div className="space-y-2 mt-4">
                         {currentRegister.transactions
-                          .filter((t: any) => t.type === 'withdrawal')
+                          .filter((t: any) => t.type === 'withdrawal' && !t.description?.startsWith('Taxa Entrega'))
                           .map((trans: any) => (
                             <div key={trans.id} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
                               <div>
@@ -849,12 +855,31 @@ const CashRegister = () => {
               </div>
             </div>
 
+            {/* Taxas de Entrega */}
+            {deliveryTransactions.length > 0 && (
+              <div className="mb-4 pb-2 border-b-2 border-dashed">
+                <h4 className="font-bold text-sm mb-2 text-blue-700">TAXAS DE ENTREGA:</h4>
+                <div className="space-y-1 text-sm">
+                  {deliveryTransactions.map((trans: any) => (
+                    <div key={trans.id} className="flex justify-between">
+                      <span className="truncate max-w-[150px]">{trans.description}</span>
+                      <span className="text-blue-600">-{formatCurrency(parseFloat(trans.amount))}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between font-bold pt-1 border-t">
+                    <span>Total:</span>
+                    <span className="text-blue-600">-{formatCurrency(deliveryTransactions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0))}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Sangrias */}
             {closeResult?.withdrawals > 0 && (
               <div className="mb-4 pb-2 border-b-2 border-dashed">
                 <h4 className="font-bold text-sm mb-2 text-red-700">SANGRIAS:</h4>
                 <div className="space-y-1 text-sm">
-                  {closedRegisterData?.transactions?.filter((t: any) => t.type === 'withdrawal').map((trans: any) => (
+                  {closedRegisterData?.transactions?.filter((t: any) => t.type === 'withdrawal' && !t.description?.startsWith('Taxa Entrega')).map((trans: any) => (
                     <div key={trans.id} className="flex justify-between">
                       <span className="truncate max-w-[150px]">{trans.description || 'Sem descrição'}</span>
                       <span className="text-red-600">-{formatCurrency(parseFloat(trans.amount))}</span>
@@ -1010,7 +1035,9 @@ const CashRegister = () => {
           .printable-receipt .text-green-600,
           .printable-receipt .text-green-700,
           .printable-receipt .text-amber-600,
-          .printable-receipt .text-amber-700 {
+          .printable-receipt .text-amber-700,
+          .printable-receipt .text-blue-600,
+          .printable-receipt .text-blue-700 {
             color: black !important;
           }
           .printable-receipt button,

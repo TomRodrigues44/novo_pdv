@@ -11,6 +11,7 @@ import AdminCategories from "./pages/AdminCategories";
 import AdminProducts from "./pages/AdminProducts";
 import AdminReports from "./pages/AdminReports";
 import AdminCustomers from "./pages/AdminCustomers";
+import AdminMotoboys from "./pages/AdminMotoboys";
 import Kitchen from "./pages/Kitchen";
 import CashRegister from "./pages/CashRegister";
 
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/admin/categories" element={<AdminCategories />} />
             <Route path="/admin/products" element={<AdminProducts />} />
             <Route path="/admin/customers" element={<AdminCustomers />} />
+            <Route path="/admin/motoboys" element={<AdminMotoboys />} />
             <Route path="/admin/cash-register" element={<CashRegister />} />
             <Route path="/admin/reports" element={<AdminReports />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
