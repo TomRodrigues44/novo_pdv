@@ -181,7 +181,6 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                     <div className="flex justify-between items-center text-lg font-bold">
                       <span>Total:</span>
                       <span className="text-orange-600">R$ {total.toFixed(2)}</span>
-                      </span>
                     </div>
                   </div>
                 </CardContent>
