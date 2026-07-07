@@ -47,6 +47,7 @@ const CashRegister = () => {
   const [isVoucherDialogOpen, setIsVoucherDialogOpen] = useState(false);
   const [openingAmount, setOpeningAmount] = useState('');
   const [closingAmount, setClosingAmount] = useState('');
+  const [finalClosingAmount, setFinalClosingAmount] = useState(0); // NOVO: Salvar valor informado
   const [transactionAmount, setTransactionAmount] = useState('');
   const [transactionDescription, setTransactionDescription] = useState('');
   const [notes, setNotes] = useState('');
@@ -95,13 +96,15 @@ const CashRegister = () => {
 
   const handleCloseRegister = async () => {
     try {
+      const amount = parseFloat(closingAmount) || 0;
+      setFinalClosingAmount(amount); // Salvar o valor informado antes de limpar
       setClosedRegisterData(currentRegister);
 
       const response = await fetch('/api/cash-register/close', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          closingAmount: parseFloat(closingAmount) || 0,
+          closingAmount: amount,
           notes,
         }),
       });
@@ -113,7 +116,7 @@ const CashRegister = () => {
         setIsCloseDialogOpen(false);
         setClosingAmount('');
         setNotes('');
-        refetch();
+        refetch(); // Atualizar dados para pegar transações mais recentes
       } else {
         const error = await response.json();
         toast.error(error.statusMessage || 'Erro ao fechar caixa');
@@ -337,7 +340,7 @@ const CashRegister = () => {
                       <span className="text-gray-600">Total de Sangrias:</span>
                       <span className="text-xl font-bold text-red-600">
                         {formatCurrency(
-                          currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal' && !t.description?.startsWith('Taxa Entrega')).reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
+                          currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
                         )}
                       </span>
                     </div>
@@ -391,13 +394,13 @@ const CashRegister = () => {
                       </DialogContent>
                     </Dialog>
 
-                    {currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal' && !t.description?.startsWith('Taxa Entrega')).length > 0 && (
+                    {currentRegister.transactions?.filter((t: any) => t.type === 'withdrawal').length > 0 && (
                       <div className="space-y-2 mt-4">
                         {currentRegister.transactions
-                          .filter((t: any) => t.type === 'withdrawal' && !t.description?.startsWith('Taxa Entrega'))
+                          .filter((t: any) => t.type === 'withdrawal')
                           .map((trans: any) => (
                             <div key={trans.id} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
-                              <div>
+                              <div className="flex-1">
                                 <p className="font-medium">{trans.description || 'Sem descrição'}</p>
                                 <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
                               </div>
@@ -855,31 +858,12 @@ const CashRegister = () => {
               </div>
             </div>
 
-            {/* Taxas de Entrega */}
-            {deliveryTransactions.length > 0 && (
-              <div className="mb-4 pb-2 border-b-2 border-dashed">
-                <h4 className="font-bold text-sm mb-2 text-blue-700">TAXAS DE ENTREGA:</h4>
-                <div className="space-y-1 text-sm">
-                  {deliveryTransactions.map((trans: any) => (
-                    <div key={trans.id} className="flex justify-between">
-                      <span className="truncate max-w-[150px]">{trans.description}</span>
-                      <span className="text-blue-600">-{formatCurrency(parseFloat(trans.amount))}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between font-bold pt-1 border-t">
-                    <span>Total:</span>
-                    <span className="text-blue-600">-{formatCurrency(deliveryTransactions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0))}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Sangrias */}
+            {/* Sangrias (incluindo Taxas de Entrega) */}
             {closeResult?.withdrawals > 0 && (
               <div className="mb-4 pb-2 border-b-2 border-dashed">
                 <h4 className="font-bold text-sm mb-2 text-red-700">SANGRIAS:</h4>
                 <div className="space-y-1 text-sm">
-                  {closedRegisterData?.transactions?.filter((t: any) => t.type === 'withdrawal' && !t.description?.startsWith('Taxa Entrega')).map((trans: any) => (
+                  {closedRegisterData?.transactions?.filter((t: any) => t.type === 'withdrawal').map((trans: any) => (
                     <div key={trans.id} className="flex justify-between">
                       <span className="truncate max-w-[150px]">{trans.description || 'Sem descrição'}</span>
                       <span className="text-red-600">-{formatCurrency(parseFloat(trans.amount))}</span>
@@ -937,7 +921,7 @@ const CashRegister = () => {
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span>Valor Informado:</span>
-                  <span className="font-semibold">{formatCurrency(parseFloat(closingAmount || 0))}</span>
+                  <span className="font-semibold">{formatCurrency(finalClosingAmount)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Valor Esperado:</span>
