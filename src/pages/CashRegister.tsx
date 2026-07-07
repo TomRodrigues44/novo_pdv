@@ -59,7 +59,7 @@ const CashRegister = () => {
   const [finalClosingAmount, setFinalClosingAmount] = useState(0);
   const [transactionAmount, setTransactionAmount] = useState('');
   const [transactionDescription, setTransactionDescription] = useState('');
-  const [transactionCategory, setTransactionCategory] = useState<'taxa_entrega' | 'ifood' | 'brigadeiros' | 'outros'>('taxa_entrega');
+  const [transactionCategory, setTransactionCategory] = useState<'taxa_entrega' | 'ifood' | 'brigadeiros' | 'outros'>('ifood');
   const [notes, setNotes] = useState('');
   const [closeResult, setCloseResult] = useState<any>(null);
   const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
@@ -206,7 +206,7 @@ const CashRegister = () => {
         
         setTransactionAmount('');
         setTransactionDescription('');
-        setTransactionCategory('taxa_entrega');
+        setTransactionCategory('ifood');
         refetch();
       } else {
         const error = await response.json();
@@ -440,12 +440,6 @@ const CashRegister = () => {
                                 <SelectValue placeholder="Selecione a categoria" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="taxa_entrega">
-                                  <div className="flex items-center gap-2">
-                                    <Bike className="h-4 w-4" />
-                                    Taxa Entrega
-                                  </div>
-                                </SelectItem>
                                 <SelectItem value="ifood">
                                   <div className="flex items-center gap-2">
                                     <Smartphone className="h-4 w-4" />
@@ -456,6 +450,12 @@ const CashRegister = () => {
                                   <div className="flex items-center gap-2">
                                     <Utensils className="h-4 w-4" />
                                     Taxas de Brigadeiros
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="taxa_entrega">
+                                  <div className="flex items-center gap-2">
+                                    <Bike className="h-4 w-4" />
+                                    Taxa Entrega
                                   </div>
                                 </SelectItem>
                                 <SelectItem value="outros">
@@ -920,6 +920,7 @@ const CashRegister = () => {
           {/* Calcular totais a partir do closedRegisterData */}
           {(() => {
             const closedTotalsByCategory = calculateTotalsByCategory(closedRegisterData?.transactions || []);
+            const totalWithdrawals = Object.values(closedTotalsByCategory).reduce((sum: number, val: number) => sum + val, 0);
             
             return (
               <div className="printable-receipt">
@@ -972,9 +973,12 @@ const CashRegister = () => {
                 </div>
 
                 {/* Sangrias por Categoria - DETALHADO */}
-                {closeResult?.withdrawals > 0 && (
+                {totalWithdrawals > 0 && (
                   <div className="mb-4 pb-2 border-b-2 border-dashed">
-                    <h4 className="font-bold text-sm mb-2 text-red-700">SANGRIAS:</h4>
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-bold text-sm text-red-700">SANGRIAS:</h4>
+                      <span className="font-bold text-red-600">-{formatCurrency(totalWithdrawals)}</span>
+                    </div>
                     
                     {/* Taxa Entrega */}
                     {closedTotalsByCategory.taxa_entrega > 0 && (
@@ -1050,7 +1054,7 @@ const CashRegister = () => {
                 {/* Vales */}
                 {closeResult?.vouchers > 0 && (
                   <div className="mb-4 pb-2 border-b-2 border-dashed">
-                    <h4 className="font-bold text-sm mb-2 text-amber-700">VALES:</h4>
+                    <h4 className="font-bold text-sm mb-2 text-am-700">VALES:</h4>
                     <div className="space-y-1 text-sm">
                       {closedRegisterData?.transactions?.filter((t: any) => t.type === 'voucher').map((trans: any) => (
                         <div key={trans.id} className="flex justify-between">
@@ -1079,7 +1083,7 @@ const CashRegister = () => {
                       ))}
                       <div className="flex justify-between font-bold pt-1 border-t">
                         <span>Total:</span>
-                        <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
+                          <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
                       </div>
                     </div>
                   </div>
@@ -1164,7 +1168,7 @@ const CashRegister = () => {
             margin: 2px 0;
           }
           .printable-receipt .border-b-2,
-          .printable-receipt .border-t {
+          .print-receipt .border-t {
             border-bottom: 2px dashed black !important;
             border-top: 2px dashed black !important;
           }
@@ -1187,11 +1191,11 @@ const CashRegister = () => {
           .printable-receipt .text-gray-500,
           .printable-receipt .text-gray-600,
           .printable-receipt .text-red-600,
-          .printable-receipt .text-red-700,
+          .printary-receipt .text-red-700,
           .printable-receipt .text-green-600,
           .printable-receipt .text-green-700,
           .printable-receipt .text-amber-600,
-          .printable-receipt .text-amber-700,
+          .printary-receipt .text-amber-700,
           .printable-receipt .text-blue-600,
           .printable-receipt .text-blue-700,
           .printable-receipt .text-orange-600,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +33,7 @@ interface PaymentDialogProps {
 
 export const PaymentDialog = ({ open, onClose, total, freight, cartItems, customerId, onPaymentConfirm }: PaymentDialogProps) => {
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
-  const [selectedType, setSelectedType] = useState<"debit" | "credit" | "pix" | "cash">("debit");
+  const [selectedType, setSelectedType] = useState<"debit" | "credit" | "auto">("auto");
   const [amount, setAmount] = useState("");
   const [cashReceived, setCashReceived] = useState("");
 
@@ -48,7 +48,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
 
     const newPayment: PaymentMethod = {
       id: `pay-${Date.now()}`,
-      type: selectedType,
+      type: selectedType === "auto" ? "debit" : selectedType,
       amount: paymentAmount,
     };
 
@@ -83,6 +83,16 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
     setCashReceived("");
     onClose();
   };
+
+  // Auto-avançar quando o pagamento estiver completo
+  useEffect(() => {
+    if (isComplete && payments.length > 0 && open) {
+      const timer = setTimeout(() => {
+        handleConfirmPayment();
+      }, 500); // Pequeno delay para o usuário ver que o pagamento foi adicionado
+      return () => clearTimeout(timer);
+    }
+  }, [isComplete, payments.length, open]);
 
   // Calcular troco total
   const totalChange = payments.reduce((sum, p) => {
@@ -170,7 +180,8 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                     <Separator />
                     <div className="flex justify-between items-center text-lg font-bold">
                       <span>Total:</span>
-                      <span className="text-orange-600">R$ {total.toFixed(2)}</span>
+                        <span className="text-orange-600">R$ {total.toFixed(2)}</span>
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -258,6 +269,10 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                   
                   <Tabs value={selectedType} onValueChange={(v) => setSelectedType(v as any)}>
                     <TabsList className="grid w-full grid-cols-4">
+                      <TabsTrigger value="auto" className="text-xs">
+                        <CreditCard className="h-3 w-3 mr-1" />
+                        Auto
+                      </TabsTrigger>
                       <TabsTrigger value="debit" className="text-xs">
                         <CreditCard className="h-3 w-3 mr-1" />
                         Débito
@@ -266,7 +281,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                         <CreditCard className="h-3 w-3 mr-1" />
                         Crédito
                       </TabsTrigger>
-                      <TabsTrigger value="pix" className="text-xs">
+                      <TabsTrigger value="pix" className="xs">
                         <QrCode className="h-3 w-3 mr-1" />
                         Pix
                       </TabsTrigger>
@@ -275,6 +290,16 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                         Dinheiro
                       </TabsTrigger>
                     </TabsList>
+
+                    <TabsContent value="auto" className="space-y-3">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
+                      />
+                    </TabsContent>
 
                     <TabsContent value="debit" className="space-y-3">
                       <Input
@@ -301,7 +326,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                         type="number"
                         step="0.01"
                         value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
+                        onChange={(e) => isComplete ? undefined : setAmount(e.target.value)}
                         placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
                       />
                     </TabsContent>
@@ -309,7 +334,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                     <TabsContent value="cash" className="space-y-3">
                       <Input
                         type="number"
-                        step="0.01"
+                        step="0. categoria_entrega' ? 'Taxa Entrega' : 'Taxas de iFood'}
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
