@@ -96,6 +96,16 @@ const CashRegister = () => {
     return desc;
   };
 
+  // Helper para calcular totais por categoria
+  const calculateTotalsByCategory = (transactions: any[]) => {
+    const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
+    return withdrawals.reduce((acc: any, t: any) => {
+      const cat = getCategoryFromDescription(t.description);
+      acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
+      return acc;
+    }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
+  };
+
   const handleOpenRegister = async () => {
     try {
       const response = await fetch('/api/cash-register/open', {
@@ -236,13 +246,7 @@ const CashRegister = () => {
   }
 
   const withdrawals = currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || [];
-  
-  // Calcular totais por categoria
-  const totalsByCategory = withdrawals.reduce((acc: any, t: any) => {
-    const cat = getCategoryFromDescription(t.description);
-    acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
-    return acc;
-  }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
+  const totalsByCategory = calculateTotalsByCategory(currentRegister?.transactions || []);
 
   return (
     <div className="flex">
@@ -913,203 +917,210 @@ const CashRegister = () => {
             </DialogTitle>
           </DialogHeader>
           
-          <div className="printable-receipt">
-            {/* Cabeçalho do Cupom */}
-            <div className="text-center mb-4 pb-2 border-b-2 border-dashed">
-              <h2 className="text-xl font-bold">EMPÓRIO DAS COXINHAS</h2>
-              <p className="text-sm text-gray-600">Relatório de Fechamento de Caixa</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {formatDateTime(new Date().toISOString())}
-              </p>
-            </div>
+          {/* Calcular totais a partir do closedRegisterData */}
+          {(() => {
+            const closedTotalsByCategory = calculateTotalsByCategory(closedRegisterData?.transactions || []);
+            
+            return (
+              <div className="printable-receipt">
+                {/* Cabeçalho do Cupom */}
+                <div className="text-center mb-4 pb-2 border-b-2 border-dashed">
+                  <h2 className="text-xl font-bold">EMPÓRIO DAS COXINHAS</h2>
+                  <p className="text-sm text-gray-600">Relatório de Fechamento de Caixa</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formatDateTime(new Date().toISOString())}
+                  </p>
+                </div>
 
-            {/* Resumo Financeiro */}
-            <div className="space-y-2 mb-4 text-sm">
-              <div className="flex justify-between">
-                <span>Abertura:</span>
-                <span className="font-semibold">{formatCurrency(parseFloat(closedRegisterData?.opening_amount || 0))}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Total Vendas:</span>
-                <span className="font-semibold text-green-600">{formatCurrency(closeResult?.salesTotal || 0)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Fechamento do Caixa:</span>
-                <span className="font-semibold text-blue-600">{formatCurrency(closeResult?.closingCash || 0)}</span>
-              </div>
-            </div>
+                {/* Resumo Financeiro */}
+                <div className="space-y-2 mb-4 text-sm">
+                  <div className="flex justify-between">
+                    <span>Abertura:</span>
+                    <span className="font-semibold">{formatCurrency(parseFloat(closedRegisterData?.opening_amount || 0))}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total Vendas:</span>
+                    <span className="font-semibold text-green-600">{formatCurrency(closeResult?.salesTotal || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Fechamento do Caixa:</span>
+                    <span className="font-semibold text-blue-600">{formatCurrency(closeResult?.closingCash || 0)}</span>
+                  </div>
+                </div>
 
-            {/* Vendas por Forma de Pagamento */}
-            <div className="mb-4 pb-2 border-b-2 border-dashed">
-              <h4 className="font-bold text-sm mb-2">Vendas por Forma:</h4>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Dinheiro:</span>
-                  <span>{formatCurrency(closeResult?.cashSales || 0)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Débito:</span>
-                  <span>{formatCurrency(closedRegisterData?.salesByPayment?.debit || 0)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Crédito:</span>
-                  <span>{formatCurrency(closedRegisterData?.salesByPayment?.credit || 0)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Pix:</span>
-                  <span>{formatCurrency(closedRegisterData?.salesByPayment?.pix || 0)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Sangrias por Categoria - DETALHADO */}
-            {closeResult?.withdrawals > 0 && (
-              <div className="mb-4 pb-2 border-b-2 border-dashed">
-                <h4 className="font-bold text-sm mb-2 text-red-700">SANGRIAS:</h4>
-                
-                {/* Taxa Entrega */}
-                {totalsByCategory.taxa_entrega > 0 && (
-                  <div className="mb-2">
-                    <div className="flex justify-between font-semibold text-orange-700 text-xs mb-1">
-                      <span>Taxa Entrega:</span>
-                      <span>-{formatCurrency(totalsByCategory.taxa_entrega)}</span>
+                {/* Vendas por Forma de Pagamento */}
+                <div className="mb-4 pb-2 border-b-2 border-dashed">
+                  <h4 className="font-bold text-sm mb-2">Vendas por Forma:</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Dinheiro:</span>
+                      <span>{formatCurrency(closeResult?.cashSales || 0)}</span>
                     </div>
-                    {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'taxa_entrega').map((trans: any) => (
-                      <div key={trans.id} className="flex justify-between text-xs">
-                        <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
-                        <span>-{formatCurrency(parseFloat(trans.amount))}</span>
+                    <div className="flex justify-between">
+                      <span>Débito:</span>
+                      <span>{formatCurrency(closedRegisterData?.salesByPayment?.debit || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Crédito:</span>
+                      <span>{formatCurrency(closedRegisterData?.salesByPayment?.credit || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Pix:</span>
+                      <span>{formatCurrency(closedRegisterData?.salesByPayment?.pix || 0)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sangrias por Categoria - DETALHADO */}
+                {closeResult?.withdrawals > 0 && (
+                  <div className="mb-4 pb-2 border-b-2 border-dashed">
+                    <h4 className="font-bold text-sm mb-2 text-red-700">SANGRIAS:</h4>
+                    
+                    {/* Taxa Entrega */}
+                    {closedTotalsByCategory.taxa_entrega > 0 && (
+                      <div className="mb-2">
+                        <div className="flex justify-between font-semibold text-orange-700 text-xs mb-1">
+                          <span>Taxa Entrega:</span>
+                          <span>-{formatCurrency(closedTotalsByCategory.taxa_entrega)}</span>
+                        </div>
+                        {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'taxa_entrega').map((trans: any) => (
+                          <div key={trans.id} className="flex justify-between text-xs">
+                            <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
+                            <span>-{formatCurrency(parseFloat(trans.amount))}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
+
+                    {/* iFood */}
+                    {closedTotalsByCategory.ifood > 0 && (
+                      <div className="mb-2">
+                        <div className="flex justify-between font-semibold text-red-700 text-xs mb-1">
+                          <span>iFood:</span>
+                          <span>-{formatCurrency(closedTotalsByCategory.ifood)}</span>
+                        </div>
+                        {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'ifood').map((trans: any) => (
+                          <div key={trans.id} className="flex justify-between text-xs">
+                            <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
+                            <span>-{formatCurrency(parseFloat(trans.amount))}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Brigadeiros */}
+                    {closedTotalsByCategory.brigadeiros > 0 && (
+                      <div className="mb-2">
+                        <div className="flex justify-between font-semibold text-amber-700 text-xs mb-1">
+                          <span>Brigadeiros:</span>
+                          <span>-{formatCurrency(closedTotalsByCategory.brigadeiros)}</span>
+                        </div>
+                        {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'brigadeiros').map((trans: any) => (
+                          <div key={trans.id} className="flex justify-between text-xs">
+                            <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
+                            <span>-{formatCurrency(parseFloat(trans.amount))}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Outros */}
+                    {closedTotalsByCategory.outros > 0 && (
+                      <div className="mb-2">
+                        <div className="flex justify-between font-semibold text-gray-700 text-xs mb-1">
+                          <span>Outros:</span>
+                          <span>-{formatCurrency(closedTotalsByCategory.outros)}</span>
+                        </div>
+                        {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'outros').map((trans: any) => (
+                          <div key={trans.id} className="flex justify-between text-xs">
+                            <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
+                            <span>-{formatCurrency(parseFloat(trans.amount))}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex justify-between font-bold pt-1 border-t text-sm">
+                      <span>Total:</span>
+                      <span className="text-red-600">-{formatCurrency(closeResult?.withdrawals || 0)}</span>
+                    </div>
                   </div>
                 )}
 
-                {/* iFood */}
-                {totalsByCategory.ifood > 0 && (
-                  <div className="mb-2">
-                    <div className="flex justify-between font-semibold text-red-700 text-xs mb-1">
-                      <span>iFood:</span>
-                      <span>-{formatCurrency(totalsByCategory.ifood)}</span>
-                    </div>
-                    {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'ifood').map((trans: any) => (
-                      <div key={trans.id} className="flex justify-between text-xs">
-                        <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
-                        <span>-{formatCurrency(parseFloat(trans.amount))}</span>
+                {/* Vales */}
+                {closeResult?.vouchers > 0 && (
+                  <div className="mb-4 pb-2 border-b-2 border-dashed">
+                    <h4 className="font-bold text-sm mb-2 text-amber-700">VALES:</h4>
+                    <div className="space-y-1 text-sm">
+                      {closedRegisterData?.transactions?.filter((t: any) => t.type === 'voucher').map((trans: any) => (
+                        <div key={trans.id} className="flex justify-between">
+                          <span className="truncate max-w-[150px]">{trans.description || 'Sem descrição'}</span>
+                          <span className="text-amber-600">-{formatCurrency(parseFloat(trans.amount))}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between font-bold pt-1 border-t">
+                        <span>Total:</span>
+                        <span className="text-amber-600">-{formatCurrency(closeResult?.vouchers || 0)}</span>
                       </div>
-                    ))}
+                    </div>
                   </div>
                 )}
 
-                {/* Brigadeiros */}
-                {totalsByCategory.brigadeiros > 0 && (
-                  <div className="mb-2">
-                    <div className="flex justify-between font-semibold text-amber-700 text-xs mb-1">
-                      <span>Brigadeiros:</span>
-                      <span>-{formatCurrency(totalsByCategory.brigadeiros)}</span>
-                    </div>
-                    {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'brigadeiros').map((trans: any) => (
-                      <div key={trans.id} className="flex justify-between text-xs">
-                        <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
-                        <span>-{formatCurrency(parseFloat(trans.amount))}</span>
+                {/* Adições */}
+                {closeResult?.additions > 0 && (
+                  <div className="mb-4 pb-2 border-b-2 border-dashed">
+                    <h4 className="font-bold text-sm mb-2 text-green-700">ADIÇÕES:</h4>
+                    <div className="space-y-1 text-sm">
+                      {closedRegisterData?.transactions?.filter((t: any) => t.type === 'addition').map((trans: any) => (
+                        <div key={trans.id} className="flex justify-between">
+                          <span className="truncate max-w-[150px]">{trans.description || 'Sem descrição'}</span>
+                          <span className="text-green-600">+{formatCurrency(parseFloat(trans.amount))}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between font-bold pt-1 border-t">
+                        <span>Total:</span>
+                        <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
                       </div>
-                    ))}
+                    </div>
                   </div>
                 )}
 
-                {/* Outros */}
-                {totalsByCategory.outros > 0 && (
-                  <div className="mb-2">
-                    <div className="flex justify-between font-semibold text-gray-700 text-xs mb-1">
-                      <span>Outros:</span>
-                      <span>-{formatCurrency(totalsByCategory.outros)}</span>
+                {/* Resumo de Conferência */}
+                <div className="mb-4 pb-2 border-b-2 border-dashed">
+                  <h4 className="font-bold text-sm mb-2">CONFERÊNCIA:</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Valor Informado:</span>
+                      <span className="font-semibold">{formatCurrency(finalClosingAmount)}</span>
                     </div>
-                    {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'outros').map((trans: any) => (
-                      <div key={trans.id} className="flex justify-between text-xs">
-                        <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
-                        <span>-{formatCurrency(parseFloat(trans.amount))}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex justify-between font-bold pt-1 border-t text-sm">
-                  <span>Total:</span>
-                  <span className="text-red-600">-{formatCurrency(closeResult?.withdrawals || 0)}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Vales */}
-            {closeResult?.vouchers > 0 && (
-              <div className="mb-4 pb-2 border-b-2 border-dashed">
-                <h4 className="font-bold text-sm mb-2 text-amber-700">VALES:</h4>
-                <div className="space-y-1 text-sm">
-                  {closedRegisterData?.transactions?.filter((t: any) => t.type === 'voucher').map((trans: any) => (
-                    <div key={trans.id} className="flex justify-between">
-                      <span className="truncate max-w-[150px]">{trans.description || 'Sem descrição'}</span>
-                      <span className="text-amber-600">-{formatCurrency(parseFloat(trans.amount))}</span>
+                    <div className="flex justify-between">
+                      <span>Valor Esperado:</span>
+                      <span className="font-semibold">{formatCurrency(closeResult?.expectedCashAmount || 0)}</span>
                     </div>
-                  ))}
-                  <div className="flex justify-between font-bold pt-1 border-t">
-                    <span>Total:</span>
-                    <span className="text-amber-600">-{formatCurrency(closeResult?.vouchers || 0)}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Adições */}
-            {closeResult?.additions > 0 && (
-              <div className="mb-4 pb-2 border-b-2 border-dashed">
-                <h4 className="font-bold text-sm mb-2 text-green-700">ADIÇÕES:</h4>
-                <div className="space-y-1 text-sm">
-                  {closedRegisterData?.transactions?.filter((t: any) => t.type === 'addition').map((trans: any) => (
-                    <div key={trans.id} className="flex justify-between">
-                      <span className="truncate max-w-[150px]">{trans.description || 'Sem descrição'}</span>
-                      <span className="text-green-600">+{formatCurrency(parseFloat(trans.amount))}</span>
+                    <div className="flex justify-between items-center pt-2 border-t">
+                      <span className="font-bold">DIFERENÇA:</span>
+                      <span className={`font-bold text-lg ${
+                        (closeResult?.difference || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {formatCurrency(closeResult?.difference || 0)}
+                      </span>
                     </div>
-                  ))}
-                  <div className="flex justify-between font-bold pt-1 border-t">
-                    <span>Total:</span>
-                    <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
                   </div>
+                  <p className="text-xs text-gray-500 text-center mt-1">
+                    {(closeResult?.difference || 0) > 0 ? 'Sobrou dinheiro' : 
+                     (closeResult?.difference || 0) < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}
+                  </p>
+                </div>
+
+                {/* Rodapé */}
+                <div className="text-center text-xs text-gray-500 pt-2">
+                  <p>*** OBRIGADO PELA PREFERÊNCIA ***</p>
+                  <p>Empório das Coxinhas</p>
                 </div>
               </div>
-            )}
-
-            {/* Resumo de Conferência */}
-            <div className="mb-4 pb-2 border-b-2 border-dashed">
-              <h4 className="font-bold text-sm mb-2">CONFERÊNCIA:</h4>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Valor Informado:</span>
-                  <span className="font-semibold">{formatCurrency(finalClosingAmount)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Valor Esperado:</span>
-                  <span className="font-semibold">{formatCurrency(closeResult?.expectedCashAmount || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t">
-                  <span className="font-bold">DIFERENÇA:</span>
-                  <span className={`font-bold text-lg ${
-                    (closeResult?.difference || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {formatCurrency(closeResult?.difference || 0)}
-                  </span>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 text-center mt-1">
-                {(closeResult?.difference || 0) > 0 ? 'Sobrou dinheiro' : 
-                 (closeResult?.difference || 0) < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}
-              </p>
-            </div>
-
-            {/* Rodapé */}
-            <div className="text-center text-xs text-gray-500 pt-2">
-              <p>*** OBRIGADO PELA PREFERÊNCIA ***</p>
-              <p>Empório das Coxinhas</p>
-            </div>
-          </div>
-
+            );
+          })()}
+          
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCloseSuccessDialogOpen(false)}>
               Fechar
