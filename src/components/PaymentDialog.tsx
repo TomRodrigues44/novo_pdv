@@ -89,7 +89,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
     if (isComplete && payments.length > 0 && open) {
       const timer = setTimeout(() => {
         handleConfirmPayment();
-      }, 500); // Pequeno delay para o usuário ver que o pagamento foi adicionado
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [isComplete, payments.length, open]);
@@ -180,7 +180,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                     <Separator />
                     <div className="flex justify-between items-center text-lg font-bold">
                       <span>Total:</span>
-                        <span className="text-orange-600">R$ {total.toFixed(2)}</span>
+                      <span className="text-orange-600">R$ {total.toFixed(2)}</span>
                       </span>
                     </div>
                   </div>
