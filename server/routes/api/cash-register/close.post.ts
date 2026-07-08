@@ -46,8 +46,13 @@ export default defineEventHandler(async (event) => {
       if (sale.payments && Array.isArray(sale.payments)) {
         sale.payments.forEach((payment) => {
           const amount = parseFloat(payment.amount);
+          const change = parseFloat(payment.change || 0);
+          
+          // Valor líquido = valor recebido - troco
+          const netAmount = amount - change;
+          
           if (payment.type === 'cash') {
-            cashSales += amount;
+            cashSales += netAmount;
           }
         });
       } else {

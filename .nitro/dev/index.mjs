@@ -932,7 +932,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1758b-gwgWNFjYNqkbtz9l3gLeJE6vT5s\"",
+    "mtime": "2026-07-08T14:38:41.778Z",
+    "size": 95627,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"4ce93-7UxoPg+ANxIQZ+oEfazlbY1+zeI\"",
+    "mtime": "2026-07-08T14:38:41.778Z",
+    "size": 315027,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1410,8 +1425,10 @@ const cashRegister_get = defineEventHandler(async () => {
         if (sale.payments && Array.isArray(sale.payments)) {
           sale.payments.forEach((payment) => {
             const amount = parseFloat(payment.amount);
+            const change = parseFloat(payment.change || 0);
+            const netAmount = amount - change;
             if (salesByPayment[payment.type] !== void 0) {
-              salesByPayment[payment.type] += amount;
+              salesByPayment[payment.type] += netAmount;
             }
           });
         } else {
@@ -1500,8 +1517,10 @@ const close_post = defineEventHandler(async (event) => {
       if (sale.payments && Array.isArray(sale.payments)) {
         sale.payments.forEach((payment) => {
           const amount = parseFloat(payment.amount);
+          const change = parseFloat(payment.change || 0);
+          const netAmount = amount - change;
           if (payment.type === "cash") {
-            cashSales += amount;
+            cashSales += netAmount;
           }
         });
       } else {

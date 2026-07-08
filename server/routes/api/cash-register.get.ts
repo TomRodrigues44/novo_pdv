@@ -36,16 +36,21 @@ export default defineEventHandler(async () => {
       `;
       
       // Calcular totais por forma de pagamento a partir do JSON
-      sales.forEach((sale: any) => {
+      sales.forEach((sale) => {
         const total = parseFloat(sale.total_amount);
         salesTotal += total;
         
         // Se tiver o campo payments (JSON), usar ele
         if (sale.payments && Array.isArray(sale.payments)) {
-          sale.payments.forEach((payment: any) => {
+          sale.payments.forEach((payment) => {
             const amount = parseFloat(payment.amount);
+            const change = parseFloat(payment.change || 0);
+            
+            // Valor líquido = valor recebido - troco
+            const netAmount = amount - change;
+            
             if (salesByPayment[payment.type] !== undefined) {
-              salesByPayment[payment.type] += amount;
+              salesByPayment[payment.type] += netAmount;
             }
           });
         } else {
