@@ -219,10 +219,10 @@ const AdminProducts = () => {
     updateStock(productId, newStock);
   };
 
-  // Filtrar produtos por termo de busca
+  // Filtrar produtos por termo de busca - usando optional chaining e valores padrão
   const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.description.toLowerCase().includes(searchTerm.toLowerCase())
+    (product.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (product.description || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Agrupar produtos por categoria
@@ -320,7 +320,7 @@ const AdminProducts = () => {
                           value={formData.description}
                           onChange={(e) =>
                             setFormData({ ...formData, description: e.target.value })
-                          }
+                            }
                           placeholder="Descrição do produto"
                           required
                         />
@@ -659,7 +659,7 @@ const AdminProducts = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {categoryProducts.map((product) => {
                       // Garantir que o preço seja um número
-                      const price = typeof product.price === 'number' ? product.price : parseFloat(String(product.price));
+                      const price = typeof product.price === 'number' ? product.price : parseFloat(String(product.price || 0));
                       const stock = typeof product.stock === 'number' ? product.stock : parseInt(String(product.stock || 0));
                       
                       return (
