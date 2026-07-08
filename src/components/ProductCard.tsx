@@ -42,7 +42,7 @@ export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
               <img
                 src={product.image}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             ) : (
               <span className="text-5xl">{product.image}</span>
