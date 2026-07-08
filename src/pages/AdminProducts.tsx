@@ -121,27 +121,31 @@ const AdminProducts = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Garantir que o preço tenha um valor válido
+    const priceValue = formData.price ? parseFloat(formData.price) : 0;
+    
     const fiscalInfo: FiscalInfo = {
       ncm: formData.ncm,
       cfop: formData.cfop,
       cest: formData.cest,
       unidade: formData.unidade,
-      icms: parseFloat(formData.icms),
-      ipi: parseFloat(formData.ipi),
-      pis: parseFloat(formData.pis),
-      cofins: parseFloat(formData.cofins),
-      origem: parseInt(formData.origem),
+      icms: parseFloat(formData.icms) || 17,
+      ipi: parseFloat(formData.ipi) || 0,
+      pis: parseFloat(formData.pis) || 0.65,
+      cofins: parseFloat(formData.cofins) || 3,
+      origem: parseInt(formData.origem) || 0,
       codigoBarras: formData.codigoBarras || undefined,
     };
 
     const productData = {
       name: formData.name,
       description: formData.description,
-      price: parseFloat(formData.price),
+      price: priceValue,
       category: formData.category,
       image: formData.image,
-      stock: parseInt(formData.stock),
-      available: parseInt(formData.stock) > 0,
+      stock: parseInt(formData.stock) || 10,
+      available: (parseInt(formData.stock) || 10) > 0,
       fiscal: fiscalInfo,
     };
 
@@ -182,19 +186,19 @@ const AdminProducts = () => {
     setFormData({
       name: product.name || "",
       description: product.description || "",
-      price: String(product.price || ""),
+      price: product.price ? String(product.price) : "",
       category: product.category || "",
       image: product.image || "",
-      stock: String(product.stock || 10),
+      stock: product.stock ? String(product.stock) : "10",
       ncm: product.fiscal?.ncm || "",
       cfop: product.fiscal?.cfop || "",
       cest: product.fiscal?.cest || "",
       unidade: product.fiscal?.unidade || "UN",
-      icms: String(product.fiscal?.icms || "17"),
-      ipi: String(product.fiscal?.ipi || "0"),
-      pis: String(product.fiscal?.pis || "0.65"),
-      cofins: String(product.fiscal?.cofins || "3"),
-      origem: String(product.fiscal?.origem || "0"),
+      icms: product.fiscal?.icms ? String(product.fiscal.icms) : "17",
+      ipi: product.fiscal?.ipi ? String(product.fiscal.ipi) : "0",
+      pis: product.fiscal?.pis ? String(product.fiscal.pis) : "0.65",
+      cofins: product.fiscal?.cofins ? String(product.fiscal.cofins) : "3",
+      origem: product.fiscal?.origem ? String(product.fiscal.origem) : "0",
       codigoBarras: product.fiscal?.codigoBarras || "",
     });
     setImagePreview(product.image || null);
