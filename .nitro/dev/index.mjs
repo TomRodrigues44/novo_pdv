@@ -24,7 +24,7 @@ import { SourceMapConsumer } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das
 import { promises, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
-import { v4 } from 'uuid';
+import { v4 } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
 
 const serverAssets = [{"baseName":"server","dir":"C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/server/assets"}];
 
@@ -932,22 +932,7 @@ const plugins = [
   
 ];
 
-const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"16d00-AhXroEPM6p4s33wjAfWvuUZxCPk\"",
-    "mtime": "2026-07-08T12:33:50.629Z",
-    "size": 93440,
-    "path": "index.mjs"
-  },
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"4ba14-1Hpf/yI4BeiomjhN6H2aMmR8Z0k\"",
-    "mtime": "2026-07-08T12:33:50.629Z",
-    "size": 309780,
-    "path": "index.mjs.map"
-  }
-};
+const assets = {};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));

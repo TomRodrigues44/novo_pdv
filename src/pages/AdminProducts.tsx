@@ -180,11 +180,11 @@ const AdminProducts = () => {
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setFormData({
-      name: product.name,
-      description: product.description,
-      price: String(product.price),
-      category: product.category,
-      image: product.image,
+      name: product.name || "",
+      description: product.description || "",
+      price: String(product.price || ""),
+      category: product.category || "",
+      image: product.image || "",
       stock: String(product.stock || 10),
       ncm: product.fiscal?.ncm || "",
       cfop: product.fiscal?.cfop || "",
@@ -432,7 +432,7 @@ const AdminProducts = () => {
                           <div>
                             <h4 className="font-semibold text-blue-900">Informações Fiscais</h4>
                             <p className="text-sm text-blue-700">
-                              Dados necessários para emissão de Nota Fiscal e Cupom Fiscal conforme SEFAZ-RR
+                              Dados necessários para emissão de nota fiscal e cupom fiscal conforme SEFAZ-RR
                             </p>
                           </div>
                         </div>
@@ -529,7 +529,7 @@ const AdminProducts = () => {
                           </label>
                           <Input
                             type="number"
-                            step="0.01"
+                            step="0"
                             value={formData.ipi}
                             onChange={(e) =>
                               setFormData({ ...formData, ipi: e.target.value })
