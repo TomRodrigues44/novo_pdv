@@ -19,6 +19,7 @@ interface PaymentMethod {
   type: "debit" | "credit" | "pix" | "cash";
   amount: number;
   cashReceived?: number;
+  change?: number;
 }
 
 interface PaymentDialogProps {
@@ -35,7 +36,6 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
   const [selectedType, setSelectedType] = useState<"debit" | "credit" | "pix" | "cash">("debit");
   const [amount, setAmount] = useState("");
-  const [cashReceived, setCashReceived] = useState("");
 
   const subtotal = total - freight;
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -52,16 +52,14 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
       amount: paymentAmount,
     };
 
-    if (selectedType === "cash") {
-      const received = parseFloat(cashReceived);
-      if (received && received >= paymentAmount) {
-        newPayment.cashReceived = received;
-      }
+    // Se for dinheiro e o valor for maior que o restante, calcular troco
+    if (selectedType === "cash" && paymentAmount > remaining) {
+      newPayment.cashReceived = paymentAmount;
+      newPayment.change = paymentAmount - remaining;
     }
 
     setPayments([...payments, newPayment]);
     setAmount("");
-    setCashReceived("");
   };
 
   const removePayment = (id: string) => {
@@ -80,7 +78,6 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
   const handleClose = () => {
     setPayments([]);
     setAmount("");
-    setCashReceived("");
     onClose();
   };
 
@@ -96,10 +93,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
 
   // Calcular troco total
   const totalChange = payments.reduce((sum, p) => {
-    if (p.type === "cash" && p.cashReceived) {
-      return sum + (p.cashReceived - p.amount);
-    }
-    return sum;
+    return sum + (p.change || 0);
   }, 0);
 
   const getPaymentTypeName = (type: string) => {
@@ -179,7 +173,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                     )}
                     <Separator />
                     <div className="flex justify-between items-center text-lg font-bold">
-                      <span>Total:</span>
+                      <span className="text-gray-800">Total:</span>
                       <span className="text-orange-600">R$ {total.toFixed(2)}</span>
                     </div>
                   </div>
@@ -221,9 +215,9 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                             <p className="font-medium text-sm">
                               {getPaymentTypeName(payment.type)}
                             </p>
-                            {payment.type === "cash" && payment.cashReceived && (
-                              <p className="text-xs text-gray-500">
-                                Recebido: R$ {payment.cashReceived.toFixed(2)} • Troco: R$ {(payment.cashReceived - payment.amount).toFixed(2)}
+                            {payment.type === "cash" && payment.change && payment.change > 0 && (
+                              <p className="text-xs text-green-600">
+                                Troco: R$ {payment.change.toFixed(2)}
                               </p>
                             )}
                           </div>
@@ -255,7 +249,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                   )}
                   {totalChange > 0 && (
                     <div className="bg-green-50 p-2 rounded-lg text-center">
-                      <span className="font-medium text-green-700 text-sm">Troco: R$ {totalChange.toFixed(2)}</span>
+                      <span className="font-medium text-green-700 text-sm">Troco Total: R$ {totalChange.toFixed(2)}</span>
                     </div>
                   )}
                 </div>
@@ -317,30 +311,31 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                     </TabsContent>
 
                     <TabsContent value="cash" className="space-y-3">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
-                      />
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={cashReceived}
-                        onChange={(e) => setCashReceived(e.target.value)}
-                        placeholder="Valor Recebido"
-                      />
-                      {amount && cashReceived && parseFloat(cashReceived) < parseFloat(amount) && (
-                        <p className="text-sm text-red-600">
-                          Valor recebido é menor que o pagamento!
-                        </p>
-                      )}
-                      {amount && cashReceived && parseFloat(cashReceived) >= parseFloat(amount) && (
-                        <p className="text-sm text-green-600">
-                          Troco: R$ {(parseFloat(cashReceived) - parseFloat(amount)).toFixed(2)}
-                        </p>
-                      )}
+                      <div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={amount}
+                          onChange={(e) => setAmount(e.target.value)}
+                          placeholder="Valor recebido"
+                        />
+                        {amount && parseFloat(amount) > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {remaining > 0 && parseFloat(amount) < remaining && (
+                              <p className="text-sm text-orange-600">
+                                Ainda faltam: R$ {(remaining - parseFloat(amount)).toFixed(2)}
+                              </p>
+                            )}
+                            {parseFloat(amount) >= remaining && (
+                              <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                                <p className="text-sm text-green-700 font-medium">
+                                  Troco: R$ {(parseFloat(amount) - remaining).toFixed(2)}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </TabsContent>
                   </Tabs>
 
