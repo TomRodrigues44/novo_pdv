@@ -106,6 +106,17 @@ const CashRegister = () => {
     }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
   };
 
+  // Helper para obter o nome de exibição da categoria
+  const getCategoryDisplayName = (cat: string): string => {
+    switch (cat) {
+      case 'taxa_entrega': return 'Deliverys';
+      case 'ifood': return 'Ifoods';
+      case 'brigadeiros': return 'Brigadeiros';
+      case 'outros': return 'Outros';
+      default: return cat;
+    }
+  };
+
   const handleOpenRegister = async () => {
     try {
       const response = await fetch('/api/cash-register/open', {
@@ -392,11 +403,11 @@ const CashRegister = () => {
                     {/* Totais por Categoria */}
                     <div className="grid grid-cols-2 gap-2 mb-4">
                       <div className="bg-orange-50 p-2 rounded text-center">
-                        <p className="text-xs text-orange-700 font-medium">Taxa Entrega</p>
+                        <p className="text-xs text-orange-700 font-medium">Deliverys</p>
                         <p className="font-bold text-orange-600">{formatCurrency(totalsByCategory.taxa_entrega)}</p>
                       </div>
                       <div className="bg-red-50 p-2 rounded text-center">
-                        <p className="text-xs text-red-700 font-medium">iFood</p>
+                        <p className="text-xs text-red-700 font-medium">Ifoods</p>
                         <p className="font-bold text-red-600">{formatCurrency(totalsByCategory.ifood)}</p>
                       </div>
                       <div className="bg-amber-50 p-2 rounded text-center">
@@ -980,11 +991,11 @@ const CashRegister = () => {
                       <span className="font-bold text-red-600">-{formatCurrency(totalWithdrawals)}</span>
                     </div>
                     
-                    {/* Taxa Entrega */}
+                    {/* Deliverys */}
                     {closedTotalsByCategory.taxa_entrega > 0 && (
                       <div className="mb-2">
                         <div className="flex justify-between font-semibold text-orange-700 text-xs mb-1">
-                          <span>Taxa Entrega:</span>
+                          <span>Deliverys:</span>
                           <span>-{formatCurrency(closedTotalsByCategory.taxa_entrega)}</span>
                         </div>
                         {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'taxa_entrega').map((trans: any) => (
@@ -996,11 +1007,11 @@ const CashRegister = () => {
                       </div>
                     )}
 
-                    {/* iFood */}
+                    {/* Ifoods */}
                     {closedTotalsByCategory.ifood > 0 && (
                       <div className="mb-2">
                         <div className="flex justify-between font-semibold text-red-700 text-xs mb-1">
-                          <span>iFood:</span>
+                          <span>Ifoods:</span>
                           <span>-{formatCurrency(closedTotalsByCategory.ifood)}</span>
                         </div>
                         {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'ifood').map((trans: any) => (
