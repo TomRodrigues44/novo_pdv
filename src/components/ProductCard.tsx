@@ -37,7 +37,7 @@ export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-2 hover:border-orange-400 flex flex-col">
         <CardContent className="p-4 flex-1 flex flex-col">
           {/* Container de Imagem com tamanho fixo e ajuste automático */}
-          <div className="w-full h-48 mb-4 overflow-hidden rounded-lg bg-gray-100 flex items-center justify-center">
+          <div className="w-full h-40 mb-4 overflow-hidden rounded-lg bg-gray-100 flex items-center justify-center">
             {isRealImage ? (
               <img
                 src={product.image}
@@ -45,7 +45,7 @@ export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <span className="text-6xl">{product.image}</span>
+              <span className="text-5xl">{product.image}</span>
             )}
           </div>
           
