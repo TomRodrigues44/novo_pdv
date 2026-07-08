@@ -25,7 +25,7 @@ export default defineEventHandler(async () => {
             CASE name
               WHEN 'Cento - 100 unidades' THEN 1
               WHEN 'Meio Cento - 50 unidades' THEN 2
-              WHEN 'Copo G - 30 unidades' THEN 3
+              WHEN 'Copo G - 30 Unidades' THEN 3
               WHEN 'Copo M - 20 unidades' THEN 4
               WHEN 'Copo P - 10 unidades' THEN 5
               ELSE 6

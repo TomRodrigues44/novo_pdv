@@ -935,15 +935,15 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1758b-gwgWNFjYNqkbtz9l3gLeJE6vT5s\"",
-    "mtime": "2026-07-08T14:38:41.778Z",
+    "etag": "\"1758b-ePO2UDlLP/LAjY2OoTQ8nVcNKsU\"",
+    "mtime": "2026-07-08T14:54:19.033Z",
     "size": 95627,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
     "etag": "\"4ce93-7UxoPg+ANxIQZ+oEfazlbY1+zeI\"",
-    "mtime": "2026-07-08T14:38:41.778Z",
+    "mtime": "2026-07-08T14:54:19.033Z",
     "size": 315027,
     "path": "index.mjs.map"
   }
@@ -2406,7 +2406,7 @@ const products_get = defineEventHandler(async () => {
             CASE name
               WHEN 'Cento - 100 unidades' THEN 1
               WHEN 'Meio Cento - 50 unidades' THEN 2
-              WHEN 'Copo G - 30 unidades' THEN 3
+              WHEN 'Copo G - 30 Unidades' THEN 3
               WHEN 'Copo M - 20 unidades' THEN 4
               WHEN 'Copo P - 10 unidades' THEN 5
               ELSE 6
