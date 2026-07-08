@@ -14,8 +14,7 @@ export const CartItemComponent = ({ item, onUpdateQuantity, onRemove }: CartItem
 
   return (
     <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg">
-      <div className="flex items-center gap-3">
-        <div className="text-3xl">{item.image}</div>
+      <div className="flex items-center justify-between">
         <div className="flex-1">
           <h4 className="font-semibold text-gray-800">{item.name}</h4>
           <p className="text-sm text-orange-600 font-medium">
@@ -25,7 +24,7 @@ export const CartItemComponent = ({ item, onUpdateQuantity, onRemove }: CartItem
       </div>
       
       {item.flavors && item.flavors.length > 0 && (
-        <div className="bg-orange-50 rounded-lg p-2 ml-11">
+        <div className="bg-orange-50 rounded-lg p-2">
           <p className="text-xs font-semibold text-orange-700 mb-1">Sabores:</p>
           <div className="flex flex-wrap gap-1">
             {item.flavors.map((flavor, index) => (
@@ -40,7 +39,7 @@ export const CartItemComponent = ({ item, onUpdateQuantity, onRemove }: CartItem
         </div>
       )}
       
-      <div className="flex items-center justify-between ml-11">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button
             size="icon"
