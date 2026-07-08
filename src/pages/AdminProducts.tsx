@@ -33,9 +33,13 @@ import {
   Package,
   FileText,
   Search,
+  Upload,
+  X,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Product, FiscalInfo } from "@/types/product";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
 
 const AdminProducts = () => {
   const { products, categories, addProduct, updateProduct, deleteProduct, updateStock } = useAdmin();
@@ -61,6 +65,59 @@ const AdminProducts = () => {
     origem: "0",
     codigoBarras: "",
   });
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar se é uma imagem
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor, selecione uma imagem válida');
+      return;
+    }
+
+    // Validar tamanho (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 5MB');
+      return;
+    }
+
+    setUploadingImage(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao fazer upload');
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.url) {
+        setFormData({ ...formData, image: result.url });
+        setImagePreview(result.url);
+        toast.success('Imagem carregada com sucesso!');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Erro ao carregar a imagem');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData({ ...formData, image: "" });
+    setImagePreview(null);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,6 +174,7 @@ const AdminProducts = () => {
       origem: "0",
       codigoBarras: "",
     });
+    setImagePreview(null);
   };
 
   const handleEdit = (product: Product) => {
@@ -139,6 +197,7 @@ const AdminProducts = () => {
       origem: String(product.fiscal?.origem || "0"),
       codigoBarras: product.fiscal?.codigoBarras || "",
     });
+    setImagePreview(product.image || null);
     setIsDialogOpen(true);
   };
 
@@ -303,16 +362,66 @@ const AdminProducts = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium mb-2">
-                          Imagem (Emoji ou URL)
+                          Imagem do Produto
                         </label>
-                        <Input
-                          value={formData.image}
-                          onChange={(e) =>
-                            setFormData({ ...formData, image: e.target.value })
-                          }
-                          placeholder="Ex: 🥟"
-                          required
-                        />
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-4">
+                            <div className="relative">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                disabled={uploadingImage}
+                                className="hidden"
+                                id="image-upload"
+                              />
+                              <label
+                                htmlFor="image-upload"
+                                className="flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-700 rounded-lg cursor-pointer hover:bg-orange-100 transition-colors"
+                              >
+                                {uploadingImage ? (
+                                  <>
+                                    <div className="w-4 h-4 border-2 border-orange-300 border-t-orange-600 rounded-full animate-spin" />
+                                    <span>Carregando...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload className="h-4 w-4" />
+                                    <span>Carregar Imagem</span>
+                                  </>
+                                )}
+                              </label>
+                            </div>
+                            {imagePreview && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleRemoveImage}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                          
+                          {imagePreview ? (
+                            <div className="mt-3">
+                              <img
+                                src={imagePreview}
+                                alt="Preview"
+                                className="w-full h-48 object-cover rounded-lg border-2 border-gray-200"
+                              />
+                            </div>
+                          ) : (
+                            <div className="mt-3 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                              <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                              <p className="text-sm text-gray-500">
+                                Nenhuma imagem selecionada
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </TabsContent>
                     
@@ -557,7 +666,15 @@ const AdminProducts = () => {
                           <CardHeader>
                             <CardTitle className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <span className="text-4xl">{product.image}</span>
+                                {product.image && product.image.startsWith('/products/') ? (
+                                  <img
+                                    src={product.image}
+                                    alt={product.name}
+                                    className="w-16 h-16 object-cover rounded-lg"
+                                  />
+                                ) : (
+                                  <span className="text-4xl">{product.image}</span>
+                                )}
                                 <div>
                                   <p className="font-medium">{product.name}</p>
                                   <p className="text-sm text-orange-600 font-bold">

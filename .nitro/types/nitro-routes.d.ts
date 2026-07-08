@@ -76,6 +76,9 @@ declare module "nitropack/types" {
     '/api/test-db': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/test-db.get').default>>>>
     }
+    '/api/upload': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/upload.post').default>>>>
+    }
   }
 }
 export {}

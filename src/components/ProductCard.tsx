@@ -29,11 +29,24 @@ export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
   // Garantir que o preço seja um número
   const price = typeof product.price === 'number' ? product.price : parseFloat(String(product.price));
 
+  // Verificar se é uma imagem real (começa com /products/) ou emoji
+  const isRealImage = product.image && product.image.startsWith('/products/');
+
   return (
     <>
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-2 hover:border-orange-400">
         <CardContent className="p-4">
-          <div className="text-6xl text-center mb-4">{product.image}</div>
+          <div className="text-6xl text-center mb-4">
+            {isRealImage ? (
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-full h-40 object-cover rounded-lg"
+              />
+            ) : (
+              <span>{product.image}</span>
+            )}
+          </div>
           <h3 className="font-bold text-lg mb-2 text-gray-800">{product.name}</h3>
           <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
           <div className="flex items-center justify-between">

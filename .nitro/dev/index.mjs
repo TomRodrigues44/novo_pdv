@@ -3,7 +3,7 @@ import { Server } from 'node:http';
 import { resolve, dirname, join } from 'node:path';
 import nodeCrypto from 'node:crypto';
 import { parentPort, threadId } from 'node:worker_threads';
-import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestURL, getRequestHeader, getResponseHeader, getRequestHeaders, setResponseHeaders, setResponseStatus, send, removeResponseHeader, appendResponseHeader, setResponseHeader, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, readBody, getQuery as getQuery$1 } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index.mjs';
+import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestURL, getRequestHeader, getResponseHeader, getRequestHeaders, setResponseHeaders, setResponseStatus, send, removeResponseHeader, appendResponseHeader, setResponseHeader, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, readBody, getQuery as getQuery$1, readFormData } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index.mjs';
 import destr from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/destr@2.0.5/node_modules/destr/dist/index.mjs';
 import { createHooks } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/hookable@5.5.3/node_modules/hookable/dist/index.mjs';
 import { createFetch, Headers as Headers$1 } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/ofetch@1.5.1/node_modules/ofetch/dist/node.mjs';
@@ -16,7 +16,7 @@ import { klona } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/no
 import defu, { defuFn } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/defu@6.1.7/node_modules/defu/dist/defu.mjs';
 import { snakeCase } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/scule@1.3.0/node_modules/scule/dist/index.mjs';
 import { toRouteMatcher, createRouter } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/radix3@1.1.2/node_modules/radix3/dist/index.mjs';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import consola from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/index.mjs';
 import { ErrorParser } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/youch-core@0.3.3/node_modules/youch-core/build/index.js';
 import { Youch } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/youch@4.1.1/node_modules/youch/build/index.js';
@@ -24,6 +24,7 @@ import { SourceMapConsumer } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das
 import { promises, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
+import { v4 } from 'uuid';
 
 const serverAssets = [{"baseName":"server","dir":"C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/server/assets"}];
 
@@ -931,7 +932,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"16d00-AhXroEPM6p4s33wjAfWvuUZxCPk\"",
+    "mtime": "2026-07-08T12:33:50.629Z",
+    "size": 93440,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"4ba14-1Hpf/yI4BeiomjhN6H2aMmR8Z0k\"",
+    "mtime": "2026-07-08T12:33:50.629Z",
+    "size": 309780,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1051,6 +1067,7 @@ const _lazy_nl6xh4 = () => Promise.resolve().then(function () { return sales_get
 const _lazy__VRAiA = () => Promise.resolve().then(function () { return sales_post$1; });
 const _lazy_aXzNxt = () => Promise.resolve().then(function () { return status_put$1; });
 const _lazy_C90ob_ = () => Promise.resolve().then(function () { return testDb_get$1; });
+const _lazy_RQnKGR = () => Promise.resolve().then(function () { return upload_post$1; });
 
 const handlers = [
   { route: '', handler: _ngUQxC, lazy: false, middleware: true, method: undefined },
@@ -1084,7 +1101,8 @@ const handlers = [
   { route: '/api/sales', handler: _lazy_nl6xh4, lazy: true, middleware: false, method: "get" },
   { route: '/api/sales', handler: _lazy__VRAiA, lazy: true, middleware: false, method: "post" },
   { route: '/api/sales/:id/status', handler: _lazy_aXzNxt, lazy: true, middleware: false, method: "put" },
-  { route: '/api/test-db', handler: _lazy_C90ob_, lazy: true, middleware: false, method: "get" }
+  { route: '/api/test-db', handler: _lazy_C90ob_, lazy: true, middleware: false, method: "get" },
+  { route: '/api/upload', handler: _lazy_RQnKGR, lazy: true, middleware: false, method: "post" }
 ];
 
 function createNitroApp() {
@@ -2810,5 +2828,47 @@ const testDb_get = defineEventHandler(async () => {
 const testDb_get$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: testDb_get
+});
+
+const upload_post = defineEventHandler(async (event) => {
+  try {
+    const formData = await readFormData(event);
+    const file = formData.get("file");
+    if (!file) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Nenhum arquivo enviado"
+      });
+    }
+    if (!file.type.startsWith("image/")) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "O arquivo deve ser uma imagem"
+      });
+    }
+    const productsDir = join(process.cwd(), "public", "products");
+    await mkdir(productsDir, { recursive: true });
+    const ext = file.name.split(".").pop();
+    const filename = `${v4()}.${ext}`;
+    const filepath = join(productsDir, filename);
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    await writeFile(filepath, buffer);
+    return {
+      success: true,
+      url: `/products/${filename}`
+    };
+  } catch (error) {
+    console.error("Error uploading image:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Erro ao fazer upload da imagem"
+    });
+  }
+});
+
+const upload_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: upload_post
 });
 //# sourceMappingURL=index.mjs.map
