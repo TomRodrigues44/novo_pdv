@@ -81,8 +81,8 @@ const CashRegister = () => {
   // Helper para extrair categoria da descrição
   const getCategoryFromDescription = (desc: string | null | undefined): 'taxa_entrega' | 'ifood' | 'brigadeiros' | 'outros' => {
     if (!desc) return 'outros';
-    if (desc.startsWith('Entregas')) return 'taxa_entrega';
-    if (desc.startsWith('iFoods')) return 'ifood';
+    if (desc.startsWith('Taxa Entrega')) return 'taxa_entrega';
+    if (desc.startsWith('iFood')) return 'ifood';
     if (desc.startsWith('Brigadeiros')) return 'brigadeiros';
     return 'outros';
   };
@@ -90,8 +90,8 @@ const CashRegister = () => {
   // Helper para extrair descrição limpa (sem o prefixo da categoria)
   const getCleanDescription = (desc: string | null | undefined): string => {
     if (!desc) return 'Sem descrição';
-    if (desc.startsWith('Entregas: ')) return desc.replace('Entregas: ', '');
-    if (desc.startsWith('iFoods: ')) return desc.replace('iFoods: ', '');
+    if (desc.startsWith('Taxa Entrega: ')) return desc.replace('Taxa Entrega: ', '');
+    if (desc.startsWith('iFood: ')) return desc.replace('iFood: ', '');
     if (desc.startsWith('Brigadeiros: ')) return desc.replace('Brigadeiros: ', '');
     return desc;
   };
@@ -171,8 +171,8 @@ const CashRegister = () => {
       // Se for sangria, adicionar prefixo da categoria
       if (type === 'withdrawal') {
         const categoryPrefix = {
-          taxa_entrega: 'Entregas',
-          ifood: 'iFoods',
+          taxa_entrega: 'Taxa Entrega',
+          ifood: 'iFood',
           brigadeiros: 'Brigadeiros',
           outros: 'Outros'
         }[transactionCategory];
@@ -392,11 +392,11 @@ const CashRegister = () => {
                     {/* Totais por Categoria */}
                     <div className="grid grid-cols-2 gap-2 mb-4">
                       <div className="bg-orange-50 p-2 rounded text-center">
-                        <p className="text-xs text-orange-700 font-medium">Entregas</p>
+                        <p className="text-xs text-orange-700 font-medium">Taxa Entrega</p>
                         <p className="font-bold text-orange-600">{formatCurrency(totalsByCategory.taxa_entrega)}</p>
                       </div>
                       <div className="bg-red-50 p-2 rounded text-center">
-                        <p className="text-xs text-red-700 font-medium">iFoods</p>
+                        <p className="text-xs text-red-700 font-medium">iFood</p>
                         <p className="font-bold text-red-600">{formatCurrency(totalsByCategory.ifood)}</p>
                       </div>
                       <div className="bg-amber-50 p-2 rounded text-center">
@@ -443,7 +443,7 @@ const CashRegister = () => {
                                 <SelectItem value="ifood">
                                   <div className="flex items-center gap-2">
                                     <Smartphone className="h-4 w-4" />
-                                    Taxas de iFoods
+                                    Taxas de iFood
                                   </div>
                                 </SelectItem>
                                 <SelectItem value="brigadeiros">
@@ -455,7 +455,7 @@ const CashRegister = () => {
                                 <SelectItem value="taxa_entrega">
                                   <div className="flex items-center gap-2">
                                     <Bike className="h-4 w-4" />
-                                    Entregas
+                                    Taxa Entrega
                                   </div>
                                 </SelectItem>
                                 <SelectItem value="outros">
@@ -980,11 +980,11 @@ const CashRegister = () => {
                       <span className="font-bold text-red-600">-{formatCurrency(totalWithdrawals)}</span>
                     </div>
                     
-                    {/* Taxa Entrega - Agora "Entregas" */}
+                    {/* Taxa Entrega */}
                     {closedTotalsByCategory.taxa_entrega > 0 && (
                       <div className="mb-2">
                         <div className="flex justify-between font-semibold text-orange-700 text-xs mb-1">
-                          <span>Entregas:</span>
+                          <span>Taxa Entrega:</span>
                           <span>-{formatCurrency(closedTotalsByCategory.taxa_entrega)}</span>
                         </div>
                         {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'taxa_entrega').map((trans: any) => (
@@ -996,11 +996,11 @@ const CashRegister = () => {
                       </div>
                     )}
 
-                    {/* iFood - Agora "iFoods" */}
+                    {/* iFood */}
                     {closedTotalsByCategory.ifood > 0 && (
                       <div className="mb-2">
                         <div className="flex justify-between font-semibold text-red-700 text-xs mb-1">
-                          <span>iFoods:</span>
+                          <span>iFood:</span>
                           <span>-{formatCurrency(closedTotalsByCategory.ifood)}</span>
                         </div>
                         {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'ifood').map((trans: any) => (
@@ -1078,7 +1078,7 @@ const CashRegister = () => {
                       ))}
                       <div className="flex justify-between font-bold pt-1 border-t">
                         <span>Total:</span>
-                          <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
+                        <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
                       </div>
                     </div>
                   </div>
