@@ -23,7 +23,7 @@ const CashRegister = () => {
   const [finalClosingAmount, setFinalClosingAmount] = useState(0);
   const [transactionAmount, setTransactionAmount] = useState('');
   const [transactionDescription, setTransactionDescription] = useState('');
-  const [transactionCategory, setTransactionCategory] = useState<'taxa_entrega' | 'ifood' | 'brigadeiros' | 'outros'>('ifood');
+  const [transactionCategory, setTransactionCategory] = useState('taxa_entrega');
   const [notes, setNotes] = useState('');
   const [closeResult, setCloseResult] = useState<any>(null);
   const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
@@ -64,7 +64,7 @@ const CashRegister = () => {
     return () => clearInterval(interval);
   }, [currentRegister]);
 
-  const getCategoryFromDescription = (desc: string | null | undefined): 'taxa_entrega' | 'ifood' | 'brigadeiros' | 'outros' => {
+  const getCategoryFromDescription = (desc: string | null | undefined) => {
     if (!desc) return 'outros';
     if (desc.startsWith('Taxa Entrega')) return 'taxa_entrega';
     if (desc.startsWith('iFood')) return 'ifood';
@@ -72,7 +72,7 @@ const CashRegister = () => {
     return 'outros';
   };
 
-  const getCleanDescription = (desc: string | null | undefined): string => {
+  const getCleanDescription = (desc: string | null | undefined) => {
     if (!desc) return 'Sem descrição';
     if (desc.startsWith('Taxa Entrega: ')) return desc.replace('Taxa Entrega: ', '');
     if (desc.startsWith('iFood: ')) return desc.replace('iFood: ', '');
@@ -1104,7 +1104,7 @@ const CashRegister = () => {
             left: 0;
             top: 0;
             width: 80mm;
-            font-family: 'Courier New', monospace;
+            font-family: Courier New, monospace;
             font-size: 12px;
             padding: 5mm;
             background: white;
@@ -1122,8 +1122,8 @@ const CashRegister = () => {
           }
           .printable-receipt .border-b-2,
           .printable-receipt .border-t {
-            border-bottom: 2px dashed black !important;
-            border-top: 2px dashed black !important;
+            border-bottom: 2px dashed black;
+            border-top: 2px dashed black;
           }
           .printable-receipt .flex {
             display: flex;
@@ -1142,36 +1142,36 @@ const CashRegister = () => {
             font-size: 9px;
           }
           .printable-receipt .text-gray-500,
-          .printary-receipt .text-gray-600,
-          .printary-receipt .text-red-600,
-          .printary-receipt .text-red-700,
-          .printary-receipt .text-green-600,
-          .printary-receipt .text-green-700,
-          .printary-receipt .text-amber-600,
-          .printary-receipt .text-amber-700,
-          .printary-receipt .text-blue-600,
-          .printary-receipt .text-blue-700,
-          .printary-receipt .text-orange-600,
-          .printary-receipt .text-orange-700,
           .printable-receipt .text-gray-600,
-          .printary-receipt .text-gray-700,
-          .printary-receipt .text-gray-500,
-          .printary-receipt .text-gray-600,
-          .printary-receipt .text-gray-700,
-          .printary-receipt .text-red-600,
-          .printary-receipt .text-red-700,
-          .printary-receipt .text-green-600,
-          .printary-react .text-green-700,
-          .printary-receipt .text-amber-600,
-          .printary-receipt .text-amber-700,
-          .printary-receipt .text-blue-600,
-          .printary-receipt .text-blue-700,
-          .printary-receipt .text-orange-600,
-          .printary-receipt .text-orange-700,
+          .printable-receipt .text-red-600,
+          .printable-receipt .text-red-700,
+          .printable-receipt .text-green-600,
+          .printable-receipt .text-green-700,
+          .printable-receipt .text-amber-600,
+          .printable-receipt .text-amber-700,
+          .printable-receipt .text-blue-600,
+          .printable-receipt .text-blue-700,
+          .printable-receipt .text-orange-600,
+          .printable-receipt .text-orange-700,
+          .printable-receipt .text-gray-600,
+          .printable-receipt .text-gray-700,
+          .printable-receipt .text-gray-500,
+          .printable-receipt .text-gray-600,
+          .printable-receipt .text-gray-700,
+          .printable-receipt .text-red-600,
+          .printable-receipt .text-red-700,
+          .printable-receipt .text-green-600,
+          .printable-receipt .text-green-700,
+          .printable-receipt .text-amber-600,
+          .printable-receipt .text-amber-700,
+          .printable-receipt .text-blue-600,
+          .printable-receipt .text-blue-700,
+          .printable-receipt .text-orange-600,
+          .printable-receipt .text-orange-700,
           .printable-receipt .button,
           .printable-receipt .dialog-header,
           .printable-receipt .dialog-footer {
-            display: none !important;
+            display: none;
           }
         }
       `}</style>
