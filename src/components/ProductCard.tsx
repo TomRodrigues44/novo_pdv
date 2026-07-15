@@ -34,7 +34,10 @@ export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
 
   return (
     <>
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-2 hover:border-orange-400 flex flex-col">
+      <Card 
+        className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-2 hover:border-orange-400 flex flex-col cursor-pointer"
+        onClick={handleAddToCart}
+      >
         <CardContent className="p-4 flex-1 flex flex-col">
           {/* Container de Imagem com tamanho fixo e ajuste automático */}
           <div className="w-full h-40 mb-4 overflow-hidden rounded-lg bg-gray-100 flex items-center justify-center">
@@ -60,7 +63,6 @@ export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
         </CardContent>
         <CardFooter className="p-4 pt-0">
           <Button
-            onClick={handleAddToCart}
             className="w-full bg-orange-500 hover:bg-orange-600 text-white"
             disabled={!product.available}
           >
