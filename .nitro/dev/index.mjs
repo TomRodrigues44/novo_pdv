@@ -935,16 +935,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"18fc1-kUmJZ7Qf4Ps42w6+DhKZMD9LPCk\"",
-    "mtime": "2026-07-15T14:40:09.343Z",
-    "size": 102337,
+    "etag": "\"19189-AKEo6IMApTbhd7/e/2kiNvxGVo4\"",
+    "mtime": "2026-07-15T15:09:17.565Z",
+    "size": 102793,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"52656-jUDNPv0ao2XLy7kEi6Lo9yRznac\"",
-    "mtime": "2026-07-15T14:40:09.343Z",
-    "size": 337494,
+    "etag": "\"52737-n4qa1yDRT2J7AuXZpIyM4GU+F3I\"",
+    "mtime": "2026-07-15T15:09:17.565Z",
+    "size": 337719,
     "path": "index.mjs.map"
   }
 };
@@ -1056,6 +1056,7 @@ const _lazy_N2rBSe = () => Promise.resolve().then(function () { return certifica
 const _lazy_0mr2g0 = () => Promise.resolve().then(function () { return certificates_post$1; });
 const _lazy_8HWzgs = () => Promise.resolve().then(function () { return companyConfig_get$1; });
 const _lazy_PpOTdY = () => Promise.resolve().then(function () { return companyConfig_post$1; });
+const _lazy_M8uIuJ = () => Promise.resolve().then(function () { return testConnection_post$1; });
 const _lazy_zELk_7 = () => Promise.resolve().then(function () { return categories_post$1; });
 const _lazy_GwWEhE = () => Promise.resolve().then(function () { return products_post$3; });
 const _lazy_lNzaoz = () => Promise.resolve().then(function () { return sales_post$3; });
@@ -1095,6 +1096,7 @@ const handlers = [
   { route: '/api/fiscal/certificates', handler: _lazy_0mr2g0, lazy: true, middleware: false, method: "post" },
   { route: '/api/fiscal/company-config', handler: _lazy_8HWzgs, lazy: true, middleware: false, method: "get" },
   { route: '/api/fiscal/company-config', handler: _lazy_PpOTdY, lazy: true, middleware: false, method: "post" },
+  { route: '/api/fiscal/test-connection', handler: _lazy_M8uIuJ, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/categories', handler: _lazy_zELk_7, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/products', handler: _lazy_GwWEhE, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/sales', handler: _lazy_lNzaoz, lazy: true, middleware: false, method: "post" },
@@ -2278,6 +2280,83 @@ const companyConfig_post = defineEventHandler(async (event) => {
 const companyConfig_post$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: companyConfig_post
+});
+
+const testConnection_post = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const configResult = await sql`
+      SELECT * FROM company_fiscal_config
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    if (!configResult || configResult.length === 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Configura\xE7\xE3o da empresa n\xE3o encontrada"
+      });
+    }
+    const config = configResult[0];
+    const certResult = await sql`
+      SELECT * FROM digital_certificates
+      WHERE ativo = true
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    if (!certResult || certResult.length === 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Nenhum certificado ativo encontrado"
+      });
+    }
+    const cert = certResult[0];
+    const now = /* @__PURE__ */ new Date();
+    const validade = new Date(cert.data_validade);
+    if (validade < now) {
+      return {
+        success: false,
+        message: "Certificado expirado",
+        details: {
+          validade: validade.toISOString(),
+          hoje: now.toISOString()
+        }
+      };
+    }
+    const sefazUrl = config.ambiente === "producao" ? "https://nfe.sefaz.rr.gov.br/nfe/services/NfeStatusServico2" : "https://homologacao.nfe.sefaz.rr.gov.br/nfe/services/NfeStatusServico2";
+    const diasRestantes = Math.floor((validade.getTime() - now.getTime()) / (1e3 * 60 * 60 * 24));
+    return {
+      success: true,
+      message: "Conex\xE3o com SEFAZ-RR estabelecida com sucesso",
+      details: {
+        ambiente: config.ambiente,
+        cnpj: config.cnpj,
+        razao_social: config.razao_social,
+        certificado: {
+          nome: cert.nome,
+          validade: validade.toISOString(),
+          dias_restantes: diasRestantes
+        },
+        sefaz_url: sefazUrl,
+        nota: "Este \xE9 um teste simulado. Em produ\xE7\xE3o, uma requisi\xE7\xE3o SOAP real seria feita."
+      }
+    };
+  } catch (error) {
+    console.error("Error testing SEFAZ connection:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error testing SEFAZ connection"
+    });
+  }
+});
+
+const testConnection_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: testConnection_post
 });
 
 const categories_post = defineEventHandler(async (event) => {

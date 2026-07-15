@@ -14,13 +14,18 @@ import {
   AlertTriangle,
   Calendar,
   Trash2,
-  Settings
+  Settings,
+  RefreshCw,
+  Link,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
 const AdminFiscal = () => {
   const [activeTab, setActiveTab] = useState("empresa");
   const [loading, setLoading] = useState(true);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionResult, setConnectionResult] = useState<any>(null);
   
   // Configuração da Empresa
   const [companyConfig, setCompanyConfig] = useState({
@@ -159,6 +164,35 @@ const AdminFiscal = () => {
       }
     } catch (error) {
       toast.error('Erro ao excluir certificado');
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setTestingConnection(true);
+    setConnectionResult(null);
+
+    try {
+      const response = await fetch('/api/fiscal/test-connection', {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setConnectionResult(result);
+        
+        if (result.success) {
+          toast.success('Conexão com SEFAZ estabelecida com sucesso!');
+        } else {
+          toast.error('Erro na conexão: ' + result.message);
+        }
+      } else {
+        const error = await response.json();
+        toast.error('Erro ao testar conexão: ' + error.statusMessage);
+      }
+    } catch (error) {
+      toast.error('Erro ao testar conexão');
+    } finally {
+      setTestingConnection(false);
     }
   };
 
@@ -556,58 +590,163 @@ const AdminFiscal = () => {
 
           {/* Tab: Configurações */}
           <TabsContent value="configuracoes">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configurações de Emissão</CardTitle>
-                <CardDescription>
-                  Configurações específicas para NF-e e NFC-e
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-blue-900">Ambiente de Homologação</p>
-                        <p className="text-sm text-blue-700">
-                          Atualmente o sistema está configurado para usar o ambiente de homologação da SEFAZ-RR. 
-                          Notas emitidas neste ambiente não têm valor fiscal e servem apenas para testes.
-                        </p>
+            <div className="space-y-6">
+              {/* Teste de Conexão */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Testar Conexão com SEFAZ-RR</CardTitle>
+                  <CardDescription>
+                    Verifique se o certificado digital está funcionando e se consegue se comunicar com a SEFAZ
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <Button
+                      onClick={handleTestConnection}
+                      disabled={testingConnection}
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                    >
+                      <RefreshCw className={`mr-2 h-4 w-4 ${testingConnection ? 'animate-spin' : ''}`} />
+                      {testingConnection ? 'Testando conexão...' : 'Testar Conexão'}
+                    </Button>
+
+                    {connectionResult && (
+                      <div className={`mt-4 p-4 rounded-lg ${
+                        connectionResult.success 
+                          ? 'bg-green-50 border border-green-200' 
+                          : 'bg-red-50 border border-red-200'
+                      }`}>
+                        <div className="flex items-start gap-3">
+                          {connectionResult.success ? (
+                            <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                          )}
+                          <div className="flex-1">
+                            <p className={`font-semibold ${
+                              connectionResult.success ? 'text-green-900' : 'text-red-900'
+                            }`}>
+                              {connectionResult.message}
+                            </p>
+                            
+                            {connectionResult.details && (
+                              <div className="mt-3 space-y-2 text-sm">
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <span className="text-gray-600">Ambiente:</span>
+                                    <span className="ml-2 font-medium">
+                                      {connectionResult.details.ambiente === 'producao' ? 'Produção' : 'Homologação'}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-600">CNPJ:</span>
+                                    <span className="ml-2 font-medium">{connectionResult.details.cnpj}</span>
+                                  </div>
+                                </div>
+                                
+                                {connectionResult.details.certificado && (
+                                  <div className="mt-2 pt-2 border-t">
+                                    <p className="font-medium mb-1">Certificado:</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <span className="text-gray-600">Nome:</span>
+                                        <span className="ml-2">{connectionResult.details.certificado.nome}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-600">Validade:</span>
+                                        <span className="ml-2">
+                                          {new Date(connectionResult.details.certificado.validade).toLocaleDateString('pt-BR')}
+                                        </span>
+                                      </div>
+                                      <div className="col-span-2">
+                                        <span className="text-gray-600">Dias restantes:</span>
+                                        <span className={`ml-2 font-bold ${
+                                          connectionResult.details.certificado.dias_restantes < 30 
+                                            ? 'text-red-600' 
+                                            : connectionResult.details.certificado.dias_restantes < 90 
+                                              ? 'text-orange-600' 
+                                              : 'text-green-600'
+                                        }`}>
+                                          {connectionResult.details.certificado.dias_restantes} dias
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="mt-2 pt-2 border-t">
+                                  <p className="text-gray-600 text-xs">
+                                    <Link className="h-3 w-3 inline mr-1" />
+                                    URL SEFAZ: {connectionResult.details.sefaz_url}
+                                  </p>
+                                  <p className="text-gray-500 text-xs mt-1 italic">
+                                    {connectionResult.details.nota}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Configurações de Emissão */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configurações de Emissão</CardTitle>
+                  <CardDescription>
+                    Configurações específicas para NF-e e NFC-e
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-blue-900">Ambiente de Homologação</p>
+                          <p className="text-sm text-blue-700">
+                            Atualmente o sistema está configurado para usar o ambiente de homologação da SEFAZ-RR. 
+                            Notas emitidas neste ambiente não têm valor fiscal e servem apenas para testes.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Série NF-e</Label>
-                      <Input defaultValue="1" placeholder="1" />
-                      <p className="text-xs text-gray-500 mt-1">Série para Nota Fiscal Eletrônica</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Série NF-e</Label>
+                        <Input defaultValue="1" placeholder="1" />
+                        <p className="text-xs text-gray-500 mt-1">Série para Nota Fiscal Eletrônica</p>
+                      </div>
+                      <div>
+                        <Label>Série NFC-e</Label>
+                        <Input defaultValue="1" placeholder="1" />
+                        <p className="text-xs text-gray-500 mt-1">Série para NFC-e</p>
+                      </div>
+                      <div>
+                        <Label>Última NF-e</Label>
+                        <Input defaultValue="0" readOnly />
+                      </div>
+                      <div>
+                        <Label>Última NFC-e</Label>
+                        <Input defaultValue="0" readOnly />
+                      </div>
                     </div>
-                    <div>
-                      <Label>Série NFC-e</Label>
-                      <Input defaultValue="1" placeholder="1" />
-                      <p className="text-xs text-gray-500 mt-1">Série para NFC-e</p>
-                    </div>
-                    <div>
-                      <Label>Última NF-e</Label>
-                      <Input defaultValue="0" readOnly />
-                    </div>
-                    <div>
-                      <Label>Última NFC-e</Label>
-                      <Input defaultValue="0" readOnly />
-                    </div>
-                  </div>
 
-                  <div className="pt-4 border-t">
-                    <Button className="bg-orange-600 hover:bg-orange-700">
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Salvar Configurações
-                    </Button>
+                    <div className="pt-4 border-t">
+                      <Button className="bg-orange-600 hover:bg-orange-700">
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Salvar Configurações
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
