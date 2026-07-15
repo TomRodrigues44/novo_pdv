@@ -1121,7 +1121,7 @@ const CashRegister = () => {
             margin: 2px 0;
           }
           .printable-receipt .border-b-2,
-          .print-receipt .border-t {
+          .printable-receipt .border-t {
             border-bottom: 2px dashed black !important;
             border-top: 2px dashed black !important;
           }
@@ -1151,7 +1151,7 @@ const CashRegister = () => {
           .printary-receipt .text-amber-700,
           .printary-receipt .text-blue-600,
           .printary-receipt .text-blue-700,
-          .printable-receipt .text-orange-600,
+          .printary-receipt .text-orange-600,
           .printary-receipt .text-orange-700,
           .printable-receipt .text-gray-600,
           .printary-receipt .text-gray-700,
