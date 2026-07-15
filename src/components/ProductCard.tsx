@@ -35,38 +35,38 @@ export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
   return (
     <>
       <Card 
-        className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-2 hover:border-orange-400 flex flex-col cursor-pointer"
+        className="group overflow-hidden border-2 border-gray-200 hover:border-orange-400 hover:shadow-2xl hover:shadow-orange-200/50 flex flex-col cursor-pointer transition-all duration-300 ease-out hover:scale-[1.02] hover:-translate-y-1"
         onClick={handleAddToCart}
       >
         <CardContent className="p-4 flex-1 flex flex-col">
           {/* Container de Imagem com tamanho fixo e ajuste automático */}
-          <div className="w-full h-40 mb-4 overflow-hidden rounded-lg bg-gray-100 flex items-center justify-center">
+          <div className="w-full h-40 mb-4 overflow-hidden rounded-lg bg-gray-100 flex items-center justify-center group-hover:bg-orange-50 transition-colors duration-300">
             {isRealImage ? (
               <img
                 src={product.image}
                 alt={product.name}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300"
               />
             ) : (
-              <span className="text-5xl">{product.image}</span>
+              <span className="text-5xl group-hover:scale-110 transition-transform duration-300">{product.image}</span>
             )}
           </div>
           
-          <h3 className="font-bold text-lg mb-2 text-gray-800">{product.name}</h3>
+          <h3 className="font-bold text-lg mb-2 text-gray-800 group-hover:text-orange-700 transition-colors duration-300">{product.name}</h3>
           <p className="text-sm text-gray-600 mb-3 line-clamp-2 flex-1">{product.description}</p>
           
           <div className="flex items-center justify-between mt-auto">
-            <span className="text-2xl font-bold text-orange-600">
+            <span className="text-2xl font-bold text-orange-600 group-hover:text-orange-500 transition-colors duration-300">
               R$ {price.toFixed(2)}
             </span>
           </div>
         </CardContent>
         <CardFooter className="p-4 pt-0">
           <Button
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white group-hover:bg-orange-600 group-hover:shadow-lg group-hover:shadow-orange-300/50 transition-all duration-300"
             disabled={!product.available}
           >
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4 group-hover:rotate-90 transition-transform duration-300" />
             Adicionar
           </Button>
         </CardFooter>
