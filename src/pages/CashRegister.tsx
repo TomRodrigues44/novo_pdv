@@ -63,6 +63,7 @@ const CashRegister = () => {
   const [notes, setNotes] = useState('');
   const [closeResult, setCloseResult] = useState<any>(null);
   const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
+  const [timeElapsed, setTimeElapsed] = useState(0);
 
   // Buscar dados do caixa
   const { data: cashData, isLoading, refetch } = useQuery({
@@ -77,6 +78,31 @@ const CashRegister = () => {
 
   const currentRegister = cashData?.current;
   const history = cashData?.history || [];
+
+  // Calcular tempo decorrido
+  useEffect(() => {
+    if (!currentRegister) {
+      setTimeElapsed(0);
+      return;
+    }
+
+    const calculateTimeElapsed = () => {
+      const opened = new Date(currentRegister.opened_at);
+      const now = new Date();
+      const diffInMinutes = Math.floor((now.getTime() - opened.getTime()) / 1000 / 60);
+      setTimeElapsed(Math.max(0, diffInMinutes));
+    };
+
+    // Calcular tempo inicial
+    calculateTimeElapsed();
+
+    // Atualizar a cada minuto
+    const interval = setInterval(() => {
+      calculateTimeElapsed();
+    }, 60000); // 60 segundos
+
+    return () => clearInterval(interval);
+  }, [currentRegister]);
 
   // Helper para extrair categoria da descrição
   const getCategoryFromDescription = (desc: string | null | undefined): 'taxa_entrega' | 'ifood' | 'brigadeiros' | 'outros' => {
@@ -329,7 +355,7 @@ const CashRegister = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-purple-600">
-                    {Math.floor((Date.now() - new Date(currentRegister.opened_at).getTime()) / 1000 / 60)} min
+                    {timeElapsed} min
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     Desde a abertura
@@ -1071,6 +1097,7 @@ const CashRegister = () => {
                       <div className="flex justify-between font-bold pt-1 border-t">
                         <span>Total:</span>
                         <span className="text-amber-600">-{formatCurrency(closeResult?.vouchers || 0)}</span>
+                      </span>
                       </div>
                     </div>
                   </div>
@@ -1089,7 +1116,8 @@ const CashRegister = () => {
                       ))}
                       <div className="flex justify-between font-bold pt-1 border-t">
                         <span>Total:</span>
-                        <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
+                          <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1195,22 +1223,35 @@ const CashRegister = () => {
             font-size: 9px;
           }
           .printable-receipt .text-gray-500,
-          .printable-receipt .text-gray-600,
-          .printable-receipt .text-red-600,
+          .printary-receipt .text-gray-600,
+          .printary-receipt .text-red-600,
           .printary-receipt .text-red-700,
-          .printable-receipt .text-green-600,
-          .printable-receipt .text-green-700,
-          .printable-receipt .text-amber-600,
+          .printary-receipt .text-green-600,
+          .printary-receipt .text-green-700,
+          .printary-receipt .text-amber-600,
           .printary-receipt .text-amber-700,
-          .printable-receipt .text-blue-600,
-          .printable-receipt .text-blue-700,
-          .printable-receipt .text-orange-600,
-          .printable-receipt .text-orange-700 {
-            color: black !important;
-          }
-          .printable-receipt button,
-          .printable-receipt .dialog-header,
-          .printable-receipt .dialog-footer {
+          .printary-receipt .text-blue-600,
+          .printary-receipt .text-blue-700,
+          .printary-receipt .text-orange-600,
+          .printary-receipt .text-orange-700,
+          .printable-receipt .text-gray-600,
+          .printary-receipt .text-gray-700,
+          .printary-receipt .text-gray-500,
+          .printary-receipt .text-gray-600,
+          .printary-receipt .text-gray-700,
+          .printary-receipt .text-red-600,
+          .printary-receipt .text-red-700,
+          .printary-receipt .text-green-600,
+          .printary-react .text-green-700,
+          .printary-receipt .text-amber-600,
+          .printary-receipt .text-amber-700,
+          .printary-receipt .text-blue-600,
+          .printary-receipt .text-blue-700,
+          .printary-receipt .text-orange-600,
+          .printary-receipt .text-orange-700,
+          .printable-receipt .button,
+          .printary-receipt .dialog-header,
+          .printary-receipt .dialog-footer {
             display: none !important;
           }
         }
