@@ -1,48 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminSidebar from '@/components/AdminSidebar';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
-  Clock,
-  CheckCircle,
-  Plus,
-  Lock,
-  Unlock,
-  Minus,
-  CreditCard,
-  QrCode,
-  Banknote,
-  Printer,
-  Receipt,
-  Bike,
-  Utensils,
-  Smartphone,
-} from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DollarSign, TrendingUp, TrendingDown, Clock, CheckCircle, Plus, Lock, Unlock, Minus, CreditCard, QrCode, Banknote, Printer, Receipt, Bike, Utensils, Smartphone } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -65,7 +29,6 @@ const CashRegister = () => {
   const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
 
-  // Buscar dados do caixa
   const { data: cashData, isLoading, refetch } = useQuery({
     queryKey: ['cash-register'],
     queryFn: async () => {
@@ -79,7 +42,6 @@ const CashRegister = () => {
   const currentRegister = cashData?.current;
   const history = cashData?.history || [];
 
-  // Calcular tempo decorrido
   useEffect(() => {
     if (!currentRegister) {
       setTimeElapsed(0);
@@ -93,18 +55,15 @@ const CashRegister = () => {
       setTimeElapsed(Math.max(0, diffInMinutes));
     };
 
-    // Calcular tempo inicial
     calculateTimeElapsed();
 
-    // Atualizar a cada minuto
     const interval = setInterval(() => {
       calculateTimeElapsed();
-    }, 60000); // 60 segundos
+    }, 60000);
 
     return () => clearInterval(interval);
   }, [currentRegister]);
 
-  // Helper para extrair categoria da descrição
   const getCategoryFromDescription = (desc: string | null | undefined): 'taxa_entrega' | 'ifood' | 'brigadeiros' | 'outros' => {
     if (!desc) return 'outros';
     if (desc.startsWith('Taxa Entrega')) return 'taxa_entrega';
@@ -113,7 +72,6 @@ const CashRegister = () => {
     return 'outros';
   };
 
-  // Helper para extrair descrição limpa (sem o prefixo da categoria)
   const getCleanDescription = (desc: string | null | undefined): string => {
     if (!desc) return 'Sem descrição';
     if (desc.startsWith('Taxa Entrega: ')) return desc.replace('Taxa Entrega: ', '');
@@ -122,7 +80,6 @@ const CashRegister = () => {
     return desc;
   };
 
-  // Helper para calcular totais por categoria
   const calculateTotalsByCategory = (transactions: any[]) => {
     const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
     return withdrawals.reduce((acc: any, t: any) => {
@@ -130,17 +87,6 @@ const CashRegister = () => {
       acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
       return acc;
     }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
-  };
-
-  // Helper para obter o nome de exibição da categoria
-  const getCategoryDisplayName = (cat: string): string => {
-    switch (cat) {
-      case 'taxa_entrega': return 'Deliverys';
-      case 'ifood': return 'Ifoods';
-      case 'brigadeiros': return 'Brigadeiros';
-      case 'outros': return 'Outros';
-      default: return cat;
-    }
   };
 
   const handleOpenRegister = async () => {
@@ -205,7 +151,6 @@ const CashRegister = () => {
     try {
       let finalDescription = transactionDescription;
       
-      // Se for sangria, adicionar prefixo da categoria
       if (type === 'withdrawal') {
         const categoryPrefix = {
           taxa_entrega: 'Taxa Entrega',
@@ -307,10 +252,8 @@ const CashRegister = () => {
           )}
         </div>
 
-        {/* Caixa Aberto */}
         {currentRegister ? (
           <div className="space-y-6">
-            {/* Cards de Resumo */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -364,7 +307,6 @@ const CashRegister = () => {
               </Card>
             </div>
 
-            {/* Vendas por Forma de Pagamento */}
             <Card>
               <CardHeader>
                 <CardTitle>Vendas por Forma de Pagamento</CardTitle>
@@ -414,9 +356,7 @@ const CashRegister = () => {
               </CardContent>
             </Card>
 
-            {/* Sangrias, Vales e Adições */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Sangrias */}
               <Card className="border-red-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-red-700">
@@ -426,7 +366,6 @@ const CashRegister = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {/* Totais por Categoria */}
                     <div className="grid grid-cols-2 gap-2 mb-4">
                       <div className="bg-orange-50 p-2 rounded text-center">
                         <p className="text-xs text-orange-700 font-medium">Deliverys</p>
@@ -560,7 +499,6 @@ const CashRegister = () => {
                 </CardContent>
               </Card>
 
-              {/* Vales */}
               <Card className="border-amber-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-amber-700">
@@ -649,7 +587,6 @@ const CashRegister = () => {
                 </CardContent>
               </Card>
 
-              {/* Adições */}
               <Card className="border-green-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-green-700">
@@ -739,7 +676,6 @@ const CashRegister = () => {
               </Card>
             </div>
 
-            {/* Botão de Fechar Caixa */}
             <Card className="border-2 border-orange-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -808,7 +744,6 @@ const CashRegister = () => {
             </Card>
           </div>
         ) : (
-          /* Caixa Fechado - Botão de Abrir */
           <Card className="max-w-2xl mx-auto">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -876,7 +811,6 @@ const CashRegister = () => {
           </Card>
         )}
 
-        {/* Histórico de Fechamentos */}
         {history.length > 0 && (
           <div className="mt-8">
             <h2 className="text-2xl font-bold mb-4">Histórico de Fechamentos</h2>
@@ -944,7 +878,6 @@ const CashRegister = () => {
         )}
       </div>
 
-      {/* Dialog de Sucesso do Fechamento com Impressão Térmica */}
       <Dialog open={isCloseSuccessDialogOpen} onOpenChange={setIsCloseSuccessDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -954,14 +887,12 @@ const CashRegister = () => {
             </DialogTitle>
           </DialogHeader>
           
-          {/* Calcular totais a partir do closedRegisterData */}
           {(() => {
             const closedTotalsByCategory = calculateTotalsByCategory(closedRegisterData?.transactions || []);
             const totalWithdrawals = Object.values(closedTotalsByCategory).reduce((sum: number, val: number) => sum + val, 0);
             
             return (
               <div className="printable-receipt">
-                {/* Cabeçalho do Cupom */}
                 <div className="text-center mb-4 pb-2 border-b-2 border-dashed">
                   <h2 className="text-xl font-bold">EMPÓRIO DAS COXINHAS</h2>
                   <p className="text-sm text-gray-600">Relatório de Fechamento de Caixa</p>
@@ -970,7 +901,6 @@ const CashRegister = () => {
                   </p>
                 </div>
 
-                {/* Resumo Financeiro */}
                 <div className="space-y-2 mb-4 text-sm">
                   <div className="flex justify-between">
                     <span>Abertura:</span>
@@ -986,7 +916,6 @@ const CashRegister = () => {
                   </div>
                 </div>
 
-                {/* Vendas por Forma de Pagamento */}
                 <div className="mb-4 pb-2 border-b-2 border-dashed">
                   <h4 className="font-bold text-sm mb-2">Vendas por Forma:</h4>
                   <div className="space-y-1 text-sm">
@@ -1009,7 +938,6 @@ const CashRegister = () => {
                   </div>
                 </div>
 
-                {/* Sangrias por Categoria - DETALHADO */}
                 {totalWithdrawals > 0 && (
                   <div className="mb-4 pb-2 border-b-2 border-dashed">
                     <div className="flex justify-between items-center mb-2">
@@ -1017,7 +945,6 @@ const CashRegister = () => {
                       <span className="font-bold text-red-600">-{formatCurrency(totalWithdrawals)}</span>
                     </div>
                     
-                    {/* Deliverys */}
                     {closedTotalsByCategory.taxa_entrega > 0 && (
                       <div className="mb-2">
                         <div className="flex justify-between font-semibold text-orange-700 text-xs mb-1">
@@ -1033,7 +960,6 @@ const CashRegister = () => {
                       </div>
                     )}
 
-                    {/* Ifoods */}
                     {closedTotalsByCategory.ifood > 0 && (
                       <div className="mb-2">
                         <div className="flex justify-between font-semibold text-red-700 text-xs mb-1">
@@ -1049,7 +975,6 @@ const CashRegister = () => {
                       </div>
                     )}
 
-                    {/* Brigadeiros */}
                     {closedTotalsByCategory.brigadeiros > 0 && (
                       <div className="mb-2">
                         <div className="flex justify-between font-semibold text-amber-700 text-xs mb-1">
@@ -1065,7 +990,6 @@ const CashRegister = () => {
                       </div>
                     )}
 
-                    {/* Outros */}
                     {closedTotalsByCategory.outros > 0 && (
                       <div className="mb-2">
                         <div className="flex justify-between font-semibold text-gray-700 text-xs mb-1">
@@ -1083,7 +1007,6 @@ const CashRegister = () => {
                   </div>
                 )}
 
-                {/* Vales */}
                 {closeResult?.vouchers > 0 && (
                   <div className="mb-4 pb-2 border-b-2 border-dashed">
                     <h4 className="font-bold text-sm mb-2 text-amber-700">VALES:</h4>
@@ -1103,7 +1026,6 @@ const CashRegister = () => {
                   </div>
                 )}
 
-                {/* Adições */}
                 {closeResult?.additions > 0 && (
                   <div className="mb-4 pb-2 border-b-2 border-dashed">
                     <h4 className="font-bold text-sm mb-2 text-green-700">ADIÇÕES:</h4>
@@ -1117,13 +1039,12 @@ const CashRegister = () => {
                       <div className="flex justify-between font-bold pt-1 border-t">
                         <span>Total:</span>
                         <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
-                        </span>
+                      </span>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* Resumo de Conferência */}
                 <div className="mb-4 pb-2 border-b-2 border-dashed">
                   <h4 className="font-bold text-sm mb-2">CONFERÊNCIA:</h4>
                   <div className="space-y-1 text-sm">
@@ -1150,7 +1071,6 @@ const CashRegister = () => {
                   </p>
                 </div>
 
-                {/* Rodapé */}
                 <div className="text-center text-xs text-gray-500 pt-2">
                   <p>*** OBRIGADO PELA PREFERÊNCIA ***</p>
                   <p>Empório das Coxinhas</p>
@@ -1171,7 +1091,6 @@ const CashRegister = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Estilos de Impressão para Impressora Térmica */}
       <style>{`
         @media print {
           body * {
@@ -1232,7 +1151,7 @@ const CashRegister = () => {
           .printary-receipt .text-amber-700,
           .printary-receipt .text-blue-600,
           .printary-receipt .text-blue-700,
-          .printary-receipt .text-orange-600,
+          .printable-receipt .text-orange-600,
           .printary-receipt .text-orange-700,
           .printable-receipt .text-gray-600,
           .printary-receipt .text-gray-700,
@@ -1250,8 +1169,8 @@ const CashRegister = () => {
           .printary-receipt .text-orange-600,
           .printary-receipt .text-orange-700,
           .printable-receipt .button,
-          .printary-receipt .dialog-header,
-          .printary-receipt .dialog-footer {
+          .printable-receipt .dialog-header,
+          .printable-receipt .dialog-footer {
             display: none !important;
           }
         }
