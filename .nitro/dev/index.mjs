@@ -932,7 +932,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"173f4-vOGBnyoI1M7H1qeL21vHEM60EuE\"",
+    "mtime": "2026-07-14T14:52:06.799Z",
+    "size": 95220,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"4ce84-HsKhTy/D1APq9imncpNA0A43pGQ\"",
+    "mtime": "2026-07-14T14:52:06.799Z",
+    "size": 315012,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1037,6 +1052,10 @@ const _lazy_krY3pv = () => Promise.resolve().then(function () { return customers
 const _lazy_H45_Wb = () => Promise.resolve().then(function () { return _id__delete$5; });
 const _lazy_h4GIBs = () => Promise.resolve().then(function () { return _id__put$5; });
 const _lazy_YtRTDx = () => Promise.resolve().then(function () { return sales_get$3; });
+const _lazy_N2rBSe = () => Promise.resolve().then(function () { return certificates_get$1; });
+const _lazy_0mr2g0 = () => Promise.resolve().then(function () { return certificates_post$1; });
+const _lazy_8HWzgs = () => Promise.resolve().then(function () { return companyConfig_get$1; });
+const _lazy_PpOTdY = () => Promise.resolve().then(function () { return companyConfig_post$1; });
 const _lazy_zELk_7 = () => Promise.resolve().then(function () { return categories_post$1; });
 const _lazy_GwWEhE = () => Promise.resolve().then(function () { return products_post$3; });
 const _lazy_lNzaoz = () => Promise.resolve().then(function () { return sales_post$3; });
@@ -1072,6 +1091,10 @@ const handlers = [
   { route: '/api/customers/:id', handler: _lazy_H45_Wb, lazy: true, middleware: false, method: "delete" },
   { route: '/api/customers/:id', handler: _lazy_h4GIBs, lazy: true, middleware: false, method: "put" },
   { route: '/api/customers/:id/sales', handler: _lazy_YtRTDx, lazy: true, middleware: false, method: "get" },
+  { route: '/api/fiscal/certificates', handler: _lazy_N2rBSe, lazy: true, middleware: false, method: "get" },
+  { route: '/api/fiscal/certificates', handler: _lazy_0mr2g0, lazy: true, middleware: false, method: "post" },
+  { route: '/api/fiscal/company-config', handler: _lazy_8HWzgs, lazy: true, middleware: false, method: "get" },
+  { route: '/api/fiscal/company-config', handler: _lazy_PpOTdY, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/categories', handler: _lazy_zELk_7, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/products', handler: _lazy_GwWEhE, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/sales', handler: _lazy_lNzaoz, lazy: true, middleware: false, method: "post" },
@@ -2067,6 +2090,193 @@ const sales_get$2 = defineEventHandler(async (event) => {
 const sales_get$3 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: sales_get$2
+});
+
+const certificates_get = defineEventHandler(async () => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const certificates = await sql`
+      SELECT id, nome, data_validade, ativo, created_at
+      FROM digital_certificates
+      ORDER BY created_at DESC
+    `;
+    return certificates.map((cert) => ({
+      ...cert,
+      expirado: new Date(cert.data_validade) < /* @__PURE__ */ new Date()
+    }));
+  } catch (error) {
+    console.error("Error fetching certificates:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error fetching certificates"
+    });
+  }
+});
+
+const certificates_get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: certificates_get
+});
+
+const certificates_post = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const formData = await readFormData(event);
+    const file = formData.get("file");
+    const nome = formData.get("nome");
+    const senha = formData.get("senha");
+    if (!file || !nome || !senha) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Dados incompletos"
+      });
+    }
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const dataValidade = /* @__PURE__ */ new Date();
+    dataValidade.setFullYear(dataValidade.getFullYear() + 1);
+    const result = await sql`
+      INSERT INTO digital_certificates (nome, arquivo, senha, data_validade)
+      VALUES (${nome}, ${buffer}, ${senha}, ${dataValidade})
+      RETURNING id, nome, data_validade
+    `;
+    return result[0];
+  } catch (error) {
+    console.error("Error saving certificate:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error saving certificate"
+    });
+  }
+});
+
+const certificates_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: certificates_post
+});
+
+const companyConfig_get = defineEventHandler(async () => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const configs = await sql`
+      SELECT * FROM company_fiscal_config
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    return configs[0] || null;
+  } catch (error) {
+    console.error("Error fetching company config:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error fetching company config"
+    });
+  }
+});
+
+const companyConfig_get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: companyConfig_get
+});
+
+const companyConfig_post = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const config = await readBody(event);
+    const existing = await sql`
+      SELECT id FROM company_fiscal_config
+      LIMIT 1
+    `;
+    if (existing.length > 0) {
+      const result = await sql`
+        UPDATE company_fiscal_config
+        SET 
+          cnpj = ${config.cnpj},
+          razao_social = ${config.razao_social},
+          nome_fantasia = ${config.nome_fantasia},
+          inscricao_estadual = ${config.inscricao_estadual},
+          inscricao_municipal = ${config.inscricao_municipal},
+          cnae = ${config.cnae},
+          cnpj_matriz = ${config.cnpj_matriz},
+          regime_tributario = ${config.regime_tributario},
+          CRT = ${config.CRT},
+          cep = ${config.cep},
+          logradouro = ${config.logradouro},
+          numero = ${config.numero},
+          complemento = ${config.complemento},
+          bairro = ${config.bairro},
+          municipio = ${config.municipio},
+          uf = ${config.uf},
+          telefone = ${config.telefone},
+          email = ${config.email},
+          ambiente = ${config.ambiente || "homologacao"},
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${existing[0].id}
+        RETURNING *
+      `;
+      return result[0];
+    } else {
+      const result = await sql`
+        INSERT INTO company_fiscal_config (
+          cnpj, razao_social, nome_fantasia, inscricao_estadual,
+          inscricao_municipal, cnae, cnpj_matriz, regime_tributario,
+          CRT, cep, logradouro, numero, complemento, bairro,
+          municipio, uf, telefone, email, ambiente
+        ) VALUES (
+          ${config.cnpj},
+          ${config.razao_social},
+          ${config.nome_fantasia},
+          ${config.inscricao_estadual},
+          ${config.inscricao_municipal},
+          ${config.cnae},
+          ${config.cnpj_matriz},
+          ${config.regime_tributario},
+          ${config.CRT},
+          ${config.cep},
+          ${config.logradouro},
+          ${config.numero},
+          ${config.complemento},
+          ${config.bairro},
+          ${config.municipio},
+          ${config.uf},
+          ${config.telefone},
+          ${config.email},
+          ${config.ambiente || "homologacao"}
+        ) RETURNING *
+      `;
+      return result[0];
+    }
+  } catch (error) {
+    console.error("Error saving company config:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error saving company config"
+    });
+  }
+});
+
+const companyConfig_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: companyConfig_post
 });
 
 const categories_post = defineEventHandler(async (event) => {

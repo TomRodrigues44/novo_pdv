@@ -41,6 +41,14 @@ declare module "nitropack/types" {
     '/api/customers/:id/sales': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/customers/[id]/sales.get').default>>>>
     }
+    '/api/fiscal/certificates': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/certificates.get').default>>>>
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/certificates.post').default>>>>
+    }
+    '/api/fiscal/company-config': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/company-config.get').default>>>>
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/company-config.post').default>>>>
+    }
     '/api/migrate/categories': {
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/migrate/categories.post').default>>>>
     }
