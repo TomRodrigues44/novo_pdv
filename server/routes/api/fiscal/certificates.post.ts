@@ -30,9 +30,12 @@ export default defineEventHandler(async (event) => {
     const dataValidade = new Date();
     dataValidade.setFullYear(dataValidade.getFullYear() + 1);
     
+    // Gerar ID único
+    const id = `cert-${Date.now()}`;
+    
     const result = await sql`
-      INSERT INTO digital_certificates (nome, arquivo, senha, data_validade)
-      VALUES (${nome}, ${buffer}, ${senha}, ${dataValidade})
+      INSERT INTO digital_certificates (id, nome, arquivo, senha, data_validade)
+      VALUES (${id}, ${nome}, ${buffer}, ${senha}, ${dataValidade})
       RETURNING id, nome, data_validade
     `;
     

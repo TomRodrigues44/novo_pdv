@@ -935,16 +935,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"173f4-vOGBnyoI1M7H1qeL21vHEM60EuE\"",
-    "mtime": "2026-07-14T14:52:06.799Z",
-    "size": 95220,
+    "etag": "\"18fc1-kUmJZ7Qf4Ps42w6+DhKZMD9LPCk\"",
+    "mtime": "2026-07-15T14:40:09.343Z",
+    "size": 102337,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"4ce84-HsKhTy/D1APq9imncpNA0A43pGQ\"",
-    "mtime": "2026-07-14T14:52:06.799Z",
-    "size": 315012,
+    "etag": "\"52656-jUDNPv0ao2XLy7kEi6Lo9yRznac\"",
+    "mtime": "2026-07-15T14:40:09.343Z",
+    "size": 337494,
     "path": "index.mjs.map"
   }
 };
@@ -2145,9 +2145,10 @@ const certificates_post = defineEventHandler(async (event) => {
     const buffer = Buffer.from(arrayBuffer);
     const dataValidade = /* @__PURE__ */ new Date();
     dataValidade.setFullYear(dataValidade.getFullYear() + 1);
+    const id = `cert-${Date.now()}`;
     const result = await sql`
-      INSERT INTO digital_certificates (nome, arquivo, senha, data_validade)
-      VALUES (${nome}, ${buffer}, ${senha}, ${dataValidade})
+      INSERT INTO digital_certificates (id, nome, arquivo, senha, data_validade)
+      VALUES (${id}, ${nome}, ${buffer}, ${senha}, ${dataValidade})
       RETURNING id, nome, data_validade
     `;
     return result[0];
