@@ -1116,7 +1116,7 @@ const CashRegister = () => {
                       ))}
                       <div className="flex justify-between font-bold pt-1 border-t">
                         <span>Total:</span>
-                          <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
+                        <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
                         </span>
                       </div>
                     </div>
