@@ -84,6 +84,9 @@ declare module "nitropack/types" {
     '/api/sales/:id/status': {
       'put': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/sales/[id]/status.put').default>>>>
     }
+    '/api/sales/:id/xml': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/sales/[id]/xml.get').default>>>>
+    }
     '/api/test-db': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/test-db.get').default>>>>
     }

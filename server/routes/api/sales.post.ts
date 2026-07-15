@@ -15,6 +15,9 @@ export default defineEventHandler(async (event) => {
     const payments = saleData.payments || [];
     const createdAt = saleData.date || new Date().toISOString();
     const customerId = saleData.customerId || null;
+    const xmlContent = saleData.xmlContent || null;
+    const xmlChave = saleData.xmlChave || null;
+    const xmlNumero = saleData.xmlNumero || null;
     
     // Criar resumo das formas de pagamento para o campo payment_method
     const paymentMethodSummary = payments
@@ -33,14 +36,17 @@ export default defineEventHandler(async (event) => {
     
     // Criar a venda
     const saleResult = await sql`
-      INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id, payments)
+      INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id, payments, xml_content, xml_chave, xml_numero)
       VALUES (
         ${total}, 
         ${paymentMethodSummary}, 
         ${freight}, 
         ${createdAt},
         ${customerId},
-        ${JSON.stringify(payments)}::jsonb
+        ${JSON.stringify(payments)}::jsonb,
+        ${xmlContent},
+        ${xmlChave},
+        ${xmlNumero}
       )
       RETURNING id
     `;

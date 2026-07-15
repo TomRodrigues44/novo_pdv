@@ -935,16 +935,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"19189-AKEo6IMApTbhd7/e/2kiNvxGVo4\"",
-    "mtime": "2026-07-15T15:09:17.565Z",
-    "size": 102793,
+    "etag": "\"19c71-WjRwHsXdLrCs81po3mZ2nqYsZ+0\"",
+    "mtime": "2026-07-15T15:18:50.174Z",
+    "size": 105585,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"52737-n4qa1yDRT2J7AuXZpIyM4GU+F3I\"",
-    "mtime": "2026-07-15T15:09:17.565Z",
-    "size": 337719,
+    "etag": "\"54deb-ZFw6sRUB3dPqe5QR8E0NLiWevy4\"",
+    "mtime": "2026-07-15T15:18:50.174Z",
+    "size": 347627,
     "path": "index.mjs.map"
   }
 };
@@ -1071,6 +1071,7 @@ const _lazy_gmpj8W = () => Promise.resolve().then(function () { return _id__put$
 const _lazy_nl6xh4 = () => Promise.resolve().then(function () { return sales_get$1; });
 const _lazy__VRAiA = () => Promise.resolve().then(function () { return sales_post$1; });
 const _lazy_aXzNxt = () => Promise.resolve().then(function () { return status_put$1; });
+const _lazy_ir38yz = () => Promise.resolve().then(function () { return xml_get$1; });
 const _lazy_C90ob_ = () => Promise.resolve().then(function () { return testDb_get$1; });
 const _lazy_RQnKGR = () => Promise.resolve().then(function () { return upload_post$1; });
 
@@ -1111,6 +1112,7 @@ const handlers = [
   { route: '/api/sales', handler: _lazy_nl6xh4, lazy: true, middleware: false, method: "get" },
   { route: '/api/sales', handler: _lazy__VRAiA, lazy: true, middleware: false, method: "post" },
   { route: '/api/sales/:id/status', handler: _lazy_aXzNxt, lazy: true, middleware: false, method: "put" },
+  { route: '/api/sales/:id/xml', handler: _lazy_ir38yz, lazy: true, middleware: false, method: "get" },
   { route: '/api/test-db', handler: _lazy_C90ob_, lazy: true, middleware: false, method: "get" },
   { route: '/api/upload', handler: _lazy_RQnKGR, lazy: true, middleware: false, method: "post" }
 ];
@@ -2937,6 +2939,9 @@ const sales_post = defineEventHandler(async (event) => {
     const payments = saleData.payments || [];
     const createdAt = saleData.date || (/* @__PURE__ */ new Date()).toISOString();
     const customerId = saleData.customerId || null;
+    const xmlContent = saleData.xmlContent || null;
+    const xmlChave = saleData.xmlChave || null;
+    const xmlNumero = saleData.xmlNumero || null;
     const paymentMethodSummary = payments.map((p) => {
       switch (p.type) {
         case "debit":
@@ -2953,14 +2958,17 @@ const sales_post = defineEventHandler(async (event) => {
     }).join(", ") || "Dinheiro";
     console.log("Creating sale:", { total, freight, paymentMethodSummary, customerId, itemsCount: (_a = saleData.items) == null ? void 0 : _a.length });
     const saleResult = await sql`
-      INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id, payments)
+      INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id, payments, xml_content, xml_chave, xml_numero)
       VALUES (
         ${total}, 
         ${paymentMethodSummary}, 
         ${freight}, 
         ${createdAt},
         ${customerId},
-        ${JSON.stringify(payments)}::jsonb
+        ${JSON.stringify(payments)}::jsonb,
+        ${xmlContent},
+        ${xmlChave},
+        ${xmlNumero}
       )
       RETURNING id
     `;
@@ -3074,6 +3082,52 @@ const status_put = defineEventHandler(async (event) => {
 const status_put$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: status_put
+});
+
+const xml_get = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const id = getRouterParam(event, "id");
+    const result = await sql`
+      SELECT xml_content, xml_chave, xml_numero, created_at, total_amount
+      FROM sales
+      WHERE id = ${id}
+    `;
+    if (result.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Sale not found"
+      });
+    }
+    const sale = result[0];
+    if (!sale.xml_content) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "XML not available for this sale"
+      });
+    }
+    setResponseHeaders(event, {
+      "Content-Type": "application/xml",
+      "Content-Disposition": `attachment; filename="nfe-${sale.xml_numero || sale.id.slice(-6)}.xml"`
+    });
+    return sale.xml_content;
+  } catch (error) {
+    console.error("Error downloading XML:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error downloading XML"
+    });
+  }
+});
+
+const xml_get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: xml_get
 });
 
 const testDb_get = defineEventHandler(async () => {
