@@ -1020,7 +1020,6 @@ const CashRegister = () => {
                       <div className="flex justify-between font-bold pt-1 border-t">
                         <span>Total:</span>
                         <span className="text-amber-600">-{formatCurrency(closeResult?.vouchers || 0)}</span>
-                      </span>
                       </div>
                     </div>
                   </div>
@@ -1039,7 +1038,6 @@ const CashRegister = () => {
                       <div className="flex justify-between font-bold pt-1 border-t">
                         <span>Total:</span>
                         <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
-                      </span>
                       </div>
                     </div>
                   </div>
@@ -1143,21 +1141,6 @@ const CashRegister = () => {
           }
           .printable-receipt .text-gray-500,
           .printable-receipt .text-gray-600,
-          .printable-receipt .text-red-600,
-          .printable-receipt .text-red-700,
-          .printable-receipt .text-green-600,
-          .printable-receipt .text-green-700,
-          .printable-receipt .text-amber-600,
-          .printable-receipt .text-amber-700,
-          .printable-receipt .text-blue-600,
-          .printable-receipt .text-blue-700,
-          .printable-receipt .text-orange-600,
-          .printable-receipt .text-orange-700,
-          .printable-receipt .text-gray-600,
-          .printable-receipt .text-gray-700,
-          .printable-receipt .text-gray-500,
-          .printable-receipt .text-gray-600,
-          .printable-receipt .text-gray-700,
           .printable-receipt .text-red-600,
           .printable-receipt .text-red-700,
           .printable-receipt .text-green-600,
