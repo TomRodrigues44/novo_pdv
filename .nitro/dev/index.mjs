@@ -21,7 +21,7 @@ import consola from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node
 import { ErrorParser } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/youch-core@0.3.3/node_modules/youch-core/build/index.js';
 import { Youch } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/youch@4.1.1/node_modules/youch/build/index.js';
 import { SourceMapConsumer } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/source-map@0.7.6/node_modules/source-map/source-map.js';
-import { promises, readFileSync } from 'node:fs';
+import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
 import { v4 } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
@@ -932,22 +932,7 @@ const plugins = [
   
 ];
 
-const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"19c71-WjRwHsXdLrCs81po3mZ2nqYsZ+0\"",
-    "mtime": "2026-07-15T15:18:50.174Z",
-    "size": 105585,
-    "path": "index.mjs"
-  },
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"54deb-ZFw6sRUB3dPqe5QR8E0NLiWevy4\"",
-    "mtime": "2026-07-15T15:18:50.174Z",
-    "size": 347627,
-    "path": "index.mjs.map"
-  }
-};
+const assets = {};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1036,7 +1021,6 @@ const _ngUQxC = eventHandler((event) => {
   return readAsset(id);
 });
 
-const _lazy_0oqOZ3 = () => Promise.resolve().then(function () { return ____all_$1; });
 const _lazy_zyPM9J = () => Promise.resolve().then(function () { return cashRegister_get$1; });
 const _lazy_s4P548 = () => Promise.resolve().then(function () { return close_post$1; });
 const _lazy_rID8to = () => Promise.resolve().then(function () { return open_post$1; });
@@ -1077,7 +1061,6 @@ const _lazy_RQnKGR = () => Promise.resolve().then(function () { return upload_po
 
 const handlers = [
   { route: '', handler: _ngUQxC, lazy: false, middleware: true, method: undefined },
-  { route: '/**:all', handler: _lazy_0oqOZ3, lazy: true, middleware: false, method: undefined },
   { route: '/api/cash-register', handler: _lazy_zyPM9J, lazy: true, middleware: false, method: "get" },
   { route: '/api/cash-register/close', handler: _lazy_s4P548, lazy: true, middleware: false, method: "post" },
   { route: '/api/cash-register/open', handler: _lazy_rID8to, lazy: true, middleware: false, method: "post" },
@@ -1380,28 +1363,6 @@ async function shutdown() {
   ]);
   parentPort?.postMessage({ event: "exit" });
 }
-
-const ____all_ = defineEventHandler((event) => {
-  var _a;
-  if ((_a = event.node.req.url) == null ? void 0 : _a.startsWith("/api")) {
-    return;
-  }
-  const indexPath = join(process.cwd(), "index.html");
-  try {
-    const html = readFileSync(indexPath, "utf-8");
-    return html;
-  } catch (error) {
-    throw createError({
-      statusCode: 404,
-      statusMessage: "Not Found"
-    });
-  }
-});
-
-const ____all_$1 = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  default: ____all_
-});
 
 const cashRegister_get = defineEventHandler(async () => {
   try {
