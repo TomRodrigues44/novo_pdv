@@ -932,7 +932,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"19f57-Rxrnu4oKEgC5XIJwpQY02YexPP4\"",
+    "mtime": "2026-07-23T13:43:17.001Z",
+    "size": 106327,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"55ccf-Q+UqH8Zdz6QQKKx9pYl3oRPt5pc\"",
+    "mtime": "2026-07-23T13:43:17.001Z",
+    "size": 351439,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1021,6 +1036,7 @@ const _ngUQxC = eventHandler((event) => {
   return readAsset(id);
 });
 
+const _lazy__A7lCI = () => Promise.resolve().then(function () { return updateFiscalBatch_post$1; });
 const _lazy_zyPM9J = () => Promise.resolve().then(function () { return cashRegister_get$1; });
 const _lazy_s4P548 = () => Promise.resolve().then(function () { return close_post$1; });
 const _lazy_rID8to = () => Promise.resolve().then(function () { return open_post$1; });
@@ -1061,6 +1077,7 @@ const _lazy_RQnKGR = () => Promise.resolve().then(function () { return upload_po
 
 const handlers = [
   { route: '', handler: _ngUQxC, lazy: false, middleware: true, method: undefined },
+  { route: '/api/admin/update-fiscal-batch', handler: _lazy__A7lCI, lazy: true, middleware: false, method: "post" },
   { route: '/api/cash-register', handler: _lazy_zyPM9J, lazy: true, middleware: false, method: "get" },
   { route: '/api/cash-register/close', handler: _lazy_s4P548, lazy: true, middleware: false, method: "post" },
   { route: '/api/cash-register/open', handler: _lazy_rID8to, lazy: true, middleware: false, method: "post" },
@@ -1363,6 +1380,90 @@ async function shutdown() {
   ]);
   parentPort?.postMessage({ event: "exit" });
 }
+
+const updateFiscalBatch_post = defineEventHandler(async (event) => {
+  try {
+    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    const sql = neon(dbUrl);
+    const fiscalConfigs = {
+      salgados: {
+        origem: 0,
+        cfop: "5405",
+        ncm: "19059090",
+        cest: "1703100",
+        unidade: "UN",
+        icms: 17,
+        ipi: 0,
+        pis: 0.65,
+        cofins: 3
+      },
+      bolos: {
+        origem: 0,
+        cfop: "5405",
+        ncm: "19059090",
+        cest: "1704600",
+        unidade: "UN",
+        icms: 17,
+        ipi: 0,
+        pis: 0.65,
+        cofins: 3
+      },
+      brigadeiros: {
+        origem: 0,
+        cfop: "5405",
+        ncm: "19019020",
+        cest: "1700400",
+        unidade: "UN",
+        icms: 17,
+        ipi: 0,
+        pis: 0.65,
+        cofins: 3
+      },
+      bebidas: {
+        origem: 0,
+        cfop: "5405",
+        ncm: "22021000",
+        cest: "0201100",
+        unidade: "UN",
+        icms: 17,
+        ipi: 0,
+        pis: 0.65,
+        cofins: 3
+      }
+    };
+    let totalUpdated = 0;
+    for (const [category, config] of Object.entries(fiscalConfigs)) {
+      const result = await sql`
+        UPDATE products
+        SET 
+          fiscal = ${JSON.stringify(config)}::jsonb,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE category = ${category}
+      `;
+      totalUpdated += result.length;
+    }
+    return {
+      success: true,
+      totalUpdated,
+      message: `Atualizados ${totalUpdated} produtos com as novas configura\xE7\xF5es fiscais`
+    };
+  } catch (error) {
+    console.error("Error updating fiscal info:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error updating fiscal info"
+    });
+  }
+});
+
+const updateFiscalBatch_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: updateFiscalBatch_post
+});
 
 const cashRegister_get = defineEventHandler(async () => {
   try {

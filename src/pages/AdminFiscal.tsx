@@ -446,7 +446,7 @@ const AdminFiscal = () => {
                           <option value="MG">Minas Gerais</option>
                           <option value="PA">Pará</option>
                           <option value="PB">Paraíba</option>
-option value="PR">Paraná</option>
+                          <option value="PR">Paraná</option>
                           <option value="PE">Pernambuco</option>
                           <option value="PI">Piauí</option>
                           <option value="RJ">Rio de Janeiro</option>
@@ -676,7 +676,7 @@ option value="PR">Paraná</option>
                           <p><strong>CEST:</strong> 0201100</p>
                           <p><strong>Origem:</strong> 0 - Nacional</p>
                         </div>
-      </div>
+                      </div>
                     </div>
 
                     <Button
