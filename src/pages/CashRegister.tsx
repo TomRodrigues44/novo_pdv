@@ -55,11 +55,13 @@ const CashRegister = () => {
       setTimeElapsed(Math.max(0, diffInMinutes));
     };
 
+    // Calcular imediatamente
     calculateTimeElapsed();
 
+    // Atualizar a cada segundo
     const interval = setInterval(() => {
       calculateTimeElapsed();
-    }, 60000);
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [currentRegister]);
