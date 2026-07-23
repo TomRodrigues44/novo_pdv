@@ -18,7 +18,6 @@ import {
   RefreshCw,
   Link,
   XCircle,
-  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,7 +26,6 @@ const AdminFiscal = () => {
   const [loading, setLoading] = useState(true);
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionResult, setConnectionResult] = useState<any>(null);
-  const [isUpdatingBatch, setIsUpdatingBatch] = useState(false);
   
   // Configuração da Empresa
   const [companyConfig, setCompanyConfig] = useState({
@@ -195,28 +193,6 @@ const AdminFiscal = () => {
       toast.error('Erro ao testar conexão');
     } finally {
       setTestingConnection(false);
-    }
-  };
-
-  const handleUpdateBatchFiscal = async () => {
-    setIsUpdatingBatch(true);
-
-    try {
-      const response = await fetch('/api/admin/update-fiscal-batch', {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        toast.success(result.message || 'Atualização concluída!');
-      } else {
-        const error = await response.json();
-        toast.error(error.statusMessage || 'Erro ao atualizar informações fiscais');
-      }
-    } catch (error) {
-      toast.error('Erro ao atualizar informações fiscais');
-    } finally {
-      setIsUpdatingBatch(false);
     }
   };
 
@@ -407,7 +383,7 @@ const AdminFiscal = () => {
                           placeholder="Apto, Bloco, etc."
                         />
                       </div>
-                      <div className="col-span-2">
+                      <div>
                         <Label>Bairro</Label>
                         <Input
                           value={companyConfig.bairro}
@@ -615,82 +591,6 @@ const AdminFiscal = () => {
           {/* Tab: Configurações */}
           <TabsContent value="configuracoes">
             <div className="space-y-6">
-              {/* Atualização em Lote */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Atualização em Lote de Informações Fiscais</CardTitle>
-                  <CardDescription>
-                    Atualize as informações fiscais de todos os produtos de uma vez
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-start gap-2">
-                        <Zap className="h-5 w-5 text-blue-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-semibold text-blue-900">Atualização em Lote</h4>
-                          <p className="text-sm text-blue-700">
-                            Esta ação vai atualizar as informações fiscais de todos os produtos das categorias selecionadas.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                        <h5 className="font-semibold text-orange-900 mb-2">SALGADOS</h5>
-                        <div className="text-sm text-orange-700 space-y-1">
-                          <p><strong>NCM:</strong> 19059090</p>
-                          <p><strong>CFOP:</strong> 5405</p>
-                          <p><strong>CEST:</strong> 1703100</p>
-                          <p><strong>Origem:</strong> 0 - Nacional</p>
-                        </div>
-                      </div>
-
-                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                        <h5 className="font-semibold text-purple-900 mb-2">BOLOS</h5>
-                        <div className="text-sm text-purple-700 space-y-1">
-                          <p><strong>NCM:</strong> 19059090</p>
-                          <p><strong>CFOP:</strong> 5405</p>
-                          <p><strong>CEST:</strong> 1704600</p>
-                          <p><strong>Origem:</strong> 0 - Nacional</p>
-                        </div>
-                      </div>
-
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                        <h5 className="font-semibold text-amber-900 mb-2">BRIGADEIROS</h5>
-                        <div className="text-sm text-amber-700 space-y-1">
-                          <p><strong>NCM:</strong> 19019020</p>
-                          <p><strong>CFOP:</strong> 5405</p>
-                          <p><strong>CEST:</strong> 1700400</p>
-                          <p><strong>Origem:</strong> 0 - Nacional</p>
-                        </div>
-                      </div>
-
-                      <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
-                        <h5 className="font-semibold text-teal-900 mb-2">BEBIDAS</h5>
-                        <div className="text-sm text-teal-700 space-y-1">
-                          <p><strong>NCM:</strong> 22021000</p>
-                          <p><strong>CFOP:</strong> 5405</p>
-                          <p><strong>CEST:</strong> 0201100</p>
-                          <p><strong>Origem:</strong> 0 - Nacional</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Button
-                      onClick={handleUpdateBatchFiscal}
-                      disabled={isUpdatingBatch}
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Zap className="mr-2 h-4 w-4" />
-                      {isUpdatingBatch ? 'Atualizando...' : 'Atualizar Todos os Produtos'}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Teste de Conexão */}
               <Card>
                 <CardHeader>
@@ -772,7 +672,6 @@ const AdminFiscal = () => {
                                       </div>
                                     </div>
                                   </div>
-                                </div>
                                 )}
 
                                 <div className="mt-2 pt-2 border-t">
@@ -791,63 +690,63 @@ const AdminFiscal = () => {
                       </div>
                     )}
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            {/* Configurações de Emissão */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Configurações de Emissão</CardTitle>
-                <CardDescription>
-                  Configurações específicas para NF-e e NFC-e
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-blue-900">Ambiente de Homologação</p>
-                        <p className="text-sm text-blue-700">
-                          Atualmente o sistema está configurado para usar o ambiente de homologação da SEFAZ-RR. 
-                          Notas emitidas neste ambiente não têm valor fiscal e servem apenas para testes.
-                        </p>
+              {/* Configurações de Emissão */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configurações de Emissão</CardTitle>
+                  <CardDescription>
+                    Configurações específicas para NF-e e NFC-e
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-blue-900">Ambiente de Homologação</p>
+                          <p className="text-sm text-blue-700">
+                            Atualmente o sistema está configurado para usar o ambiente de homologação da SEFAZ-RR. 
+                            Notas emitidas neste ambiente não têm valor fiscal e servem apenas para testes.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Série NF-e</Label>
-                      <Input defaultValue="1" placeholder="1" />
-                      <p className="text-xs text-gray-500 mt-1">Série para Nota Fiscal Eletrônica</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Série NF-e</Label>
+                        <Input defaultValue="1" placeholder="1" />
+                        <p className="text-xs text-gray-500 mt-1">Série para Nota Fiscal Eletrônica</p>
+                      </div>
+                      <div>
+                        <Label>Série NFC-e</Label>
+                        <Input defaultValue="1" placeholder="1" />
+                        <p className="text-xs text-gray-500 mt-1">Série para NFC-e</p>
+                      </div>
+                      <div>
+                        <Label>Última NF-e</Label>
+                        <Input defaultValue="0" readOnly />
+                      </div>
+                      <div>
+                        <Label>Última NFC-e</Label>
+                        <Input defaultValue="0" readOnly />
+                      </div>
                     </div>
-                    <div>
-                      <Label>Série NFC-e</Label>
-                      <Input defaultValue="1" placeholder="1" />
-                      <p className="text-xs text-gray-500 mt-1">Série para NFC-e</p>
-                    </div>
-                    <div>
-                      <Label>Última NF-e</Label>
-                      <Input defaultValue="0" readOnly />
-                    </div>
-                    <div>
-                      <Label>Última NFC-e</Label>
-                      <Input defaultValue="0" readOnly />
-                    </div>
-                  </div>
 
-                  <div className="pt-4 border-t">
-                    <Button className="bg-orange-600 hover:bg-orange-700">
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Salvar Configurações
-                    </Button>
+                    <div className="pt-4 border-t">
+                      <Button className="bg-orange-600 hover:bg-orange-700">
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Salvar Configurações
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
