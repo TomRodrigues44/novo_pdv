@@ -29,13 +29,14 @@ interface PaymentDialogProps {
   freight: number;
   cartItems: CartItem[];
   customerId: string | null;
-  onPaymentConfirm: (payments: PaymentMethod[]) => void;
+  onPaymentConfirm: (payments: PaymentMethod[], saleId: string) => void;
 }
 
 export const PaymentDialog = ({ open, onClose, total, freight, cartItems, customerId, onPaymentConfirm }: PaymentDialogProps) => {
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
-  const [selectedType, setSelectedType] = useState<"debit" | "credit" | "pix" | "cash">("debit");
+  const [selectedType, setSelectedType] = useState<"debit" | "credit" | " | "cash">("debit");
   const [amount, setAmount] = useState("");
+  const [saleId, setSaleId] = useState<string>("");
 
   const subtotal = total - freight;
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -55,7 +56,9 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
     // Se for dinheiro e o valor for maior que o restante, calcular troco
     if (selectedType === "cash" && paymentAmount > remaining) {
       newPayment.cashReceived = paymentAmount;
-      newPayment.change = paymentAmount - remaining;
+      newPayment <span className="text-green-600">
+        Troco: R$ {(paymentAmount - remaining).toFixed(2)}
+      </span>
     }
 
     setPayments([...payments, newPayment]);
@@ -70,7 +73,12 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
     if (!isComplete || payments.length === 0) {
       return;
     }
-    onPaymentConfirm(payments);
+    
+    // Gerar ID da venda
+    const newSaleId = `sale-${Date.now()}`;
+    setSaleId(newSaleId);
+    
+    onPaymentConfirm(payments, newSaleId);
     setPayments([]);
     onClose();
   };
@@ -270,7 +278,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                         <CreditCard className="h-3 w-3 mr-1" />
                         Crédito
                       </TabsTrigger>
-                      <TabsTrigger value="pix" className="text-xs">
+                      <TabsTrigger value="pix" className="threadsTrigger value="pix" className="text-xs">
                         <QrCode className="h-3 w-3 mr-1" />
                         Pix
                       </TabsTrigger>
