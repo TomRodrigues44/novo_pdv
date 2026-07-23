@@ -247,17 +247,18 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
                     Trocar
                   </Button>
                 </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  className="w-full border-dashed border-2"
-                  onClick={() => setIsCustomerSelectorOpen(true)}
-                >
-                  <User className="h-4 w-4 mr-2" />
-                  Selecionar Cliente
-                </Button>
-              )}
-            </div>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                className="w-full border-dashed border-2"
+                onClick={() => setIsCustomerSelectorOpen(true)}
+              >
+                <User className="h-4 w-4 mr-2" />
+                Selecionar Cliente
+              </Button>
+            )}
+          </div>
 
           {cartItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
