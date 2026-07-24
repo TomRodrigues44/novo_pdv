@@ -103,6 +103,15 @@ const AdminContingency = () => {
   const handlePrint = (note: ContingencyNote) => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
+      const itemsHtml = note.xml_content ? extractItemsFromXML(note.xml_content).map((item: any) => `
+        <div class="row">
+          <span>${item.quantidade}x ${item.name}</span>
+          <span>R$ ${item.total.toFixed(2)}</span>
+        </div>
+      `).join('') : '';
+
+      const total = extractTotalFromXML(note.xml_content);
+
       printWindow.document.write(`
         <html>
           <head>
@@ -208,7 +217,7 @@ const AdminContingency = () => {
 
             <div class="section">
               <div class="section-title">DADOS DO DESTINATÁRIO</div>
-div class="row">
+              <div class="row">
                 <span>CPF/CNPJ:</span>
                 <span>***.***.***-**</span>
               </div>
@@ -220,18 +229,13 @@ div class="row">
 
             <div class="section">
               <div class="section-title">ITENS DA NOTA</div>
-              ${note.xml_content ? extractItemsFromXML(note.xml_content).map((item: any) => `
-                <div class="row">
-                  <span>${item.quantidade}x ${item.nome}</span>
-                  <span>R$ ${item.total.toFixed(2)}</span>
-                </div>
-              `).join('')}
+              ${itemsHtml}
             </div>
 
             <div class="total">
               <div class="row">
                 <span>Total da Nota:</span>
-                <span>R$ ${extractTotalFromXML(note.xml_content).toFixed(2)}</span>
+                <span>R$ ${total.toFixed(2)}</span>
               </div>
             </div>
 
@@ -239,7 +243,7 @@ div class="row">
               <div class="section-title">FORMA DE PAGAMENTO</div>
               <div class="row">
                 <span>Dinheiro:</span>
-                <span>R$ ${extractTotalFromXML(note.xml_content).toFixed(2)}</span>
+                <span>R$ ${total.toFixed(2)}</span>
               </div>
             </div>
 

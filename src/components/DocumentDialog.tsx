@@ -60,6 +60,31 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
   const handlePrintQuote = () => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
+      const itemsHtml = cartItems.map((item, index) => `
+        <div class="row">
+          <span>${index + 1} ${item.name}</span>
+          <span>${item.quantity}x R$ ${(item.price * item.quantity).toFixed(2)}</span>
+        </div>
+        ${(item as any).flavors && (item as any).flavors.length > 0 ? `
+        <div style="font-size: 10px; color: #666; margin-left: 20px;">
+          Sabores: ${(item as any).flavors.join(", ")}
+        </div>
+        ` : ''}
+      `).join('');
+
+      const paymentsHtml = payments.map((payment) => `
+        <div class="row">
+          <span>${getPaymentTypeName(payment.type)}:</span>
+          <span>R$ ${payment.amount.toFixed(2)}</span>
+        </div>
+        ${payment.type === 'cash' && payment.change > 0 ? `
+        <div class="row" style="color: green;">
+          <span>Troco:</span>
+          <span>R$ ${payment.change.toFixed(2)}</span>
+        </div>
+        ` : ''}
+      `).join('');
+
       printWindow.document.write(`
         <html>
           <head>
@@ -140,17 +165,7 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
 
             <div class="section">
               <div class="section-title">ITENS DO ORÇAMENTO</div>
-              ${cartItems.map((item, index) => `
-                <div class="row">
-                  <span>${index + 1} ${item.name}</span>
-                  <span>${item.quantity}x R$ ${(item.price * item.quantity).toFixed(2)}</span>
-                </div>
-                ${(item as any).flavors && (item as any).flavors.length > 0 ? `
-                <div style="font-size: 10px; color: #666; margin-left: 20px;">
-                  Sabores: ${(item as any).flavors.join(", ")}
-                </div>
-                ` : ''}
-              `).join('')}
+              ${itemsHtml}
             </div>
 
             <div class="section">
@@ -175,18 +190,7 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
 
             <div class="section">
               <div class="section-title">FORMA DE PAGAMENTO</div>
-              ${payments.map((payment) => `
-                <div class="row">
-                  <span>${getPaymentTypeName(payment.type)}:</span>
-                  <span>R$ ${payment.amount.toFixed(2)}</span>
-                </div>
-                ${payment.type === 'cash' && payment.change > 0 ? `
-                <div class="row" style="color: green;">
-                  <span>Troco:</span>
-                  <span>R$ ${payment.change.toFixed(2)}</span>
-                </div>
-                ` : ''}
-              `).join('')}
+              ${paymentsHtml}
             </div>
 
             <div class="footer">
@@ -254,68 +258,93 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
     if (fiscalResult?.xml) {
       const printWindow = window.open('', '_blank');
       if (printWindow) {
+        const itemsHtml = cartItems.map((item, index) => `
+          <div class="row">
+            <span>${index + 1} ${item.name}</span>
+            <span>${item.quantity}x R$ ${(item.price * item.quantity).toFixed(2)}</span>
+          </div>
+          ${(item as any).flavors && (item as any).flavors.length > 0 ? `
+          <div style="font-size: 10px; color: #666; margin-left: 20px;">
+            Sabores: ${(item as any).flavors.join(", ")}
+          </div>
+          ` : ''}
+        `).join('');
+
+        const paymentsHtml = payments.map((payment) => `
+          <div class="row">
+            <span>${getPaymentTypeName(payment.type)}:</span>
+            <span>R$ ${payment.amount.toFixed(2)}</span>
+          </div>
+          ${payment.type === 'cash' && payment.change > 0 ? `
+          <div class="row" style="color: green;">
+            <span>Troco:</span>
+            <span>R$ ${payment.change.toFixed(2)}</span>
+          </div>
+          ` : ''}
+        `).join('');
+
         printWindow.document.write(`
           <html>
-            <head>
-              <title>Cupom Fiscal - Nota ${fiscalResult.numeroNota}</title>
-              <style>
-                body {
-                  font-family: 'Courier New, monospace;
-                  font-size: 12px;
-                  margin: 0;
-                  padding: 10px;
-                  line-height: 1.4;
-                }
-                .header {
-                  text-align: center;
-                  margin-bottom: 20px;
-                  border-bottom: 2px dashed #000;
-                  padding-bottom: 10px;
-                }
-                .section {
-                  margin-bottom: 15px;
-                }
-                .section-title {
-                  font-weight: bold;
-                  margin-bottom: 5px;
-                }
-                .row {
-                  display: flex;
-                  justify-content: space-between;
-                  margin-bottom: 3px;
-                }
-                .total {
-                  font-weight: bold;
-                  font-size: 14px;
-                  margin-top: 10px;
-                  border-top: 2px dashed #000;
-                  padding-top: 10px;
-                }
-                .qr-code {
-                  text-align: center;
-                  margin-top: 20px;
-                  padding: 10px;
-                  border: 2px solid #000;
-                }
-                .qr-code img {
-                  max-width: 200px;
-                }
-                .protocolo {
-                  text-align: center;
-                  margin-top: 10px;
-                  font-size: 11px;
-                  color: #666;
-                }
-                .chave {
-                  font-size: 9px;
-                  word-break: break-all;
-                  margin-top: 10px;
-                  text-align: center;
-                  color: #666;
-                }
-              </style>
-            </head>
-            <body>
+          <head>
+            <title>Cupom Fiscal - Nota ${fiscalResult.numeroNota}</title>
+            <style>
+              body {
+                font-family: 'Courier New, monospace;
+                font-size: 12px;
+                margin: 0;
+                padding: 10px;
+                line-height: 1.4;
+              }
+              .header {
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: 2px dashed #000;
+                padding-bottom: 10px;
+              }
+              .section {
+                margin-bottom: 15px;
+              }
+              .section-title {
+                font-weight: bold;
+                margin-bottom: 5px;
+              }
+              .row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 3px;
+              }
+              .total {
+                font-weight: bold;
+                font-size: 14px;
+                margin-top: 10px;
+                border-top: 2px dashed #000;
+                padding-top: 10px;
+              }
+              .qr-code {
+                text-align: center;
+                margin-top: 20px;
+                padding: 10px;
+                border: 2px solid #000;
+              }
+              .qr-code img {
+                max-width: 200px;
+              }
+              .protocolo {
+                text-align: center;
+                margin-top: 10px;
+                font-size: 11px;
+                color: #666;
+              }
+              .chave {
+                font-size: 9px;
+                word-break: break-all;
+                margin-top: 10px;
+                text-align: center;
+                color: #666;
+              }
+            </style>
+          </head>
+          <body>
             <div class="header">
               <h2>DANFE SEFAZ-RR</h2>
               <p>DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA</p>
@@ -356,17 +385,7 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
 
             <div class="section">
               <div class="section-title">ITENS DA NOTA</div>
-              ${cartItems.map((item, index) => `
-                <div class="row">
-                  <span>${index + 1} ${item.name}</span>
-                  <span>${item.quantity}x R$ ${(item.price * item.quantity).toFixed(2)}</span>
-                </div>
-                ${(item as any).flavors && (item as any).flavors.length > 0 ? `
-                  <div style="font-size: 10px; color: #666; margin-left: 20px;">
-                    Sabores: ${(item as any).flavors.join(", ")}
-                  </div>
-                ` : ''}
-              `).join('')}
+              ${itemsHtml}
             </div>
 
             <div class="total">
@@ -384,18 +403,7 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
 
             <div class="section">
               <div class="section-title">FORMA DE PAGAMENTO</div>
-              ${payments.map((payment) => `
-                <div class="row">
-                  <span>${getPaymentTypeName(payment.type)}:</span>
-                  <span>R$ ${payment.amount.toFixed(2)}</span>
-                </div>
-                ${payment.type === 'cash' && payment.change > 0 ? `
-                <div class="row" style="color: green;">
-                  <span>Troco:</span>
-                  <span>R$ ${payment.change.toFixed(2)}</span>
-                </div>
-                ` : ''}
-              `).join('')}
+              ${paymentsHtml}
             </div>
 
             <div class="qr-code">
@@ -504,7 +512,7 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                             <Truck className="h-4 w-4" />
                             Frete (Entrega):
                           </span>
-                          <span>R$ {freedom.toFixed(2)}</span>
+                          <span>R$ {freight.toFixed(2)}</span>
                         </div>
                       )}
                       <Separator />
