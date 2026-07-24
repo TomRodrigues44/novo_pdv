@@ -368,7 +368,7 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
               <div class="section-title">DADOS DO DESTINATÁRIO</div>
               <div class="row">
                 <span>CPF/CNPJ:</span>
-                <span>***.***.***-**</span>
+                  <span>***.***.***-**</span>
                 </span>
               </div>
               <div class="row">
