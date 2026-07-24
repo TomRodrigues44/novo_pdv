@@ -468,7 +468,6 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
 
           <div className="flex-1 overflow-y-auto p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Coluna Esquerda - Resumo do Pedido */}
               <div className="space-y-4">
                 <Card>
                   <CardHeader className="bg-orange-50 pb-3">
@@ -496,8 +495,6 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                       </div>
                     ))}
                     <Separator className="my-3" />
-                    
-                    {/* Discriminação de Valores */}
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="text-gray-600">Subtotal:</span>
@@ -521,7 +518,6 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                   </CardContent>
                 </Card>
 
-                {/* Total a Pagar */}
                 <Card className="bg-orange-50 border-orange-200">
                   <CardContent className="p-4">
                     <div className="flex justify-between items-center">
@@ -534,12 +530,10 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                 </Card>
               </div>
 
-              {/* Coluna Direita - Opções de Documento */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg text-center">Escolha o Tipo de Documento</h3>
                 
                 <div className="space-y-4">
-                  {/* Opção Orçamento */}
                   <Card 
                     className="cursor-pointer hover:border-orange-400 hover:shadow-lg transition-all border-2"
                     onClick={handleGenerateQuote}
@@ -559,7 +553,6 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                     </CardContent>
                   </Card>
 
-                  {/* Opção Cupom Fiscal */}
                   <Card 
                     className="cursor-pointer hover:border-green-400 hover:shadow-lg transition-all border-2"
                     onClick={handleSendToFiscal}
@@ -580,7 +573,6 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                   </Card>
                 </div>
 
-                {/* Status do Envio Fiscal */}
                 {isSending && (
                   <Card className="border-blue-200 bg-blue-50">
                     <CardContent className="p-6">
@@ -595,7 +587,6 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                   </Card>
                 )}
 
-                {/* Erro / Contingência */}
                 {error && (
                   <Card className="border-red-200 bg-red-50">
                     <CardContent className="p-6">
@@ -619,7 +610,6 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                   </Card>
                 )}
 
-                {/* Contingência */}
                 {isContingency && !error && !isSending && (
                   <Card className="border-amber-200 bg-amber-50">
                     <CardContent className="p-6">
@@ -645,7 +635,6 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                   </Card>
                 )}
 
-                {/* Resultado Sucesso */}
                 {fiscalResult && !isSending && !isContingency && (
                   <Card className="border-green-200 bg-green-50">
                     <CardContent className="p-6">
@@ -717,7 +706,6 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Impressão */}
       <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
