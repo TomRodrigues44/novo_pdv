@@ -258,64 +258,64 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
           <html>
             <head>
               <title>Cupom Fiscal - Nota ${fiscalResult.numeroNota}</title>
-            <style>
-              body {
-                font-family: 'Courier New, monospace;
-                font-size: 12px;
-                margin: 0;
-                padding: 10px;
-                line-height: 1.4;
-              }
-              .header {
-                text-align: center;
-                margin-bottom: 20px;
-                border-bottom: 2px dashed #000;
-                padding-bottom: 10px;
-              }
-              .section {
-                margin-bottom: 15px;
-              }
-              .section-title {
-                font-weight: bold;
-                margin-bottom: 5px;
-              }
-              .row {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 3px;
-              }
-              .total {
-                font-weight: bold;
-                font-size: 14px;
-                margin-top: 10px;
-                border-top: 2px dashed #000;
-                padding-top: 10px;
-              }
-              .qr-code {
-                text-align: center;
-                margin-top: 20px;
-                padding: 10px;
-                border: 2px solid #000;
-              }
-              .qr-code img {
-                max-width: 200px;
-              }
-              .protocolo {
-                text-align: center;
-                margin-top: 10px;
-                font-size: 11px;
-                color: #666;
-              }
-              .chave {
-                font-size: 9px;
-                word-break: break-all;
-                margin-top: 10px;
-                text-align: center;
-                color: #666;
-              }
-            </style>
-          </head>
-          <body>
+              <style>
+                body {
+                  font-family: 'Courier New, monospace;
+                  font-size: 12px;
+                  margin: 0;
+                  padding: 10px;
+                  line-height: 1.4;
+                }
+                .header {
+                  text-align: center;
+                  margin-bottom: 20px;
+                  border-bottom: 2px dashed #000;
+                  padding-bottom: 10px;
+                }
+                .section {
+                  margin-bottom: 15px;
+                }
+                .section-title {
+                  font-weight: bold;
+                  margin-bottom: 5px;
+                }
+                .row {
+                  display: flex;
+                  justify-content: space-between;
+                  margin-bottom: 3px;
+                }
+                .total {
+                  font-weight: bold;
+                  font-size: 14px;
+                  margin-top: 10px;
+                  border-top: 2px dashed #000;
+                  padding-top: 10px;
+                }
+                .qr-code {
+                  text-align: center;
+                  margin-top: 20px;
+                  padding: 10px;
+                  border: 2px solid #000;
+                }
+                .qr-code img {
+                  max-width: 200px;
+                }
+                .protocolo {
+                  text-align: center;
+                  margin-top: 10px;
+                  font-size: 11px;
+                  color: #666;
+                }
+                .chave {
+                  font-size: 9px;
+                  word-break: break-all;
+                  margin-top: 10px;
+                  text-align: center;
+                  color: #666;
+                }
+              </style>
+            </head>
+            <body>
             <div class="header">
               <h2>DANFE SEFAZ-RR</h2>
               <p>DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA</p>

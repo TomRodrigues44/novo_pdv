@@ -33,7 +33,7 @@ interface ContingencyNote {
 }
 
 const AdminContingency = () => {
-  const [notes, setNotes] = [ContingencyNote[]>([]);
+  const [notes, setNotes] = useState<ContingencyNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [retryingId, setRetryingId] = useState<string | null>(null);
 
@@ -41,7 +41,7 @@ const AdminContingency = () => {
     try {
       setLoading(true);
       const response = await fetch('/api/fiscal/contingency');
-      if (status === 200) {
+      if (response.ok) {
         const data = await response.json();
         setNotes(data);
       }
@@ -100,7 +100,7 @@ const AdminContingency = () => {
     }
   };
 
-  const handlePrint = (note: Contingency) => {
+  const handlePrint = (note: ContingencyNote) => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(`
@@ -109,7 +109,7 @@ const AdminContingency = () => {
             <title>Cupom Fiscal em Contingência - Nota ${note.numero_nota}</title>
             <style>
               body {
-                font-family: 'Courier New', monospace;
+                font-family: 'Courier New, monospace;
                 font-size: 12px;
                 margin: 0;
                 padding: 10px;
@@ -208,7 +208,7 @@ const AdminContingency = () => {
 
             <div class="section">
               <div class="section-title">DADOS DO DESTINATÁRIO</div>
-              <div class="row">
+div class="row">
                 <span>CPF/CNPJ:</span>
                 <span>***.***.***-**</span>
               </div>
@@ -283,7 +283,6 @@ const AdminContingency = () => {
   };
 
   const extractItemsFromXML = (xml: string) => {
-    // Extrair itens do XML de forma simplificada
     const items: any[] = [];
     const itemRegex = /<det nItem="(\d+)">[\s\S]*?<cProd>([\s\S]*?)<\/cProd>[\s\S]*?<xProd>([\s\S]*?)<\/xProd>[\s\S]*?<vUnCom>([\s\S]*?)<\/vUnCom>[\s\S]*?<qCom>([\s\S]*?)<\/qCom>[\s\S]*?<vProd>([\s\S]*?)<\/vProd>/g;
     let match;
@@ -442,7 +441,7 @@ const AdminContingency = () => {
                               <Download className="h-4 w-4" />
                             </Button>
                             <Button
-                              size="sim"
+                              size="sm"
                               onClick={() => handleDelete(note.id)}
                               variant="outline"
                               className="text-red-600 hover:text-red-700"
@@ -469,7 +468,7 @@ const AdminContingency = () => {
                 <ul className="text-sm text-blue-700 mt-2 space-y-1">
                   <li>• Notas em contingência são armazenadas automaticamente quando a SEFAZ está offline</li>
                   <li>• Você pode reenviar notas em contingência quando a SEFAZ voltar a funcionar</li>
-li>• O sistema gera automaticamente o QR Code e o XML da nota fiscal</li>
+                  <li>• O sistema gera automaticamente o QR Code e o XML da nota fiscal</li>
                   <li>• As notas em contingência são válidas por 30 dias</li>
                 </ul>
               </div>
