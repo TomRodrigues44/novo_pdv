@@ -86,6 +86,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
 
   const totalWithFreight = cartTotal + freight;
 
+  // Buscar motoboys
   useEffect(() => {
     const fetchMotoboys = async () => {
       try {
@@ -113,6 +114,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
       return;
     }
 
+    // Criar sangria automática
     try {
       const response = await fetch('/api/cash-transactions', {
         method: 'POST',
@@ -138,12 +140,14 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
   };
 
   const handleRemoveFreight = async () => {
+    // Remover a sangria correspondente
     try {
       const response = await fetch('/api/cash-transactions');
       if (response.ok) {
         const data = await response.json();
         const transactions = data.transactions || [];
         
+        // Encontrar a sangria de frete mais recente
         const freightTransaction = transactions.find((t: any) => 
           t.description?.startsWith('Taxa Entrega') && 
           t.amount === freight
@@ -173,7 +177,9 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
     setIsPaymentDialogOpen(true);
   };
 
-  const handlePaymentConfirm = (payments: any[], saleId: string) => {
+  const handlePaymentConfirm = (payments: any[]) => {
+    // Registrar a venda
+    const saleId = `sale-${Date.now()}`;
     setCurrentSaleId(saleId);
     
     recordSale({
@@ -198,16 +204,14 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
   };
 
   const handleGenerateDocument = (type: "quote" | "fiscal") => {
-    if (type === "quote") {
-      const documentType = type === "quote" ? "Orçamento" : "Cupom Fiscal";
-      alert(`${documentType} gerado com sucesso!\nTotal: R$ ${totalWithFreight.toFixed(2)}`);
-      
-      setIsDocumentDialogOpen(false);
-      clearCart();
-      setCurrentPayments([]);
-      setCurrentSaleId(null);
-      onCustomerChange(null);
-    }
+    const documentType = type === "quote" ? "Orçamento" : "Cupom Fiscal";
+    alert(`${documentType} gerado com sucesso!\nTotal: R$ ${totalWithFreight.toFixed(2)}`);
+    
+    setIsDocumentDialogOpen(false);
+    clearCart();
+    setCurrentPayments([]);
+    setCurrentSaleId(null);
+    onCustomerChange(null);
   };
 
   return (
@@ -225,6 +229,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
           </CardTitle>
         </CardHeader>
         <CardContent className="flex-1 overflow-auto p-4">
+          {/* Seleção de Cliente */}
           <div className="mb-4">
             {selectedCustomer ? (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -283,6 +288,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
           <>
             <Separator />
             <div className="p-4 space-y-3">
+              {/* Botão de Frete */}
               <div className="flex gap-2">
                 <Dialog open={isFreightDialogOpen} onOpenChange={setIsFreightDialogOpen}>
                   <DialogTrigger asChild>
@@ -356,6 +362,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
                 )}
               </div>
 
+              {/* Display do Frete */}
               {freight > 0 && (
                 <div className="flex justify-between items-center text-sm bg-blue-50 p-2 rounded-lg">
                   <span className="text-blue-700 font-medium">Frete (Entrega):</span>
@@ -438,7 +445,6 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
         cartItems={cartItems}
         payments={currentPayments}
         onGenerateDocument={handleGenerateDocument}
-        saleId={currentSaleId}
       />
     </>
   );

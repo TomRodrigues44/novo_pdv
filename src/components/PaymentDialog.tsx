@@ -29,14 +29,13 @@ interface PaymentDialogProps {
   freight: number;
   cartItems: CartItem[];
   customerId: string | null;
-  onPaymentConfirm: (payments: PaymentMethod[], saleId: string) => void;
+  onPaymentConfirm: (payments: PaymentMethod[]) => void;
 }
 
 export const PaymentDialog = ({ open, onClose, total, freight, cartItems, customerId, onPaymentConfirm }: PaymentDialogProps) => {
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
   const [selectedType, setSelectedType] = useState<"debit" | "credit" | "pix" | "cash">("debit");
   const [amount, setAmount] = useState("");
-  const [saleId, setSaleId] = useState<string>("");
 
   const subtotal = total - freight;
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -53,6 +52,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
       amount: paymentAmount,
     };
 
+    // Se for dinheiro e o valor for maior que o restante, calcular troco
     if (selectedType === "cash" && paymentAmount > remaining) {
       newPayment.cashReceived = paymentAmount;
       newPayment.change = paymentAmount - remaining;
@@ -70,11 +70,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
     if (!isComplete || payments.length === 0) {
       return;
     }
-    
-    const newSaleId = `sale-${Date.now()}`;
-    setSaleId(newSaleId);
-    
-    onPaymentConfirm(payments, newSaleId);
+    onPaymentConfirm(payments);
     setPayments([]);
     onClose();
   };
@@ -85,6 +81,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
     onClose();
   };
 
+  // Auto-avançar quando o pagamento estiver completo
   useEffect(() => {
     if (isComplete && payments.length > 0 && open) {
       const timer = setTimeout(() => {
@@ -94,6 +91,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
     }
   }, [isComplete, payments.length, open]);
 
+  // Calcular troco total
   const totalChange = payments.reduce((sum, p) => {
     return sum + (p.change || 0);
   }, 0);
@@ -117,7 +115,9 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Coluna Esquerda - Resumo do Pedido */}
             <div className="space-y-4">
+              {/* Cliente Selecionado */}
               {customerId && (
                 <Card className="bg-blue-50 border-blue-200">
                   <CardContent className="p-4">
@@ -156,6 +156,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                   ))}
                   <Separator className="my-3" />
                   
+                  {/* Discriminação de Valores */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">Subtotal:</span>
@@ -179,6 +180,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                 </CardContent>
               </Card>
 
+              {/* Total a Pagar */}
               <Card className="bg-orange-50 border-orange-200">
                 <CardContent className="p-4">
                   <div className="flex justify-between items-center">
@@ -191,9 +193,11 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
               </Card>
             </div>
 
+            {/* Coluna Direita - Pagamentos */}
             <div className="space-y-4">
               <h3 className="font-semibold text-lg">Pagamentos</h3>
 
+              {/* Pagamentos Adicionados */}
               {payments.length > 0 && (
                 <div className="space-y-2">
                   <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -251,6 +255,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                 </div>
               )}
 
+              {/* Adicionar Pagamento */}
               {!isComplete && (
                 <div className="space-y-4">
                   <h4 className="font-semibold">Adicionar Pagamento</h4>
@@ -300,7 +305,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                         type="number"
                         step="0.01"
                         value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
+                        onChange={(e) => isComplete ? undefined : setAmount(e.target.value)}
                         placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
                       />
                     </TabsContent>
@@ -358,6 +363,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
           </div>
         </div>
 
+        {/* Footer Fixo com Botão de Confirmar Pagamento */}
         <DialogFooter className="px-6 py-4 border-t bg-gray-50 gap-2">
           <Button variant="outline" onClick={handleClose}>
             Cancelar
