@@ -24,9 +24,18 @@ interface DocumentDialogProps {
   saleId?: string;
 }
 
+interface FiscalResult {
+  xml?: string;
+  numeroNota: string;
+  serie: string;
+  protocolo: string;
+  chaveAcesso: string;
+  qrCode: string;
+}
+
 export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payments, onGenerateDocument, saleId }: DocumentDialogProps) => {
   const [isSending, setIsSending] = useState(false);
-  const [fiscalResult, setFiscalResult] = useState<any>(null);
+  const [fiscalResult, setFiscalResult] = useState<FiscalResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isContingency, setIsContingency] = useState(false);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
@@ -451,10 +460,6 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
     handleSendToFiscal();
   };
 
-  const handlePrintQuote = () => {
-    handlePrintQuote();
-  };
-
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
@@ -718,13 +723,26 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
             </p>
 
             <div className="flex gap-2">
-              <Button onClick={fiscalResult ? handlePrintFiscal : handlePrintQuote} className="flex-1 bg-blue-600 hover:bg-blue-700">
+              <Button
+                onClick={() => {
+                  if (fiscalResult) {
+                    handlePrintFiscal();
+                  } else {
+                    handlePrintQuote();
+                  }
+                }}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
                 <Printer className="h-4 w-4 mr-2" />
                 Imprimir
               </Button>
 
               {fiscalResult && (
-                <Button onClick={handleDownloadXML} variant="outline" className="flex-1">
+                <Button
+                  onClick={handleDownloadXML}
+                  variant="outline"
+                  className="flex-1"
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Baixar XML
                 </Button>
