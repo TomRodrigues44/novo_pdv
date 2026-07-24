@@ -15,7 +15,7 @@ import { toast } from "sonner";
 
 interface DocumentDialogProps {
   open: boolean;
-  onClose: () => void void;
+  onClose: () => void;
   total: number;
   freight: number;
   cartItems: CartItem[];
@@ -116,7 +116,7 @@ export const DocumentDialog = ({ open, onClose, total, freight, cartItems, payme
               <title>Cupom Fiscal - Nota ${fiscalResult.numeroNota}</title>
               <style>
                 body {
-                  font-family: 'Courier New, monospace;
+                  font-family: 'Courier New', monospace;
                   font-size: 12px;
                   margin: 0;
                   padding: 10px;
@@ -409,7 +409,7 @@ export const DocumentDialog = ({ open, onClose, total, freight, cartItems, payme
                         <Receipt className="h-8 w-8 text-green-600" />
                       </div>
                       <div className="flex-1">
-                        <h4 className="font title-bold text-lg text-gray-800">Cupom Fiscal</h4>
+                        <h4 className="font-bold text-lg text-gray-800">Cupom Fiscal</h4>
                         <p className="text-sm text-gray-600 mt-1">
                           Documento fiscal enviado ao FISCO
                         </p>
@@ -469,7 +469,7 @@ export const DocumentDialog = ({ open, onClose, total, freight, cartItems, payme
 
               {/* Contingência */}
               {isContingency && !error && (
-                <Card className="border-amber-200 bg-amb er-50">
+                <Card className="border-amber-200 bg-amber-50">
                   <CardContent className="p-6">
                     <div className="flex items-start gap-3">
                       <AlertTriangle className="h-6 w-6 text-amber-600 mt-0.5" />
@@ -512,7 +512,7 @@ export const DocumentDialog = ({ open, onClose, total, freight, cartItems, payme
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Protocolo:</span>
-                            <span className="font-semibold">{fiscal fiscalResult.protocolo}</span>
+                            <span className="font-semibold">{fiscalResult.protocolo}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Chave de Acesso:</span>
