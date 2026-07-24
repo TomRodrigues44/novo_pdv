@@ -711,41 +711,27 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
           <DialogHeader>
             <DialogTitle>Imprimir Documento</DialogTitle>
           </DialogHeader>
-          <DialogContent>
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                {fiscalResult ? 'Cupom Fiscal' : 'Orçamento'}
-              </p>
-              
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => {
-                    if (fiscalResult) {
-                      handlePrintFiscal();
-                    } else {
-                      handlePrintQuote();
-                    }
-                  }}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
-                >
-                  <Printer className="h-4 w-4 mr-2" />
-                  Imprimir
+
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              {fiscalResult ? 'Cupom Fiscal' : 'Orçamento'}
+            </p>
+
+            <div className="flex gap-2">
+              <Button onClick={fiscalResult ? handlePrintFiscal : handlePrintQuote} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                <Printer className="h-4 w-4 mr-2" />
+                Imprimir
+              </Button>
+
+              {fiscalResult && (
+                <Button onClick={handleDownloadXML} variant="outline" className="flex-1">
+                  <Download className="h-4 w-4 mr-2" />
+                  Baixar XML
                 </Button>
-                
-                {fiscalResult && (
-                  <Button
-                    onClick={handleDownloadXML}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Baixar XML
-                  </Button>
-                )}
-              </div>
+              )}
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>
+        </DialogContent>
       </Dialog>
     </>
   );
