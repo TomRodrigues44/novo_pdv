@@ -86,7 +86,7 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                 font-size: 12px;
                 margin: 0;
                 padding: 10px;
-                line-height:1.4;
+                line-height: 1.4;
               }
               .header {
                 text-align: center;
@@ -282,7 +282,7 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                 font-size: 12px;
                 margin: 0;
                 padding: 10px;
-                line-height:1.4;
+                line-height: 1.4;
               }
               .header {
                 text-align: center;
@@ -305,31 +305,31 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
               .total {
                 font-weight: bold;
                 font-size: 14px;
-                margin-top:10px;
+                margin-top: 10px;
                 border-top: 2px dashed #000;
-                padding-top:10px;
+                padding-top: 10px;
               }
               .qr-code {
                 text-align: center;
-                margin-top:20px;
-                padding:10px;
-                border:2px solid #000;
+                margin-top: 20px;
+                padding: 10px;
+                border: 2px solid #000;
               }
               .qr-code img {
-                max-width:200px;
+                max-width: 200px;
               }
               .protocolo {
                 text-align: center;
-                margin-top:10px;
-                font-size:11px;
-                color:#666;
+                margin-top: 10px;
+                font-size: 11px;
+                color: #666;
               }
               .chave {
-                font-size:9px;
-                word-break:break-all;
-                margin-top:10px;
-                text-align:center;
-                color:#666;
+                font-size: 9px;
+                word-break: break-all;
+                margin-top: 10px;
+                text-align: center;
+                color: #666;
               }
             </style>
           </head>
@@ -368,7 +368,7 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
               <div class="section-title">DADOS DO DESTINATÁRIO</div>
               <div class="row">
                 <span>CPF/CNPJ:</span>
-                  <span>***.***.***-**</span>
+                <span>***.***.***-**</span>
                 </span>
               </div>
               <div class="row">
@@ -404,7 +404,7 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
             </div>
 
             <div class="qr-code">
-              <p style="font-size:10px; margin-bottom:5px;">QR Code para consulta:</p>
+              <p style="font-size: 10px; margin-bottom: 5px;">QR Code para consulta:</p>
               <img src="${fiscalResult.qrCode}" alt="QR Code" />
             </div>
 
