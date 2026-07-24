@@ -1,4 +1,3 @@
-with >">
 import { useState } from "react";
 import {
   Dialog,
@@ -9,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Receipt, FileText, Printer, CheckCircle, Truck, Store, Phone, MapPin, AlertTriangle, Loader2, RefreshCw, Download, Copy, AlertOctagon } from "lucide-react";
+import { Receipt, FileText, Printer, CheckCircle, Truck, AlertTriangle, Loader2, RefreshCw, Download, Copy, AlertOctagon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { CartItem } from "@/types/product";
 import { toast } from "sonner";
@@ -61,30 +60,21 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
   const handlePrintQuote = () => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
-      const itemsHtml = cartItems.map((item, index) => `
-        <div class="row">
-          <span>${index + 1} ${item.name}</span>
-          <span>${item.quantity}x R$ ${(item.price * item.quantity).toFixed(2)}</span>
-        </div>
-        ${(item as any).flavors && (item as any).flavors.length > 0 ? `
-        <div style="font-size: 10px; color: #666; margin-left: 20px;">
-          Sabores: ${(item as any).flavors.join(", ")}
-        </div>
-        ` : ''}
-      `).join('');
+      const itemsHtml = cartItems.map((item, index) => {
+        let html = `<div class="row"><span>${index + 1} ${item.name}</span><span>${item.quantity}x R$ ${(item.price * item.quantity).toFixed(2)}</span></div>`;
+        if ((item as any).flavors && (item as any).flavors.length > 0) {
+          html += `<div style="font-size: 10px; color: #666; margin-left: 20px;">Sabores: ${(item as any).flavors.join(", ")}</div>`;
+        }
+        return html;
+      }).join('');
 
-      const paymentsHtml = payments.map((payment) => `
-        <div class="row">
-          <span>${getPaymentTypeName(payment.type)}:</span>
-          <span>R$ ${payment.amount.toFixed(2)}</span>
-        </div>
-        ${payment.type === 'cash' && payment.change > 0 ? `
-        <div class="row" style="color: green;">
-          <span>Troco:</span>
-          <span>R$ ${payment.change.toFixed(2)}</span>
-        </div>
-        ` : ''}
-      `).join('');
+      const paymentsHtml = payments.map((payment) => {
+        let html = `<div class="row"><span>${getPaymentTypeName(payment.type)}:</span><span>R$ ${payment.amount.toFixed(2)}</span></div>`;
+        if (payment.type === 'cash' && payment.change > 0) {
+          html += `<div class="row" style="color: green;"><span>Troco:</span><span>R$ ${payment.change.toFixed(2)}</span></div>`;
+        }
+        return html;
+      }).join('');
 
       printWindow.document.write(`
         <html>
@@ -259,30 +249,21 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
     if (fiscalResult?.xml) {
       const printWindow = window.open('', '_blank');
       if (printWindow) {
-        const itemsHtml = cartItems.map((item, index) => `
-          <div class="row">
-            <span>${index + 1} ${item.name}</span>
-            <span>${item.quantity}x R$ ${(item.price * item.quantity).toFixed(2)}</span>
-          </div>
-          ${(item as any).flavors && (item as any).flavors.length > 0 ? `
-          <div style="font-size: 10px; color: #666; margin-left: 20px;">
-            Sabores: ${(item as any).flavors.join(", ")}
-          </div>
-          ` : ''}
-        `).join('');
+        const itemsHtml = cartItems.map((item, index) => {
+          let html = `<div class="row"><span>${index + 1} ${item.name}</span><span>${item.quantity}x R$ ${(item.price * item.quantity).toFixed(2)}</span></div>`;
+          if ((item as any).flavors && (item as any).flavors.length > 0) {
+            html += `<div style="font-size: 10px; color: #666; margin-left: 20px;">Sabores: ${(item as any).flavors.join(", ")}</div>`;
+          }
+          return html;
+        }).join('');
 
-        const paymentsHtml = payments.map((payment) => `
-          <div class="row">
-            <span>${getPaymentTypeName(payment.type)}:</span>
-            <span>R$ ${payment.amount.toFixed(2)}</span>
-          </div>
-          ${payment.type === 'cash' && payment.change > 0 ? `
-          <div class="row" style="color: green;">
-            <span>Troco:</span>
-            <span>R$ ${payment.change.toFixed(2)}</span>
-          </div>
-          ` : ''}
-        `).join('');
+        const paymentsHtml = payments.map((payment) => {
+          let html = `<div class="row"><span>${getPaymentTypeName(payment.type)}:</span><span>R$ ${payment.amount.toFixed(2)}</span></div>`;
+          if (payment.type === 'cash' && payment.change > 0) {
+            html += `<div class="row" style="color: green;"><span>Troco:</span><span>R$ ${payment.change.toFixed(2)}</span></div>`;
+          }
+          return html;
+        }).join('');
 
         printWindow.document.write(`
           <html>
@@ -754,9 +735,9 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                     variant="outline"
                     className="flex-1"
                   >
-                    <Download className="h-4 w-4 mr-2" />
-                    Baixar XML
-                  </Button>
+                      <Download className="h-4 w-4 mr-2" />
+                      Baixar XML
+                    </Button>
                 )}
               </div>
             </div>
