@@ -1,4 +1,3 @@
-import { defineEventHandler } from 'nitro';
 import { sql } from '../../lib/db';
 
 export default defineEventHandler(async () => {
@@ -14,7 +13,7 @@ export default defineEventHandler(async () => {
     console.error('Error fetching contingency notes:', error);
     throw createError({
       statusCode: 500,
- statusMessage: 'Error fetching contingency notes',
+      statusMessage: 'Error fetching contingency notes',
     });
   }
 });

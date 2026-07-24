@@ -1,4 +1,4 @@
-import { defineEventHandler, readBody } from 'nitro';
+import { readBody } from 'nitro';
 import { sql } from '../../lib/db';
 
 export default defineEventHandler(async (event) => {
@@ -141,7 +141,7 @@ function generateChaveAcesso(numero: number, serie: number, cnpj: string, uf: st
   const cnpjNumerico = cnpj.replace(/\D/g, '').padStart(14, '0');
   const modelo = '65'; // NFC-e
   const serieFormatada = String(serie).padStart(3, '0');
-  const numeroFormatado = String(numero).padStart(9, '0);
+  const numeroFormatado = String(numero).padStart(9, '0');
   const tipoEmissao = '1'; // Normal
   const codigoUF = getCodigoUF(uf);
   const aleatorio = Math.floor(Math.random() * 10000000000).toString().padStart(8, '0');
@@ -250,7 +250,7 @@ function generateXMLNFCe(
       <detPag>
         <tPag>${saleData.payments[0]?.type || 'cash'}</tPag>
         <vPag>${saleData.payments[0]?.amount || total}</vPag>
-      </det>
+      </detPag>
     </pag>
     <infNFeSupl>
       <chNFe>${chaveAcesso}</chNFe>
