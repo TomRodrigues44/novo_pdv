@@ -134,11 +134,13 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
               <div class="section-title">DADOS DO ORÇAMENTO</div>
               <div class="row">
                 <span>Número:</span>
-                <span>ORC-${Date.now().toString().slice(-6)}</span>
+                  <span>ORC-${Date.now().toString().slice(-6)}</span>
+                </span>
               </div>
               <div class="row">
                 <span>Data:</span>
-                <span>${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span>${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                </span>
               </div>
             </div>
 
@@ -146,11 +148,13 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
               <div class="section-title">CLIENTE</div>
               <div class="row">
                 <span>Nome:</span>
-                <span>CONSUMIDOR NÃO IDENTIFICADO</span>
+                  <span>CONSUMIDOR NÃO IDENTIFICADO</span>
+                </span>
               </div>
               <div class="row">
                 <span>CPF/CNPJ:</span>
-                <span>***.***.***-**</span>
+                  <span>***.***.***-**</span>
+                </span>
               </div>
             </div>
 
@@ -164,17 +168,20 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
               <div class="row">
                 <span>Subtotal:</span>
                 <span>R$ ${subtotal.toFixed(2)}</span>
+                </span>
               </div>
               ${freedom > 0 ? `
               <div class="row">
                 <span>Frete:</span>
                 <span>R$ ${freedom.toFixed(2)}</span>
+                </span>
               </div>
               ` : ''}
               <div class="total">
                 <div class="row">
                   <span>TOTAL:</span>
                   <span>R$ ${total.toFixed(2)}</span>
+                </span>
                 </div>
               </div>
             </div>
@@ -337,19 +344,23 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
               <div class="section-title">DADOS DA NOTA FISCAL</div>
               <div class="row">
                 <span>Número:</span>
-                <span>${fiscalResult.numeroNota}</span>
+                  <span>${fiscalResult.numeroNota}</span>
+                </span>
               </div>
               <div class="row">
                 <span>Série:</span>
-                <span>${fiscalResult.serie}</span>
+                  <span>${fiscalResult.serie}</span>
+                </span>
               </div>
               <div class="row">
                 <span>Data Emissão:</span>
-                <span>${now.toLocaleDateString('pt-BR')}</span>
+                  <span>${now.toLocaleDateString('pt-BR')}</span>
+                </span>
               </div>
               <div class="row">
                 <span>Protocolo:</span>
-                <span>${fiscalResult.protocolo}</span>
+                  <span>${fiscalResult.protocolo}</span>
+                </span>
               </div>
             </div>
 
@@ -358,10 +369,12 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
               <div class="row">
                 <span>CPF/CNPJ:</span>
                 <span>***.***.***-**</span>
+                </span>
               </div>
               <div class="row">
                 <span>Nome:</span>
                 <span>CONSUMIDOR NÃO IDENTIFICADO</span>
+                </span>
               </div>
             </div>
 
@@ -374,11 +387,13 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
               <div class="row">
                 <span>Total da Nota:</span>
                 <span>R$ ${total.toFixed(2)}</span>
+                </span>
               </div>
               ${freedom > 0 ? `
               <div class="row">
                 <span>Frete:</span>
                 <span>R$ ${freedom.toFixed(2)}</span>
+                </span>
               </div>
               ` : ''}
             </div>
@@ -735,9 +750,9 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                     variant="outline"
                     className="flex-1"
                   >
-                      <Download className="h-4 w-4 mr-2" />
-                      Baixar XML
-                    </Button>
+                    <Download className="h-4 w-4 mr-2" />
+                    Baixar XML
+                  </Button>
                 )}
               </div>
             </div>
