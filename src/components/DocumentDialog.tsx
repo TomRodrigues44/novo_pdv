@@ -8,7 +8,19 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Receipt, FileText, Printer, CheckCircle, Truck, AlertTriangle, Loader2, RefreshCw, Download, Copy, AlertOctagon } from "lucide-react";
+import {
+  Receipt,
+  FileText,
+  Printer,
+  CheckCircle,
+  Truck,
+  AlertTriangle,
+  Loader2,
+  RefreshCw,
+  Download,
+  Copy,
+  AlertOctagon,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { CartItem } from "@/types/product";
 import { toast } from "sonner";
@@ -33,184 +45,106 @@ interface FiscalResult {
   qrCode: string;
 }
 
-export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payments, onGenerateDocument, saleId }: DocumentDialogProps) => {
+export const DocumentDialog = ({
+  open,
+  onClose,
+  total,
+  freedom,
+  cartItems,
+  payments,
+  onGenerateDocument,
+  saleId,
+}: DocumentDialogProps) => {
   const [isSending, setIsSending] = useState(false);
   const [fiscalResult, setFiscalResult] = useState<FiscalResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isContingency, setIsContingency] = useState(false);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
 
-  const totalChange = payments.reduce((sum: number, p: any) => {
-    if (p.type === "cash" && p.cashReceived) {
-      return sum + (p.cashReceived - p.amount);
-    }
-    return sum;
-  }, 0);
-
   const subtotal = total - freedom;
+  const now = new Date();
 
   const getPaymentTypeName = (type: string) => {
     switch (type) {
-      case "debit": return "Cartão de Débito";
-      case "credit": return "Cartão de Crédito";
-      case "pix": return "Pix";
-      case "cash": return "Dinheiro";
-      default: return type;
+      case "debit":
+        return "Cartão de Débito";
+      case "credit":
+        return "Cartão de Crédito";
+      case "pix":
+        return "Pix";
+      case "cash":
+        return "Dinheiro";
+      default:
+        return type;
     }
   };
 
-  const now = new Date();
+  const buildItemsHtml = () =>
+    cartItems
+      .map((item, index) => {
+        let html = `
+          <tr>
+            <td>${index + 1} - ${item.name}</td>
+            <td>${item.quantity}x</td>
+            <td>R$ ${(item.price * item.quantity).toFixed(2)}</td>
+          </tr>
+        `;
+        const flavors = (item as any).flavors;
+        if (flavors && flavors.length > 0) {
+          html += `<tr><td colspan="3">Sabores: ${flavors.join(", ")}</td></tr>`;
+        }
+        return html;
+      })
+      .join("");
+
+  const buildPaymentsHtml = () =>
+    payments
+      .map((payment) => {
+        let html = `<p>${getPaymentTypeName(payment.type)}: R$ ${payment.amount.toFixed(2)}</p>`;
+        if (payment.type === "cash" && payment.change > 0) {
+          html += `<p>Troco: R$ ${payment.change.toFixed(2)}</p>`;
+        }
+        return html;
+      })
+      .join("");
 
   const handleGenerateQuote = () => {
     onGenerateDocument("quote");
     setShowPrintDialog(true);
   };
 
+  const handleGenerateFiscal = () => {
+    onGenerateDocument("fiscal");
+    handleSendToFiscal();
+  };
+
   const handlePrintQuote = () => {
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      const itemsHtml = cartItems.map((item, index) => {
-        let html = `<div class="row"><span>${index + 1} ${item.name}</span><span>${item.quantity}x R$ ${(item.price * item.quantity).toFixed(2)}</span></div>`;
-        if ((item as any).flavors && (item as any).flavors.length > 0) {
-          html += `<div style="font-size: 10px; color: #666; margin-left: 20px;">Sabores: ${(item as any).flavors.join(", ")}</div>`;
-        }
-        return html;
-      }).join('');
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
 
-      const paymentsHtml = payments.map((payment) => {
-        let html = `<div class="row"><span>${getPaymentTypeName(payment.type)}:</span><span>R$ ${payment.amount.toFixed(2)}</span></div>`;
-        if (payment.type === 'cash' && payment.change > 0) {
-          html += `<div class="row" style="color: green;"><span>Troco:</span><span>R$ ${payment.change.toFixed(2)}</span></div>`;
-        }
-        return html;
-      }).join('');
-
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Orçamento - Empório das Coxinhas</title>
-            <style>
-              body {
-                font-family: 'Courier New, monospace;
-                font-size: 12px;
-                margin: 0;
-                padding: 10px;
-                line-height: 1.4;
-              }
-              .header {
-                text-align: center;
-                margin-bottom: 20px;
-                border-bottom: 2px dashed #000;
-                padding-bottom: 10px;
-              }
-              .section {
-                margin-bottom: 15px;
-              }
-              .section-title {
-                font-weight: bold;
-                margin-bottom: 5px;
-              }
-              .row {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 3px;
-              }
-              .total {
-                font-weight: bold;
-                font-size: 14px;
-                margin-top: 10px;
-                border-top: 2px dashed #000;
-                padding-top: 10px;
-              }
-              .footer {
-                text-align: center;
-                margin-top: 20px;
-                padding-top: 10px;
-                border-top: 2px dashed #000;
-                font-size: 10px;
-                color: #666;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h2>EMPÓRIO DAS COXINHAS</h2>
-              <p>ORÇAMENTO NÃO FISCAL</p>
-              <p>PARA CONTROLE INTERNO</p>
-            </div>
-
-            <div class="section">
-              <div class="section-title">DADOS DO ORÇAMENTO</div>
-              <div class="row">
-                <span>Número:</span>
-                  <span>ORC-${Date.now().toString().slice(-6)}</span>
-                </span>
-              </div>
-              <div class="row">
-                <span>Data:</span>
-                  <span>${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="section">
-              <div class="section-title">CLIENTE</div>
-              <div class="row">
-                <span>Nome:</span>
-                  <span>CONSUMIDOR NÃO IDENTIFICADO</span>
-                </span>
-              </div>
-              <div class="row">
-                <span>CPF/CNPJ:</span>
-                  <span>***.***.***-**</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="section">
-              <div class="section-title">ITENS DO ORÇAMENTO</div>
-              ${itemsHtml}
-            </div>
-
-            <div class="section">
-              <div class="section-title">RESUMO</div>
-              <div class="row">
-                <span>Subtotal:</span>
-                <span>R$ ${subtotal.toFixed(2)}</span>
-                </span>
-              </div>
-              ${freedom > 0 ? `
-              <div class="row">
-                <span>Frete:</span>
-                <span>R$ ${freedom.toFixed(2)}</span>
-                </span>
-              </div>
-              ` : ''}
-              <div class="total">
-                <div class="row">
-                  <span>TOTAL:</span>
-                  <span>R$ ${total.toFixed(2)}</span>
-                </span>
-                </div>
-              </div>
-            </div>
-
-            <div class="section">
-              <div class="section-title">FORMA DE PAGAMENTO</div>
-              ${paymentsHtml}
-            </div>
-
-            <div class="footer">
-              <p>*** ORÇAMENTO NÃO TEM VALOR FISCAL ***</p>
-              <p>Empório das Coxinhas</p>
-              <p>Este documento serve apenas como orçamento e não substitui nota fiscal.</p>
-            </div>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      setShowPrintDialog(false);
-    }
+    printWindow.document.write(`
+      <html>
+        <head><title>Orçamento</title></head>
+        <body>
+          <h2>EMPÓRIO DAS COXINHAS</h2>
+          <h3>ORÇAMENTO NÃO FISCAL</h3>
+          <p>Número: ORC-${Date.now().toString().slice(-6)}</p>
+          <p>Data: ${now.toLocaleDateString("pt-BR")} ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
+          <hr/>
+          <table>${buildItemsHtml()}</table>
+          <hr/>
+          <p>Subtotal: R$ ${subtotal.toFixed(2)}</p>
+          ${freedom > 0 ? `<p>Frete: R$ ${freedom.toFixed(2)}</p>` : ""}
+          <p><strong>TOTAL: R$ ${total.toFixed(2)}</strong></p>
+          <hr/>
+          ${buildPaymentsHtml()}
+          <hr/>
+          <p><em>*** ORÇAMENTO NÃO TEM VALOR FISCAL ***</em></p>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setShowPrintDialog(false);
   };
 
   const handleSendToFiscal = async () => {
@@ -220,15 +154,15 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
     setIsContingency(false);
 
     try {
-      const response = await fetch('/api/fiscal/send-nfe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/fiscal/send-nfe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           saleId,
           saleData: {
             total,
             freedom,
-            items: cartItems.map(item => ({
+            items: cartItems.map((item) => ({
               id: item.id,
               name: item.name,
               price: item.price,
@@ -241,219 +175,75 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
       });
 
       if (response.ok) {
-        const result = await response.json();
+        const result = (await response.json()) as FiscalResult;
         setFiscalResult(result);
-        toast.success('Nota fiscal emitida com sucesso!');
+        toast.success("Nota fiscal emitida com sucesso!");
         setShowPrintDialog(true);
       } else {
         const errorData = await response.json();
-        setError(errorData.statusMessage || 'Erro ao emitir nota fiscal');
+        setError(errorData.statusMessage || "Erro ao emitir nota fiscal");
         setIsContingency(true);
-        toast.error('Erro ao emitir nota fiscal. Nota armazenada em contingência.');
+        toast.error("Erro ao emitir nota fiscal. Nota armazenada em contingência.");
       }
     } catch (err) {
-      console.error('Error sending to SEFAZ:', err);
-      setError('Erro de comunicação com SEFAZ. Nota armazenada em contingência.');
+      console.error("Error sending to SEFAZ:", err);
+      setError("Erro de comunicação com SEFAZ. Nota armazenada em contingência.");
       setIsContingency(true);
-      toast.error('Erro de comunicação com SEFAZ. Nota armazenada em contingência.');
+      toast.error("Erro de comunicação com SEFAZ. Nota armazenada em contingência.");
     } finally {
       setIsSending(false);
     }
   };
 
   const handlePrintFiscal = () => {
-    if (fiscalResult?.xml) {
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        const itemsHtml = cartItems.map((item, index) => {
-          let html = `<div class="row"><span>${index + 1} ${item.name}</span><span>${item.quantity}x R$ ${(item.price * item.quantity).toFixed(2)}</span></div>`;
-          if ((item as any).flavors && (item as any).flavors.length > 0) {
-            html += `<div style="font-size: 10px; color: #666; margin-left: 20px;">Sabores: ${(item as any).flavors.join(", ")}</div>`;
-          }
-          return html;
-        }).join('');
+    if (!fiscalResult) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
 
-        const paymentsHtml = payments.map((payment) => {
-          let html = `<div class="row"><span>${getPaymentTypeName(payment.type)}:</span><span>R$ ${payment.amount.toFixed(2)}</span></div>`;
-          if (payment.type === 'cash' && payment.change > 0) {
-            html += `<div class="row" style="color: green;"><span>Troco:</span><span>R$ ${payment.change.toFixed(2)}</span></div>`;
-          }
-          return html;
-        }).join('');
-
-        printWindow.document.write(`
-          <html>
-          <head>
-            <title>Cupom Fiscal - Nota ${fiscalResult.numeroNota}</title>
-            <style>
-              body {
-                font-family: 'Courier New, monospace;
-                font-size: 12px;
-                margin: 0;
-                padding: 10px;
-                line-height: 1.4;
-              }
-              .header {
-                text-align: center;
-                margin-bottom: 20px;
-                border-bottom: 2px dashed #000;
-                padding-bottom: 10px;
-              }
-              .section {
-                margin-bottom: 15px;
-              }
-              .section-title {
-                font-weight: bold;
-                margin-bottom: 5px;
-              }
-              .row {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 3px;
-              }
-              .total {
-                font-weight: bold;
-                font-size: 14px;
-                margin-top: 10px;
-                border-top: 2px dashed #000;
-                padding-top: 10px;
-              }
-              .qr-code {
-                text-align: center;
-                margin-top: 20px;
-                padding: 10px;
-                border: 2px solid #000;
-              }
-              .qr-code img {
-                max-width: 200px;
-              }
-              .protocolo {
-                text-align: center;
-                margin-top: 10px;
-                font-size: 11px;
-                color: #666;
-              }
-              .chave {
-                font-size: 9px;
-                word-break: break-all;
-                margin-top: 10px;
-                text-align: center;
-                color: #666;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h2>DANFE SEFAZ-RR</h2>
-              <p>DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA</p>
-              <p>PARA USO DO FISCO</p>
-            </div>
-
-            <div class="section">
-              <div class="section-title">DADOS DA NOTA FISCAL</div>
-              <div class="row">
-                <span>Número:</span>
-                  <span>${fiscalResult.numeroNota}</span>
-                </span>
-              </div>
-              <div class="row">
-                <span>Série:</span>
-                  <span>${fiscalResult.serie}</span>
-                </span>
-              </div>
-              <div class="row">
-                <span>Data Emissão:</span>
-                  <span>${now.toLocaleDateString('pt-BR')}</span>
-                </span>
-              </div>
-              <div class="row">
-                <span>Protocolo:</span>
-                  <span>${fiscalResult.protocolo}</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="section">
-              <div class="section-title">DADOS DO DESTINATÁRIO</div>
-              <div class="row">
-                <span>CPF/CNPJ:</span>
-                  <span>***.***.***-**</span>
-                </span>
-              </div>
-              <div class="row">
-                <span>Nome:</span>
-                  <span>CONSUMIDOR NÃO IDENTIFICADO</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="section">
-              <div class="section-title">ITENS DA NOTA</div>
-              ${itemsHtml}
-            </div>
-
-            <div class="total">
-              <div class="row">
-                <span>Total da Nota:</span>
-                <span>R$ ${total.toFixed(2)}</span>
-                </span>
-              </div>
-              ${freedom > 0 ? `
-              <div class="row">
-                <span>Frete:</span>
-                <span>R$ ${freedom.toFixed(2)}</span>
-                </span>
-              </div>
-              ` : ''}
-            </div>
-
-            <div class="section">
-              <div class="section-title">FORMA DE PAGAMENTO</div>
-              ${paymentsHtml}
-            </div>
-
-            <div class="qr-code">
-              <p style="font-size: 10px; margin-bottom: 5px;">QR Code para consulta:</p>
-              <img src="${fiscalResult.qrCode}" alt="QR Code" />
-            </div>
-
-            <div class="protocolo">
-              <p>Consulta pela chave de acesso em:</p>
-              <p>https://www.sefaz.rs.gov.br/nfce/consulta</p>
-            </div>
-
-            <div class="chave">
-              <p>Chave de Acesso:</p>
-              <p>${fiscalResult.chaveAcesso}</p>
-            </div>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      setShowPrintDialog(false);
-    }
+    printWindow.document.write(`
+      <html>
+        <head><title>DANFE</title></head>
+        <body>
+          <h2>DANFE SEFAZ-RR</h2>
+          <p>Número: ${fiscalResult.numeroNota}</p>
+          <p>Série: ${fiscalResult.serie}</p>
+          <p>Data Emissão: ${now.toLocaleDateString("pt-BR")}</p>
+          <p>Protocolo: ${fiscalResult.protocolo}</p>
+          <hr/>
+          <table>${buildItemsHtml()}</table>
+          <hr/>
+          <p>Total: R$ ${total.toFixed(2)}</p>
+          ${freedom > 0 ? `<p>Frete: R$ ${freedom.toFixed(2)}</p>` : ""}
+          <hr/>
+          ${buildPaymentsHtml()}
+          <hr/>
+          <p>Chave de Acesso: ${fiscalResult.chaveAcesso}</p>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setShowPrintDialog(false);
   };
 
   const handleCopyChave = () => {
     if (fiscalResult?.chaveAcesso) {
       navigator.clipboard.writeText(fiscalResult.chaveAcesso);
-      toast.success('Chave de acesso copiada!');
+      toast.success("Chave de acesso copiada!");
     }
   };
 
   const handleDownloadXML = () => {
-    if (fiscalResult?.xml) {
-      const blob = new Blob([fiscalResult.xml], { type: 'application/xml' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `nfe-${fiscalResult.numeroNota}.xml`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success('XML baixado com sucesso!');
-    }
+    if (!fiscalResult?.xml) return;
+    const blob = new Blob([fiscalResult.xml], { type: "application/xml" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `nfe-${fiscalResult.numeroNota}.xml`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    toast.success("XML baixado com sucesso!");
   };
 
   const handleRetryFiscal = () => {
@@ -463,247 +253,214 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="max-w-5xl max-h-[95vh] p-0 overflow-hidden flex flex-col">
-          <DialogHeader className="px-6 py-4 border-b bg-green-50">
-            <DialogTitle className="text-2xl flex items-center gap-2">
-              <CheckCircle className="h-6 w-6 text-green-600" />
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
               Pagamento Confirmado!
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader className="bg-orange-50 pb-3">
-                    <h3 className="font-bold text-lg text-orange-800">Resumo do Pedido</h3>
-                  </CardHeader>
-                  <CardContent className="p-4 space-y-3">
-                    {cartItems.map((item, index) => (
-                      <div key={index} className="space-y-1">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">
-                              {item.quantity}x {item.name}
-                            </p>
-                            {(item as any).flavors && (item as any).flavors.length > 0 && (
-                              <p className="text-xs text-gray-500 mt-1">
-                                Sabores: {(item as any).flavors.join(", ")}
-                              </p>
-                            )}
-                          </div>
-                          <span className="font-semibold text-sm">
-                            R$ {(item.price * item.quantity).toFixed(2)}
-                          </span>
-                        </div>
-                        {index < cartItems.length - 1 && <Separator className="my-2" />}
-                      </div>
-                    ))}
-                    <Separator className="my-3" />
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Subtotal:</span>
-                        <span>R$ {subtotal.toFixed(2)}</span>
-                      </div>
-                      {freedom > 0 && (
-                        <div className="flex justify-between items-center text-blue-600 font-medium">
-                          <span className="flex items-center gap-1">
-                            <Truck className="h-4 w-4" />
-                            Frete (Entrega):
-                          </span>
-                          <span>R$ {freedom.toFixed(2)}</span>
-                        </div>
-                      )}
-                      <Separator />
-                      <div className="flex justify-between items-center text-lg font-bold">
-                        <span className="text-gray-800">Total:</span>
-                        <span className="text-orange-600">R$ {total.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-orange-50 border-orange-200">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-medium">Total a Pagar:</span>
-                      <span className="text-2xl font-bold text-orange-600">
-                        R$ {total.toFixed(2)}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg text-center">Escolha o Tipo de Documento</h3>
-                
-                <div className="space-y-4">
-                  <Card 
-                    className="cursor-pointer hover:border-orange-400 hover:shadow-lg transition-all border-2"
-                    onClick={handleGenerateQuote}
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-orange-100 p-4 rounded-full">
-                          <FileText className="h-8 w-8 text-orange-600" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-bold text-lg text-gray-800">Orçamento</h4>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Documento não fiscal para controle interno
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <h3 className="font-semibold">Resumo do Pedido</h3>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {cartItems.map((item, index) => (
+                  <div key={item.id ?? index}>
+                    <div className="flex justify-between">
+                      <div>
+                        <p className="font-medium">
+                          {item.quantity}x {item.name}
+                        </p>
+                        {(item as any).flavors && (item as any).flavors.length > 0 && (
+                          <p className="text-xs text-gray-500">
+                            Sabores: {(item as any).flavors.join(", ")}
                           </p>
-                        </div>
+                        )}
                       </div>
-                    </CardContent>
-                  </Card>
+                      <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
+                    </div>
+                    {index < cartItems.length - 1 && <Separator className="my-2" />}
+                  </div>
+                ))}
 
-                  <Card 
-                    className="cursor-pointer hover:border-green-400 hover:shadow-lg transition-all border-2"
-                    onClick={handleSendToFiscal}
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-green-100 p-4 rounded-full">
-                          <Receipt className="h-8 w-8 text-green-600" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-bold text-lg text-gray-800">Cupom Fiscal</h4>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Documento fiscal enviado ao FISCO
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                <Separator />
+
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal:</span>
+                  <span>R$ {subtotal.toFixed(2)}</span>
                 </div>
 
-                {isSending && (
-                  <Card className="border-blue-200 bg-blue-50">
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-3">
-                        <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
-                        <div>
-                          <p className="font-semibold text-blue-900">Enviando para SEFAZ...</p>
-                          <p className="text-sm text-blue-700">Aguarde enquanto a nota é processada</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                {freedom > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="flex items-center gap-1">
+                      <Truck className="h-4 w-4" />
+                      Frete (Entrega):
+                    </span>
+                    <span>R$ {freedom.toFixed(2)}</span>
+                  </div>
                 )}
 
-                {error && (
-                  <Card className="border-red-200 bg-red-50">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-3">
-                        <AlertOctagon className="h-6 w-6 text-red-600 mt-0.5" />
-                        <div className="flex-1">
-                          <p className="font-semibold text-red-900">Nota em Contingência</p>
-                          <p className="text-sm text-red-700 mt-1">{error}</p>
-                          <div className="mt-4">
-                            <Button
-                              onClick={handleRetryFiscal}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              <RefreshCw className="h-4 w-4 mr-2" />
-                              Tentar Novamente
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Total:</span>
+                  <span>R$ {total.toFixed(2)}</span>
+                </div>
+              </CardContent>
+            </Card>
 
-                {isContingency && !error && !isSending && (
-                  <Card className="border-amber-200 bg-amber-50">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-3">
-                        <AlertTriangle className="h-6 w-6 text-amber-600 mt-0.5" />
-                        <div className="flex-1">
-                          <p className="font-semibold text-amber-900">Nota em Contingência</p>
-                          <p className="text-sm text-700 mt-1">
-                            A nota foi armazenada em contingência. Você poderá tentar o envio novamente dentro do prazo vigente.
-                          </p>
-                          <div className="mt-4">
-                            <Button
-                              onClick={handleRetryFiscal}
-                              className="bg-amber-600 hover:bg-amber-700"
-                            >
-                              <RefreshCw className="h-4 w-4 mr-2" />
-                              Tentar Novamente
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {fiscalResult && !isSending && !isContingency && (
-                  <Card className="border-green-200 bg-green-50">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-3">
-                        <CheckCircle className="h-6 w-6 text-green-600 mt-0.5" />
-                        <div className="flex-1">
-                          <p className="font-semibold text-green-900">Nota Fiscal Emitida com Sucesso!</p>
-                          <div className="mt-4 space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Número:</span>
-                              <span className="font-semibold">{fiscalResult.numeroNota}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Série:</span>
-                              <span className="font-semibold">{fiscalResult.serie}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Protocolo:</span>
-                              <span className="font-semibold">{fiscalResult.protocolo}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Chave de Acesso:</span>
-                              <span className="font-mono text-xs">{fiscalResult.chaveAcesso.slice(0, 20)}...</span>
-                            </div>
-                          </div>
-                          <div className="mt-4 flex gap-2">
-                            <Button
-                              onClick={() => setShowPrintDialog(true)}
-                              className="flex-1 bg-green-600 hover:bg-green-700"
-                            >
-                              <Printer className="h-4 w-4 mr-2" />
-                              Imprimir Cupom
-                            </Button>
-                            <Button
-                              onClick={handleCopyChave}
-                              variant="outline"
-                              className="flex-1"
-                            >
-                              <Copy className="h-4 w-4 mr-2" />
-                              Copiar Chave
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start gap-2">
-                    <Printer className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div>
+              <h3 className="font-semibold mb-2">Escolha o Tipo de Documento</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <Card
+                  className="cursor-pointer hover:border-blue-500"
+                  onClick={handleGenerateQuote}
+                >
+                  <CardContent className="p-4 flex items-start gap-3">
+                    <FileText className="h-6 w-6 text-blue-600" />
                     <div>
-                      <p className="font-semibold text-blue-900">Impressão</p>
-                      <p className="text-xs text-blue-700 mt-1">
-                        Após escolher o tipo de documento, o cupom será gerado e estará pronto para impressão em impressora térmica não fiscal.
+                      <p className="font-semibold">Orçamento</p>
+                      <p className="text-xs text-gray-500">
+                        Documento não fiscal para controle interno
                       </p>
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
+
+                <Card
+                  className="cursor-pointer hover:border-green-500"
+                  onClick={handleGenerateFiscal}
+                >
+                  <CardContent className="p-4 flex items-start gap-3">
+                    <Receipt className="h-6 w-6 text-green-600" />
+                    <div>
+                      <p className="font-semibold">Cupom Fiscal</p>
+                      <p className="text-xs text-gray-500">
+                        Documento fiscal enviado ao FISCO
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
+
+            {isSending && (
+              <Card>
+                <CardContent className="p-4 flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                  <div>
+                    <p className="font-semibold">Enviando para SEFAZ...</p>
+                    <p className="text-xs text-gray-500">
+                      Aguarde enquanto a nota é processada
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {error && (
+              <Card className="border-red-300">
+                <CardContent className="p-4 flex items-start gap-3">
+                  <AlertOctagon className="h-5 w-5 text-red-600" />
+                  <div className="flex-1">
+                    <p className="font-semibold">Nota em Contingência</p>
+                    <p className="text-sm text-gray-600">{error}</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2"
+                      onClick={handleRetryFiscal}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                      Tentar Novamente
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {isContingency && !error && !isSending && (
+              <Card className="border-yellow-300">
+                <CardContent className="p-4 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                  <div className="flex-1">
+                    <p className="font-semibold">Nota em Contingência</p>
+                    <p className="text-sm text-gray-600">
+                      A nota foi armazenada em contingência. Você poderá tentar o envio
+                      novamente dentro do prazo vigente.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2"
+                      onClick={handleRetryFiscal}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                      Tentar Novamente
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {fiscalResult && !isSending && !isContingency && (
+              <Card className="border-green-300">
+                <CardContent className="p-4 flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div className="flex-1 space-y-1">
+                    <p className="font-semibold">Nota Fiscal Emitida com Sucesso!</p>
+                    <p className="text-sm">
+                      <span className="text-gray-500">Número: </span>
+                      {fiscalResult.numeroNota}
+                    </p>
+                    <p className="text-sm">
+                      <span className="text-gray-500">Série: </span>
+                      {fiscalResult.serie}
+                    </p>
+                    <p className="text-sm">
+                      <span className="text-gray-500">Protocolo: </span>
+                      {fiscalResult.protocolo}
+                    </p>
+                    <p className="text-sm">
+                      <span className="text-gray-500">Chave de Acesso: </span>
+                      {fiscalResult.chaveAcesso.slice(0, 20)}...
+                    </p>
+
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        onClick={() => setShowPrintDialog(true)}
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                      >
+                        <Printer className="h-4 w-4 mr-1" />
+                        Imprimir Cupom
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={handleCopyChave}>
+                        <Copy className="h-4 w-4 mr-1" />
+                        Copiar Chave
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card className="bg-gray-50">
+              <CardContent className="p-4 flex items-start gap-3">
+                <Printer className="h-5 w-5 text-gray-600" />
+                <div>
+                  <p className="font-semibold">Impressão</p>
+                  <p className="text-xs text-gray-500">
+                    Após escolher o tipo de documento, o cupom será gerado e estará
+                    pronto para impressão em impressora térmica não fiscal.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          <DialogFooter className="px-6 py-4 border-t bg-gray-50">
+          <DialogFooter>
             <Button variant="outline" onClick={onClose}>
               Fechar
             </Button>
@@ -719,7 +476,7 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
 
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              {fiscalResult ? 'Cupom Fiscal' : 'Orçamento'}
+              {fiscalResult ? "Cupom Fiscal" : "Orçamento"}
             </p>
 
             <div className="flex gap-2">

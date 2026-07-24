@@ -1,13 +1,6 @@
 export default defineEventHandler(async () => {
   try {
-    const { neon } = await import('@neondatabase/serverless');
-    const dbUrl = process.env.DATABASE_URL;
-    
-    if (!dbUrl) {
-      throw new Error('DATABASE_URL is not set');
-    }
-    
-    const sql = neon(dbUrl);
+    const { sql } = await import('../../lib/db');
     
     // Buscar caixa aberto
     const openRegister = await sql`
