@@ -1,3 +1,4 @@
+with >">
 import { useState } from "react";
 import {
   Dialog,
@@ -512,7 +513,7 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                             <Truck className="h-4 w-4" />
                             Frete (Entrega):
                           </span>
-                          <span>R$ {freight.toFixed(2)}</span>
+                          <span>R$ {freedom.toFixed(2)}</span>
                         </div>
                       )}
                       <Separator />
@@ -630,7 +631,7 @@ export const DocumentDialog = ({ open, onClose, total, freedom, cartItems, payme
                         <AlertTriangle className="h-6 w-6 text-amber-600 mt-0.5" />
                         <div className="flex-1">
                           <p className="font-semibold text-amber-900">Nota em Contingência</p>
-                          <p className="text-sm text-amber-700 mt-1">
+                          <p className="text-sm text-700 mt-1">
                             A nota foi armazenada em contingência. Você poderá tentar o envio novamente dentro do prazo vigente.
                           </p>
                           <div className="mt-4">
