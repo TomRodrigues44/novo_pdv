@@ -1,7 +1,7 @@
+import { sql } from '../../lib/db';
+
 export default defineEventHandler(async () => {
   try {
-    const { sql } = await import('../../lib/db');
-    
     // Buscar caixa aberto
     const openRegister = await sql`
       SELECT * FROM cash_registers
