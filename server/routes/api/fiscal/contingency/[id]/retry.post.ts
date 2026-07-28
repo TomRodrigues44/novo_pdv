@@ -57,10 +57,10 @@ export default defineEventHandler(async (event) => {
     `;
     
     if (!certResult || certResult.length === 0) {
-      throw createError {
+      throw createError({
         statusCode: 400,
         statusMessage: 'Nenhum certificado ativo encontrado'
-      };
+      });
     }
     
     const cert = certResult[0];
