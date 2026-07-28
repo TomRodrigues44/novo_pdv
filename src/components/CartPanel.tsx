@@ -76,11 +76,13 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
   
   const { recordSale } = useAdmin();
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-    const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
-    const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
-    const [currentPayments, setCurrentPayments] = useState<any[]>([]);
-    const [currentSaleId, setCurrentSaleId] = useState<string | null>(null);
-    const [currentDocumentType, setCurrentDocumentType] = useState<"quote" | "fiscal">("quote");
+  const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
+  const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
+  const [emittingNfce, setEmittingNfce] = useState(false);
+  const [currentPayments, setCurrentPayments] = useState<any[]>([]);
+  const [currentSaleId, setCurrentSaleId] = useState<string | null>(null);
+  const [currentDocumentType, setCurrentDocumentType] = useState<"quote" | "fiscal">("quote");
+  const [nfceData, setNfceData] = useState<any>(null);
   const [isFreightDialogOpen, setIsFreightDialogOpen] = useState(false);
   const [freightValue, setFreightValue] = useState("");
   const [isCustomerSelectorOpen, setIsCustomerSelectorOpen] = useState(false);
@@ -205,10 +207,63 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
     setIsDocumentDialogOpen(true);
   };
 
-  const handleGenerateDocument = (type: "quote" | "fiscal") => {
+  const handleGenerateDocument = async (type: "quote" | "fiscal") => {
       setCurrentDocumentType(type);
       setIsDocumentDialogOpen(false);
-      setIsReceiptDialogOpen(true);
+  
+      if (type === "fiscal") {
+        // Emitir NFC-e
+        setEmittingNfce(true);
+        try {
+          const response = await fetch('/api/nfce/emitir', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sale_id: currentSaleId,
+              valor_total: totalWithFreight,
+              itens: cartItems.map((item) => ({
+                id: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+                flavors: (item as any).flavors,
+              })),
+              cliente: selectedCustomer ? {
+                id: selectedCustomer.id,
+                name: selectedCustomer.name,
+                cpf_cnpj: selectedCustomer.phone, // Simplificado
+              } : undefined,
+              frete: freight,
+              forma_pagamento: currentPayments.map((p) => ({
+                tipo: p.type,
+                valor: p.amount,
+              })),
+            }),
+          });
+  
+          if (response.ok) {
+            const data = await response.json();
+            setNfceData(data.nfce);
+            toast.success('NFC-e emitida e autorizada com sucesso!');
+            setIsReceiptDialogOpen(true);
+          } else {
+            const error = await response.json();
+            toast.error('Erro ao emitir NFC-e: ' + error.statusMessage);
+            // Mesmo com erro, abrir o dialog para orçamento
+            setIsReceiptDialogOpen(true);
+          }
+        } catch (error) {
+          console.error('Error emitting NFC-e:', error);
+          toast.error('Erro ao emitir NFC-e');
+          // Mesmo com erro, abrir o dialog para orçamento
+          setIsReceiptDialogOpen(true);
+        } finally {
+          setEmittingNfce(false);
+        }
+      } else {
+        // Orçamento - abrir diretamente
+        setIsReceiptDialogOpen(true);
+      }
     };
   
     const handleReceiptClose = () => {
@@ -216,6 +271,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
       clearCart();
       setCurrentPayments([]);
       setCurrentSaleId(null);
+      setNfceData(null);
       onCustomerChange(null);
     };
 
@@ -453,14 +509,16 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
             />
       
             <ReceiptDialog
-              open={isReceiptDialogOpen}
-              onClose={handleReceiptClose}
-              total={totalWithFreight}
-              freight={freight}
-              cartItems={cartItems}
-              payments={currentPayments}
-              documentType={currentDocumentType}
-            />
+                    open={isReceiptDialogOpen}
+                    onClose={handleReceiptClose}
+                    total={totalWithFreight}
+                    freight={freight}
+                    cartItems={cartItems}
+                    payments={currentPayments}
+                    documentType={currentDocumentType}
+                    saleId={currentSaleId || undefined}
+                    nfceData={nfceData}
+                  />
           </>
         );
       };

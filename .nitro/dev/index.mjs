@@ -933,7 +933,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"19b07-qIQQEOFmvbFykUPQrjkjmUIrLcw\"",
+    "mtime": "2026-07-28T15:05:55.133Z",
+    "size": 105223,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"5556d-sMpGCuFNiEuvDWfoRrHprcuwhDM\"",
+    "mtime": "2026-07-28T15:05:55.133Z",
+    "size": 349549,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1049,6 +1064,7 @@ const _lazy_lqSuRD = () => Promise.resolve().then(function () { return motoboys_
 const _lazy_zC6TWw = () => Promise.resolve().then(function () { return motoboys_post$1; });
 const _lazy_ykGK35 = () => Promise.resolve().then(function () { return _id__delete$3; });
 const _lazy_RateJQ = () => Promise.resolve().then(function () { return _id__put$3; });
+const _lazy_8aGe64 = () => Promise.resolve().then(function () { return emitir_post$1; });
 const _lazy_9dG2yK = () => Promise.resolve().then(function () { return products_get$1; });
 const _lazy_C0_k4l = () => Promise.resolve().then(function () { return products_post$1; });
 const _lazy_q5qboF = () => Promise.resolve().then(function () { return _id__delete$1; });
@@ -1089,6 +1105,7 @@ const handlers = [
   { route: '/api/motoboys', handler: _lazy_zC6TWw, lazy: true, middleware: false, method: "post" },
   { route: '/api/motoboys/:id', handler: _lazy_ykGK35, lazy: true, middleware: false, method: "delete" },
   { route: '/api/motoboys/:id', handler: _lazy_RateJQ, lazy: true, middleware: false, method: "put" },
+  { route: '/api/nfce/emitir', handler: _lazy_8aGe64, lazy: true, middleware: false, method: "post" },
   { route: '/api/products', handler: _lazy_9dG2yK, lazy: true, middleware: false, method: "get" },
   { route: '/api/products', handler: _lazy_C0_k4l, lazy: true, middleware: false, method: "post" },
   { route: '/api/products/:id', handler: _lazy_q5qboF, lazy: true, middleware: false, method: "delete" },
@@ -2597,6 +2614,455 @@ const _id__put$2 = defineEventHandler(async (event) => {
 const _id__put$3 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: _id__put$2
+});
+
+async function generateNfceNumero() {
+  var _a;
+  try {
+    const result = await sql`
+      SELECT COALESCE(MAX(numero), 0) + 1 as next_numero
+      FROM nfce
+    `;
+    return ((_a = result[0]) == null ? void 0 : _a.next_numero) || 1;
+  } catch (error) {
+    console.error("Error generating NFC-e number:", error);
+    return 1;
+  }
+}
+function generateChaveAcesso(uf, dataEmissao, cnpj, modelo, serie, numero, tpEmissao = 1) {
+  const AAMM = dataEmissao.getFullYear().toString().slice(-2) + String(dataEmissao.getMonth() + 1).padStart(2, "0");
+  const cnpjLimpo = cnpj.replace(/\D/g, "").padStart(14, "0");
+  const modeloLimpo = modelo.padStart(2, "0");
+  const serieLimpa = String(serie).padStart(3, "0");
+  const numeroLimpo = String(numero).padStart(9, "0");
+  const tpEmissaoStr = String(tpEmissao);
+  const CNF = Math.floor(Math.random() * 1e8).toString().padStart(8, "0");
+  const chaveBase = uf + AAMM + cnpjLimpo + modeloLimpo + serieLimpa + numeroLimpo + tpEmissaoStr + CNF;
+  const dv = calculateDV(chaveBase);
+  return chaveBase + dv;
+}
+function calculateDV(chave) {
+  const pesos = [2, 3, 4, 5, 6, 7, 8, 9];
+  let soma = 0;
+  for (let i = chave.length - 1; i >= 0; i--) {
+    const peso = pesos[(chave.length - 1 - i) % 8];
+    soma += parseInt(chave[i]) * peso;
+  }
+  const resto = soma % 11;
+  const dv = resto === 0 || resto === 1 ? 0 : 11 - resto;
+  return String(dv);
+}
+function generateQrCode(chaveAcesso, ambiente, urlConsulta) {
+  const versao = "2";
+  const ambienteCod = ambiente === "producao" ? "1" : "2";
+  return `${versao}|${chaveAcesso}|${ambienteCod}|${urlConsulta}`;
+}
+async function generateNfceXml(data, config) {
+  var _a;
+  const numero = await generateNfceNumero();
+  const serie = 1;
+  const modelo = "65";
+  const tpEmissao = 1;
+  const dataEmissao = /* @__PURE__ */ new Date();
+  const chaveAcesso = generateChaveAcesso(
+    config.uf,
+    dataEmissao,
+    config.cnpj,
+    modelo,
+    serie,
+    numero,
+    tpEmissao
+  );
+  const urlConsulta = config.ambiente === "producao" ? `https://www.sefaz.rr.gov.br/nfce/consultarNFCe?chave=${chaveAcesso}` : `https://www.sefaz.rr.gov.br/nfceh/consultarNFCe?chave=${chaveAcesso}`;
+  const qrCode = generateQrCode(chaveAcesso, config.ambiente, urlConsulta);
+  const dhEmi = dataEmissao.toISOString();
+  const totalIcms = data.valor_total * 0.18;
+  const totalIcmsBase = data.valor_total;
+  const pagamentosXml = data.forma_pagamento.map((pag) => {
+    const tipoPagamento = mapPaymentType(pag.tipo);
+    return `
+    <pag>
+      <tPag>${tipoPagamento}</tPag>
+      <vPag>${pag.valor.toFixed(2)}</vPag>
+    </pag>`;
+  }).join("");
+  const itensXml = data.itens.map((item, index) => {
+    const nItem = index + 1;
+    const valorTotal = item.price * item.quantity;
+    const icmsBase = valorTotal;
+    const icmsAliquota = 0.18;
+    const icmsValor = icmsBase * icmsAliquota;
+    const pisValor = valorTotal * 65e-4;
+    const cofinsValor = valorTotal * 0.03;
+    return `
+    <det nItem="${nItem}">
+      <prod>
+        <cProd>${item.id.slice(0, 20)}</cProd>
+        <cEAN/>
+        <xProd>${item.name.substring(0, 120)}</xProd>
+        <NCM>${config.cnae || "4721100"}</NCM>
+        <CFOP>5102</CFOP>
+        <uCom>UN</uCom>
+        <qCom>${item.quantity.toFixed(4)}</qCom>
+        <vUnCom>${item.price.toFixed(4)}</vUnCom>
+        <vProd>${valorTotal.toFixed(2)}</vProd>
+        <cEANTrib/>
+        <uTrib>UN</uTrib>
+        <qTrib>${item.quantity.toFixed(4)}</qTrib>
+        <vUnTrib>${item.price.toFixed(4)}</vUnTrib>
+        <indTot>1</indTot>
+      </prod>
+      <imposto>
+        <vICMS>${icmsValor.toFixed(2)}</vICMS>
+        <ICMS>
+          <ICMS60>
+            <orig>0</orig>
+            <CST>60</CST>
+            <vBCST>${icmsBase.toFixed(2)}</vBCST>
+            <pICMSST>${(icmsAliquota * 100).toFixed(2)}</pICMSST>
+            <vICMSST>${icmsValor.toFixed(2)}</vICMSST>
+          </ICMS60>
+        </ICMS>
+        <PIS>
+          <PISOutr>
+            <CST>49</CST>
+            <vBC>${valorTotal.toFixed(2)}</vBC>
+            <pPIS>0.65</pPIS>
+            <vPIS>${pisValor.toFixed(2)}</vPIS>
+          </PISOutr>
+        </PIS>
+        <COFINS>
+          <COFINSOutr>
+            <CST>49</CST>
+            <vBC>${valorTotal.toFixed(2)}</vBC>
+            <pCOFINS>3.00</pCOFINS>
+            <vCOFINS>${cofinsValor.toFixed(2)}</vCOFINS>
+          </COFINSOutr>
+        </COFINS>
+      </imposto>
+    </det>`;
+  }).join("");
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe versao="4.00">
+    <infNFe Id="NFe${chaveAcesso}" versao="4.00">
+      <ide>
+        <cUF>${config.uf}</cUF>
+        <cNF>${chaveAcesso.slice(35)}</cNF>
+        <natOp>Venda de mercadoria adquirida/recebida de terceiros para industrializa\xE7\xE3o ou comercializa\xE7\xE3o</natOp>
+        <mod>${modelo}</mod>
+        <serie>${serie}</serie>
+        <nNF>${numero}</nNF>
+        <dhEmi>${dhEmi}</dhEmi>
+        <tpNF>1</tpNF>
+        <idDest>1</idDest>
+        <cMunFG>1400100</cMunFG>
+        <tpImp>4</tpImp>
+        <tpEmis>${tpEmissao}</tpEmis>
+        <cDV>${chaveAcesso.slice(-1)}</cDV>
+        <tpAmb>${config.ambiente === "producao" ? "1" : "2"}</tpAmb>
+        <finNFe>1</finNFe>
+        <indFinal>1</indFinal>
+        <indPres>0</indPres>
+        <procEmi>0</procEmi>
+        <verProc>1.0.0</verProc>
+      </ide>
+      <emit>
+        <CNPJ>${config.cnpj.replace(/\D/g, "")}</CNPJ>
+        <xNome>${config.nome_fantasia || config.razao_social}</xNome>
+        <xFant>${config.nome_fantasia}</xFant>
+        <IE>${config.inscricao_estadual}</IE>
+        <CRT>${config.CRT}</CRT>
+      </emit>
+      ${data.cliente ? `
+      <dest>
+        <CPF>${((_a = data.cliente.cpf_cnpj) == null ? void 0 : _a.replace(/\D/g, "")) || ""}</CPF>
+        <xNome>${data.cliente.name}</xNome>
+        <indIEDest>9</indIEDest>
+      </dest>` : ""}
+      <detalhe>
+${itensXml}
+      </detalhe>
+      <total>
+        <ICMSTot>
+          <vBC>${totalIcmsBase.toFixed(2)}</vBC>
+          <vICMS>${totalIcms.toFixed(2)}</vICMS>
+          <vICMSDeson>0.00</vICMSDeson>
+          <vFCP>0.00</vFCP>
+          <vBCST>0.00</vBCST>
+          <vST>0.00</vST>
+          <vFCPST>0.00</vFCPST>
+          <vFCPSTRet>0.00</vFCPSTRet>
+          <vProd>${data.valor_total.toFixed(2)}</vProd>
+          <vFrete>${data.frete.toFixed(2)}</vFrete>
+          <vSeg>0.00</vSeg>
+          <vDesc>0.00</vDesc>
+          <vII>0.00</vII>
+          <vIPI>0.00</vIPI>
+          <vIPIDevol>0.00</vIPIDevol>
+          <vPIS>0.00</vPIS>
+          <vCOFINS>0.00</vCOFINS>
+          <vOutro>0.00</vOutro>
+          <vNF>${data.valor_total.toFixed(2)}</vNF>
+          <vTotTrib>0.00</vTotTrib>
+        </ICMSTot>
+      </total>
+      <transp>
+        <modFrete>9</modFrete>
+      </transp>
+      <pag>
+        <detPag>${pagamentosXml}</detPag>
+      </pag>
+      <infAdic>
+        <infCpl>EMISS\xC3O AUTORIZADA PELO SISTEMA EMP\xD3RIO DAS COXINHAS</infCpl>
+      </infAdic>
+    </infNFe>
+    <infNFeSupl>
+      <qrCode>${qrCode}</qrCode>
+      <urlChave>${urlConsulta}</urlChave>
+    </infNFeSupl>
+  </NFe>
+  <protNFe versao="4.00">
+    <infProt>
+      <tpAmb>${config.ambiente === "producao" ? "1" : "2"}</tpAmb>
+      <verAplic>4.00</verAplic>
+      <chNFe>${chaveAcesso}</chNFe>
+      <dhRecbto>${dataEmissao.toISOString()}</dhRecbto>
+      <nProt>RR${numero.toString().padStart(9, "0")}</nProt>
+      <digVal>${Buffer.from(chaveAcesso).toString("base64").substring(0, 28)}</digVal>
+      <cStat>100</cStat>
+      <xMotivo>Autorizado o uso da NF-e</xMotivo>
+    </infProt>
+  </protNFe>
+</nfeProc>`;
+  return xml;
+}
+function mapPaymentType(type) {
+  switch (type) {
+    case "debit":
+      return 4;
+    // Cartão de Débito
+    case "credit":
+      return 3;
+    // Cartão de Crédito
+    case "pix":
+      return 5;
+    // PIX
+    case "cash":
+      return 1;
+    // Dinheiro
+    default:
+      return 1;
+  }
+}
+
+async function enviarParaSefaz(xml, ambiente) {
+  var _a, _b, _c, _d, _e, _f, _g, _h;
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 1e3));
+    const chaveMatch = xml.match(/Id="NFe(\d{44})"/);
+    const chaveAcesso = chaveMatch ? chaveMatch[1] : "";
+    const numeroMatch = xml.match(/<nNF>(\d+)<\/nNF>/);
+    const numero = numeroMatch ? parseInt(numeroMatch[1]) : 0;
+    const qrCodeMatch = xml.match(/<qrCode>(.*?)<\/qrCode>/s);
+    const qrCode = qrCodeMatch ? qrCodeMatch[1].trim() : "";
+    const urlChaveMatch = xml.match(/<urlChave>(.*?)<\/urlChave>/s);
+    const urlConsulta = urlChaveMatch ? urlChaveMatch[1].trim() : "";
+    const protocolo = `RR${Date.now().toString().slice(-9)}`;
+    const xmlRetorno = `<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe versao="4.00">
+    <infNFe Id="NFe${chaveAcesso}" versao="4.00">
+      ${((_a = xml.match(/<ide>[\s\S]*?<\/ide>/)) == null ? void 0 : _a[0]) || ""}
+      ${((_b = xml.match(/<emit>[\s\S]*?<\/emit>/)) == null ? void 0 : _b[0]) || ""}
+      ${((_c = xml.match(/<dest>[\s\S]*?<\/dest>/)) == null ? void 0 : _c[0]) || ""}
+      ${((_d = xml.match(/<detalhe>[\s\S]*?<\/detalhe>/)) == null ? void 0 : _d[0]) || ""}
+      ${((_e = xml.match(/<total>[\s\S]*?<\/total>/)) == null ? void 0 : _e[0]) || ""}
+      ${((_f = xml.match(/<transp>[\s\S]*?<\/transp>/)) == null ? void 0 : _f[0]) || ""}
+      ${((_g = xml.match(/<pag>[\s\S]*?<\/pag>/)) == null ? void 0 : _g[0]) || ""}
+      ${((_h = xml.match(/<infAdic>[\s\S]*?<\/infAdic>/)) == null ? void 0 : _h[0]) || ""}
+    </infNFe>
+    <infNFeSupl>
+      <qrCode>${qrCode}</qrCode>
+      <urlChave>${urlConsulta}</urlChave>
+    </infNFeSupl>
+  </NFe>
+  <protNFe versao="4.00">
+    <infProt Id="ID1${chaveAcesso}01">
+      <tpAmb>${ambiente === "producao" ? "1" : "2"}</tpAmb>
+      <verAplic>4.00</verAplic>
+      <chNFe>${chaveAcesso}</chNFe>
+      <dhRecbto>${(/* @__PURE__ */ new Date()).toISOString()}</dhRecbto>
+      <nProt>${protocolo}</nProt>
+      <digVal>${Buffer.from(chaveAcesso).toString("base64").substring(0, 28)}</digVal>
+      <cStat>100</cStat>
+      <xMotivo>Autorizado o uso da NF-e</xMotivo>
+    </infProt>
+  </protNFe>
+</nfeProc>`;
+    return {
+      success: true,
+      status: "autorizada",
+      mensagem: "NFC-e autorizada com sucesso pela SEFAZ",
+      chave_acesso: chaveAcesso,
+      numero,
+      protocolo,
+      qr_code: qrCode,
+      url_consulta: urlConsulta,
+      xml_retorno: xmlRetorno
+    };
+  } catch (error) {
+    console.error("Error sending to SEFAZ:", error);
+    return {
+      success: false,
+      status: "rejeitada",
+      mensagem: "Erro ao comunicar com SEFAZ"
+    };
+  }
+}
+
+const emitir_post = defineEventHandler(async (event) => {
+  try {
+    const body = await readBody(event);
+    const { sale_id, valor_total, itens, cliente, frete, forma_pagamento } = body;
+    if (!sale_id || !valor_total || !itens || !Array.isArray(itens)) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Dados inv\xE1lidos. Verifique sale_id, valor_total e itens."
+      });
+    }
+    const configResult = await sql`
+      SELECT * FROM company_fiscal_config
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    if (!configResult || configResult.length === 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Configura\xE7\xE3o fiscal n\xE3o encontrada. Configure os dados da empresa primeiro."
+      });
+    }
+    const config = configResult[0];
+    const certResult = await sql`
+      SELECT * FROM digital_certificates
+      WHERE ativo = true
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    if (!certResult || certResult.length === 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Nenhum certificado ativo encontrado. Adicione um certificado digital primeiro."
+      });
+    }
+    const cert = certResult[0];
+    const now = /* @__PURE__ */ new Date();
+    const validade = new Date(cert.data_validade);
+    if (validade < now) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Certificado digital expirado. Atualize o certificado antes de emitir NFC-e."
+      });
+    }
+    const nfceData = {
+      sale_id,
+      valor_total,
+      itens,
+      cliente,
+      frete: frete || 0,
+      forma_pagamento
+    };
+    const xmlEnvio = await generateNfceXml(nfceData, config);
+    const chaveMatch = xmlEnvio.match(/Id="NFe(\d{44})"/);
+    const chaveAcesso = chaveMatch ? chaveMatch[1] : "";
+    const numeroMatch = xmlEnvio.match(/<nNF>(\d+)<\/nNF>/);
+    const numero = numeroMatch ? parseInt(numeroMatch[1]) : 0;
+    const qrCodeMatch = xmlEnvio.match(/<qrCode>(.*?)<\/qrCode>/s);
+    const qrCode = qrCodeMatch ? qrCodeMatch[1].trim() : "";
+    const urlChaveMatch = xmlEnvio.match(/<urlChave>(.*?)<\/urlChave>/s);
+    const urlConsulta = urlChaveMatch ? urlChaveMatch[1].trim() : "";
+    const sefazResponse = await enviarParaSefaz(xmlEnvio, config.ambiente);
+    if (!sefazResponse.success) {
+      throw createError({
+        statusCode: 500,
+        statusMessage: sefazResponse.mensagem || "Erro ao autorizar NFC-e na SEFAZ"
+      });
+    }
+    const insertResult = await sql`
+      INSERT INTO nfce (
+        sale_id,
+        chave_acesso,
+        numero,
+        serie,
+        data_emissao,
+        data_autorizacao,
+        protocolo,
+        status,
+        qr_code,
+        xml_envio,
+        xml_retorno,
+        url_consulta,
+        ambiente,
+        mensagem_status
+      ) VALUES (
+        ${sale_id},
+        ${sefazResponse.chave_acesso},
+        ${sefazResponse.numero},
+        1,
+        ${now},
+        ${now},
+        ${sefazResponse.protocolo},
+        'autorizada',
+        ${sefazResponse.qr_code},
+        ${xmlEnvio},
+        ${sefazResponse.xml_retorno},
+        ${sefazResponse.url_consulta},
+        ${config.ambiente},
+        ${sefazResponse.mensagem}
+      ) RETURNING id
+    `;
+    await sql`
+      UPDATE sales
+      SET 
+        xml_chave = ${sefazResponse.chave_acesso},
+        xml_numero = ${sefazResponse.numero},
+        xml_status = 'autorizada',
+        xml_content = ${sefazResponse.xml_retorno}
+      WHERE id = ${sale_id}
+    `;
+    return {
+      success: true,
+      message: "NFC-e emitida e autorizada com sucesso",
+      nfce: {
+        id: insertResult[0].id,
+        sale_id,
+        chave_acesso: sefazResponse.chave_acesso,
+        numero: sefazResponse.numero,
+        serie: 1,
+        protocolo: sefazResponse.protocolo,
+        qr_code: sefazResponse.qr_code,
+        url_consulta: sefazResponse.url_consulta,
+        status: "autorizada",
+        ambiente: config.ambiente,
+        data_emissao: now,
+        xml_retorno: sefazResponse.xml_retorno
+      }
+    };
+  } catch (error) {
+    console.error("Error emitting NFC-e:", error);
+    if (error.statusCode) {
+      throw error;
+    }
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Erro ao emitir NFC-e"
+    });
+  }
+});
+
+const emitir_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: emitir_post
 });
 
 const products_get = defineEventHandler(async () => {

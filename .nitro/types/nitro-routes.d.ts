@@ -66,6 +66,15 @@ declare module "nitropack/types" {
       'delete': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/motoboys/[id].delete').default>>>>
       'put': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/motoboys/[id].put').default>>>>
     }
+    '/api/nfce/:id/qr-code': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/nfce/[id]/qr-code.get').default>>>>
+    }
+    '/api/nfce/:sale_id': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/nfce/[sale_id].get').default>>>>
+    }
+    '/api/nfce/emitir': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/nfce/emitir.post').default>>>>
+    }
     '/api/products': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/products.get').default>>>>
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/products.post').default>>>>
