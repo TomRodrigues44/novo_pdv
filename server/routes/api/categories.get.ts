@@ -1,8 +1,8 @@
-import { sql } from '../../../lib/db';
+import { sql } from '../../lib/db';
 
 export default defineEventHandler(async () => {
   try {
-    const categories = await sql`
+    const categories = await sql()`
       SELECT * FROM categories
       ORDER BY
         CASE id

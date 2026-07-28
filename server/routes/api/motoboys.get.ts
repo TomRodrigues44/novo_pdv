@@ -1,7 +1,7 @@
-import { sql } from '../../../lib/db';
+import { sql } from '../../lib/db';
 
 export default defineEventHandler(async () => {
-  try {const motoboys = await sql`
+  try {const motoboys = await sql()`
       SELECT * FROM motoboys
       ORDER BY name ASC
     `;

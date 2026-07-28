@@ -1,18 +1,18 @@
-import { sql } from '../../../lib/db';
+import { sql } from '../../lib/db';
 
 export default defineEventHandler(async (event) => {
   try {
     const config = await readBody(event);
     
     // Verificar se já existe configuração
-    const existing = await sql`
+    const existing = await sql()`
       SELECT id FROM company_fiscal_config
       LIMIT 1
     `;
     
     if (existing.length > 0) {
       // Atualizar existente
-      const result = await sql`
+      const result = await sql()`
         UPDATE company_fiscal_config
         SET 
           cnpj = ${config.cnpj},
@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
       return result[0];
     } else {
       // Criar nova
-      const result = await sql`
+      const result = await sql()`
         INSERT INTO company_fiscal_config (
           cnpj, razao_social, nome_fantasia, inscricao_estadual,
           inscricao_municipal, cnae, cnpj_matriz, regime_tributario,

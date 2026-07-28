@@ -1,16 +1,10 @@
+import { sql } from '../../lib/db';
+
 export default defineEventHandler(async (event) => {
   try {
-    const { neon } = await import('@neondatabase/serverless');
-    const dbUrl = process.env.DATABASE_URL;
-    
-    if (!dbUrl) {
-      throw new Error('DATABASE_URL is not set');
-    }
-    
-    const sql = neon(dbUrl);
     const id = getRouterParam(event, 'id');
     
-    const result = await sql`
+    const result = await sql()`
       DELETE FROM motoboys
       WHERE id = ${id}
       RETURNING *

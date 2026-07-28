@@ -1,11 +1,11 @@
-import { sql } from '../../../lib/db';
+import { sql } from '../../lib/db';
 
 export default defineEventHandler(async (event) => {
   try {
     const { openingAmount, notes } = await readBody(event);
     
     // Verificar se já existe caixa aberto
-    const existing = await sql`
+    const existing = await sql()`
       SELECT * FROM cash_registers
       WHERE status = 'open'
       LIMIT 1
@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
     
     const id = `cash-${Date.now()}`;
     
-    await sql`
+    await sql()`
       INSERT INTO cash_registers (id, opening_amount, status, notes)
       VALUES (${id}, ${openingAmount}, 'open', ${notes || null})
     `;

@@ -1,11 +1,11 @@
-import { sql } from '../../../lib/db';
+import { sql } from '../../lib/db';
 
 export default defineEventHandler(async (event) => {
   try {
     const { closingAmount, notes } = await readBody(event);
     
     // Buscar caixa aberto
-    const openRegister = await sql`
+    const openRegister = await sql()`
       SELECT * FROM cash_registers
       WHERE status = 'open'
       ORDER BY opened_at DESC
@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
     const register = openRegister[0];
     
     // Buscar todas as vendas do período com a coluna payments
-    const sales = await sql`
+    const sales = await sql()`
       SELECT payment_method, payments, total_amount
       FROM sales
       WHERE created_at >= ${register.opened_at}
@@ -59,7 +59,7 @@ export default defineEventHandler(async (event) => {
     });
     
     // Calcular transações (sangrias/adições/vales)
-    const transactionsResult = await sql`
+    const transactionsResult = await sql()`
       SELECT type, COALESCE(SUM(amount), 0) as total
       FROM cash_transactions
       WHERE cash_register_id = ${register.id}
@@ -95,7 +95,7 @@ export default defineEventHandler(async (event) => {
     const difference = closingAmount - expectedCashAmount;
     
     // Atualizar caixa
-    await sql`
+    await sql()`
       UPDATE cash_registers
       SET 
         closed_at = CURRENT_TIMESTAMP,

@@ -1,13 +1,7 @@
+import { sql } from '../../lib/db';
+
 export default defineEventHandler(async (event) => {
   try {
-    const { neon } = await import('@neondatabase/serverless');
-    const dbUrl = process.env.DATABASE_URL;
-    
-    if (!dbUrl) {
-      throw new Error('DATABASE_URL is not set');
-    }
-    
-    const sql = neon(dbUrl);
     const saleData = await readBody(event);
     
     const total = parseFloat(String(saleData.total || 0));
@@ -35,7 +29,7 @@ export default defineEventHandler(async (event) => {
     console.log('Creating sale:', { total, freight, paymentMethodSummary, customerId, itemsCount: saleData.items?.length });
     
     // Criar a venda
-    const saleResult = await sql`
+    const saleResult = await sql()`
       INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id, payments, xml_content, xml_chave, xml_numero)
       VALUES (
         ${total}, 
@@ -71,7 +65,7 @@ export default defineEventHandler(async (event) => {
         
         const flavorsArray = item.flavors && Array.isArray(item.flavors) ? item.flavors : null;
         
-        await sql`
+        await sql()`
           INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, flavors)
           VALUES (
             ${saleId},
@@ -84,7 +78,7 @@ export default defineEventHandler(async (event) => {
         `;
         
         // Atualizar estoque
-        await sql`
+        await sql()`
           UPDATE products
           SET stock = stock - ${itemQuantity},
               available = (stock - ${itemQuantity}) > 0
@@ -96,7 +90,7 @@ export default defineEventHandler(async (event) => {
     // Atualizar pontos e total gasto do cliente
     if (customerId) {
       const pointsEarned = Math.floor(total);
-      await sql`
+      await sql()`
         UPDATE customers
         SET 
           points = points + ${pointsEarned},

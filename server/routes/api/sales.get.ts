@@ -1,7 +1,7 @@
-import { sql } from '../../../lib/db';
+import { sql } from '../../lib/db';
 
 export default defineEventHandler(async () => {
-  try {const sales = await sql`
+  try {const sales = await sql()`
       SELECT 
         s.*,
         c.name as customer_name,

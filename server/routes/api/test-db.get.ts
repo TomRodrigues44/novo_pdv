@@ -1,6 +1,7 @@
+import { sql } from '../../lib/db';
+
 export default defineEventHandler(async () => {
   try {
-    const { neon } = await import('@neondatabase/serverless');
     const dbUrl = process.env.DATABASE_URL;
     
     if (!dbUrl) {
@@ -11,8 +12,7 @@ export default defineEventHandler(async () => {
       };
     }
 
-    const sql = neon(dbUrl);
-    const result = await sql`SELECT 1 as test`;
+    const result = await sql()`SELECT 1 as test`;
     
     return {
       success: true,

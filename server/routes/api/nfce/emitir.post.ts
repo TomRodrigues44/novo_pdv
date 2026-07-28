@@ -1,4 +1,4 @@
-import { sql } from '../../../lib/db';
+import { sql } from '../../lib/db';
 import { generateNfceXml } from '../../../lib/nfce/generator';
 import { enviarParaSefaz } from '../../../lib/nfce/sefaz';
 
@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
     }
     
     // Buscar configuração da empresa
-    const configResult = await sql`
+    const configResult = await sql()`
       SELECT * FROM company_fiscal_config
       ORDER BY created_at DESC
       LIMIT 1
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     const config = configResult[0];
     
     // Buscar certificado ativo
-    const certResult = await sql`
+    const certResult = await sql()`
       SELECT * FROM digital_certificates
       WHERE ativo = true
       ORDER BY created_at DESC
@@ -95,7 +95,7 @@ export default defineEventHandler(async (event) => {
     }
     
     // Salvar NFC-e no banco de dados
-    const insertResult = await sql`
+    const insertResult = await sql()`
       INSERT INTO nfce (
         sale_id,
         chave_acesso,
@@ -130,7 +130,7 @@ export default defineEventHandler(async (event) => {
     `;
     
     // Atualizar a venda com os dados fiscais
-    await sql`
+    await sql()`
       UPDATE sales
       SET 
         xml_chave = ${sefazResponse.chave_acesso},

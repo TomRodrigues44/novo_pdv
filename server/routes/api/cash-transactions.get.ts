@@ -1,8 +1,8 @@
-import { sql } from '../../../lib/db';
+import { sql } from '../../lib/db';
 
 export default defineEventHandler(async () => {
   try {// Buscar caixa aberto
-    const openRegister = await sql`
+    const openRegister = await sql()`
       SELECT * FROM cash_registers
       WHERE status = 'open'
       ORDER BY opened_at DESC
@@ -16,7 +16,7 @@ export default defineEventHandler(async () => {
     const cashRegisterId = openRegister[0].id;
     
     // Buscar transações
-    const transactions = await sql`
+    const transactions = await sql()`
       SELECT * FROM cash_transactions
       WHERE cash_register_id = ${cashRegisterId}
       ORDER BY created_at DESC

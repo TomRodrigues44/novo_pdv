@@ -1,13 +1,7 @@
+import { sql } from '../../lib/db';
+
 export default defineEventHandler(async (event) => {
   try {
-    const { neon } = await import('@neondatabase/serverless');
-    const dbUrl = process.env.DATABASE_URL;
-    
-    if (!dbUrl) {
-      throw new Error('DATABASE_URL is not set');
-    }
-    
-    const sql = neon(dbUrl);
     const products = await readBody(event);
     
     if (!Array.isArray(products)) {
@@ -19,7 +13,7 @@ export default defineEventHandler(async (event) => {
 
     let migrated = 0;
     for (const prod of products) {
-      await sql`
+      await sql()`
         INSERT INTO products (
           id, name, description, price, category, category_name,
           image, available, stock, fiscal

@@ -1,4 +1,4 @@
-import { sql } from '../../../../lib/db';
+import { sql } from '../../lib/db';
 
 export default defineEventHandler(async (event) => {
   try {
@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
       });
     }
     
-    const result = await sql`
+    const result = await sql()`
       SELECT * FROM nfce
       WHERE sale_id = ${saleId}
       ORDER BY created_at DESC

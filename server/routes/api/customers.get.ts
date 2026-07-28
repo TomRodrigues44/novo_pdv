@@ -1,7 +1,7 @@
-import { sql } from '../../../lib/db';
+import { sql } from '../../lib/db';
 
 export default defineEventHandler(async () => {
-  try {const customers = await sql`
+  try {const customers = await sql()`
       SELECT 
         c.*,
         COUNT(s.id) as total_orders

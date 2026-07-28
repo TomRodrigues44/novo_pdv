@@ -1,16 +1,10 @@
+import { sql } from '../../lib/db';
+
 export default defineEventHandler(async (event) => {
   try {
-    const { neon } = await import('@neondatabase/serverless');
-    const dbUrl = process.env.DATABASE_URL;
-    
-    if (!dbUrl) {
-      throw new Error('DATABASE_URL is not set');
-    }
-    
-    const sql = neon(dbUrl);
     const id = getRouterParam(event, 'id');
     
-    const sales = await sql`
+    const sales = await sql()`
       SELECT 
         s.*,
         json_agg(

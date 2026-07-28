@@ -1,13 +1,7 @@
+import { sql } from '../../lib/db';
+
 export default defineEventHandler(async (event) => {
   try {
-    const { neon } = await import('@neondatabase/serverless');
-    const dbUrl = process.env.DATABASE_URL;
-    
-    if (!dbUrl) {
-      throw new Error('DATABASE_URL is not set');
-    }
-    
-    const sql = neon(dbUrl);
     const id = getRouterParam(event, 'id');
     const { status } = await readBody(event);
     
@@ -22,7 +16,7 @@ export default defineEventHandler(async (event) => {
     
     // Verificar se a coluna status existe, se não, criar
     try {
-      await sql`
+      await sql()`
         ALTER TABLE sales ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending'
       `;
     } catch (e) {
@@ -30,7 +24,7 @@ export default defineEventHandler(async (event) => {
     }
     
     // Atualizar status
-    const result = await sql`
+    const result = await sql()`
       UPDATE sales
       SET status = ${status}
       WHERE id = ${id}

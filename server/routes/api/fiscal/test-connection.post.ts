@@ -1,9 +1,9 @@
-import { sql } from '../../../lib/db';
+import { sql } from '../../lib/db';
 
 export default defineEventHandler(async (event) => {
   try {
     // Buscar configuração da empresa
-    const configResult = await sql`
+    const configResult = await sql()`
       SELECT * FROM company_fiscal_config
       ORDER BY created_at DESC
       LIMIT 1
@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
     const config = configResult[0];
     
     // Buscar certificado ativo
-    const certResult = await sql`
+    const certResult = await sql()`
       SELECT * FROM digital_certificates
       WHERE ativo = true
       ORDER BY created_at DESC

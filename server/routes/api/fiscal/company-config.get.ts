@@ -1,8 +1,8 @@
-import { sql } from '../../../lib/db';
+import { sql } from '../../lib/db';
 
 export default defineEventHandler(async () => {
   try {
-    const configs = await sql`
+    const configs = await sql()`
       SELECT * FROM company_fiscal_config
       ORDER BY created_at DESC
       LIMIT 1

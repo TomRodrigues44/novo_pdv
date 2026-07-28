@@ -1,10 +1,10 @@
-import { sql } from '../../../lib/db';
+import { sql } from '../../lib/db';
 
 export default defineEventHandler(async () => {
   try {
     
     // Buscar caixa aberto
-    const openRegister = await sql`
+    const openRegister = await sql()`
       SELECT * FROM cash_registers
       WHERE status = 'open'
       ORDER BY opened_at DESC
@@ -24,7 +24,7 @@ export default defineEventHandler(async () => {
       currentRegister = openRegister[0];
       
       // Buscar todas as vendas do período
-      const sales = await sql`
+      const sales = await sql()`
         SELECT * FROM sales
         WHERE created_at >= ${currentRegister.opened_at}
       `;
@@ -67,7 +67,7 @@ export default defineEventHandler(async () => {
       });
       
       // Buscar transações (sangrias/adições)
-      const transactionsResult = await sql`
+      const transactionsResult = await sql()`
         SELECT * FROM cash_transactions
         WHERE cash_register_id = ${currentRegister.id}
         ORDER BY created_at DESC
@@ -82,7 +82,7 @@ export default defineEventHandler(async () => {
     }
     
     // Buscar histórico dos últimos 10 fechamentos
-    const history = await sql`
+    const history = await sql()`
       SELECT * FROM cash_registers
       WHERE status = 'closed'
       ORDER BY closed_at DESC

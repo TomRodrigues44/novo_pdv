@@ -49,7 +49,7 @@ export interface CompanyConfig {
  */
 export async function generateNfceNumero(): Promise<number> {
   try {
-    const result = await sql`
+    const result = await sql()`
       SELECT COALESCE(MAX(numero), 0) + 1 as next_numero
       FROM nfce
     `;
