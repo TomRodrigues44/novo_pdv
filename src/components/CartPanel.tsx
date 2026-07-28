@@ -3,7 +3,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAdmin } from "@/hooks/use-admin";
 import { CartItemComponent } from "./CartItem";
 import { PaymentDialog } from "./PaymentDialog";
-import { DocumentDialog } from "./DocumentDialog";
+import { DocumentDialog, ReceiptDialog } from "./DocumentDialog";
 import { CustomerSelector } from "./CustomerSelector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,9 +76,11 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
   
   const { recordSale } = useAdmin();
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
-  const [currentPayments, setCurrentPayments] = useState<any[]>([]);
-  const [currentSaleId, setCurrentSaleId] = useState<string | null>(null);
+    const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
+    const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
+    const [currentPayments, setCurrentPayments] = useState<any[]>([]);
+    const [currentSaleId, setCurrentSaleId] = useState<string | null>(null);
+    const [currentDocumentType, setCurrentDocumentType] = useState<"quote" | "fiscal">("quote");
   const [isFreightDialogOpen, setIsFreightDialogOpen] = useState(false);
   const [freightValue, setFreightValue] = useState("");
   const [isCustomerSelectorOpen, setIsCustomerSelectorOpen] = useState(false);
@@ -204,15 +206,18 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
   };
 
   const handleGenerateDocument = (type: "quote" | "fiscal") => {
-    const documentType = type === "quote" ? "Orçamento" : "Cupom Fiscal";
-    alert(`${documentType} gerado com sucesso!\nTotal: R$ ${totalWithFreight.toFixed(2)}`);
-    
-    setIsDocumentDialogOpen(false);
-    clearCart();
-    setCurrentPayments([]);
-    setCurrentSaleId(null);
-    onCustomerChange(null);
-  };
+      setCurrentDocumentType(type);
+      setIsDocumentDialogOpen(false);
+      setIsReceiptDialogOpen(true);
+    };
+  
+    const handleReceiptClose = () => {
+      setIsReceiptDialogOpen(false);
+      clearCart();
+      setCurrentPayments([]);
+      setCurrentSaleId(null);
+      onCustomerChange(null);
+    };
 
   return (
     <>
@@ -438,14 +443,24 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
       />
 
       <DocumentDialog
-        open={isDocumentDialogOpen}
-        onClose={() => setIsDocumentDialogOpen(false)}
-        total={totalWithFreight}
-        freight={freight}
-        cartItems={cartItems}
-        payments={currentPayments}
-        onGenerateDocument={handleGenerateDocument}
-      />
-    </>
-  );
-};
+              open={isDocumentDialogOpen}
+              onClose={() => setIsDocumentDialogOpen(false)}
+              total={totalWithFreight}
+              freight={freight}
+              cartItems={cartItems}
+              payments={currentPayments}
+              onGenerateDocument={handleGenerateDocument}
+            />
+      
+            <ReceiptDialog
+              open={isReceiptDialogOpen}
+              onClose={handleReceiptClose}
+              total={totalWithFreight}
+              freight={freight}
+              cartItems={cartItems}
+              payments={currentPayments}
+              documentType={currentDocumentType}
+            />
+          </>
+        );
+      };
