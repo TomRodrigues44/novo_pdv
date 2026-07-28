@@ -28,27 +28,31 @@ const AdminFiscal = () => {
   const [connectionResult, setConnectionResult] = useState<any>(null);
   
   // Configuração da Empresa
-  const [companyConfig, setCompanyConfig] = useState({
-    cnpj: "",
-    razao_social: "",
-    nome_fantasia: "",
-    inscricao_estadual: "",
-    inscricao_municipal: "",
-    cnae: "",
-    cnpj_matriz: "",
-    regime_tributario: "simples_nacional",
-    CRT: "1",
-    cep: "",
-    logradouro: "",
-    numero: "",
-    complemento: "",
-    bairro: "",
-    municipio: "",
-    uf: "RR",
-    telefone: "",
-    email: "",
-    ambiente: "homologacao",
-  });
+    const [companyConfig, setCompanyConfig] = useState({
+      cnpj: "",
+      razao_social: "",
+      nome_fantasia: "",
+      inscricao_estadual: "",
+      inscricao_municipal: "",
+      cnae: "",
+      cnpj_matriz: "",
+      regime_tributario: "simples_nacional",
+      CRT: "1",
+      cep: "",
+      logradouro: "",
+      numero: "",
+      complemento: "",
+      bairro: "",
+      municipio: "",
+      uf: "RR",
+      telefone: "",
+      email: "",
+      ambiente: "homologacao",
+      serie_nfe: 1,
+      serie_nfce: 1,
+      ultima_nfe: 0,
+      ultima_nfce: 0,
+    });
   
   // Certificados
   const [certificates, setCertificates] = useState<any[]>([]);
@@ -96,22 +100,40 @@ const AdminFiscal = () => {
   };
 
   const handleSaveCompanyConfig = async () => {
-    try {
-      const response = await fetch('/api/fiscal/company-config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(companyConfig),
-      });
-
-      if (response.ok) {
-        toast.success('Configurações salvas com sucesso!');
-      } else {
+      try {
+        const response = await fetch('/api/fiscal/company-config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(companyConfig),
+        });
+  
+        if (response.ok) {
+          toast.success('Configurações salvas com sucesso!');
+        } else {
+          toast.error('Erro ao salvar configurações');
+        }
+      } catch (error) {
         toast.error('Erro ao salvar configurações');
       }
-    } catch (error) {
-      toast.error('Erro ao salvar configurações');
-    }
-  };
+    };
+  
+    const handleSaveEmissionConfig = async () => {
+      try {
+        const response = await fetch('/api/fiscal/company-config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(companyConfig),
+        });
+  
+        if (response.ok) {
+          toast.success('Configurações de emissão salvas com sucesso!');
+        } else {
+          toast.error('Erro ao salvar configurações de emissão');
+        }
+      } catch (error) {
+        toast.error('Erro ao salvar configurações de emissão');
+      }
+    };
 
   const handleUploadCert = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -717,32 +739,54 @@ const AdminFiscal = () => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Série NF-e</Label>
-                        <Input defaultValue="1" placeholder="1" />
-                        <p className="text-xs text-gray-500 mt-1">Série para Nota Fiscal Eletrônica</p>
-                      </div>
-                      <div>
-                        <Label>Série NFC-e</Label>
-                        <Input defaultValue="1" placeholder="1" />
-                        <p className="text-xs text-gray-500 mt-1">Série para NFC-e</p>
-                      </div>
-                      <div>
-                        <Label>Última NF-e</Label>
-                        <Input defaultValue="0" readOnly />
-                      </div>
-                      <div>
-                        <Label>Última NFC-e</Label>
-                        <Input defaultValue="0" readOnly />
-                      </div>
-                    </div>
-
-                    <div className="pt-4 border-t">
-                      <Button className="bg-orange-600 hover:bg-orange-700">
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Salvar Configurações
-                      </Button>
-                    </div>
+                                          <div>
+                                            <Label>Série NF-e</Label>
+                                            <Input
+                                              value={companyConfig.serie_nfe || ""}
+                                              onChange={(e) => setCompanyConfig({ ...companyConfig, serie_nfe: parseInt(e.target.value) || 1 })}
+                                              placeholder="1"
+                                              type="number"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Série para Nota Fiscal Eletrônica</p>
+                                          </div>
+                                          <div>
+                                            <Label>Série NFC-e</Label>
+                                            <Input
+                                              value={companyConfig.serie_nfce || ""}
+                                              onChange={(e) => setCompanyConfig({ ...companyConfig, serie_nfce: parseInt(e.target.value) || 1 })}
+                                              placeholder="1"
+                                              type="number"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Série para NFC-e</p>
+                                          </div>
+                                          <div>
+                                            <Label>Última NF-e</Label>
+                                            <Input
+                                              value={companyConfig.ultima_nfe || ""}
+                                              onChange={(e) => setCompanyConfig({ ...companyConfig, ultima_nfe: parseInt(e.target.value) || 0 })}
+                                              placeholder="0"
+                                              type="number"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Último número emitido de NF-e</p>
+                                          </div>
+                                          <div>
+                                            <Label>Última NFC-e</Label>
+                                            <Input
+                                              value={companyConfig.ultima_nfce || ""}
+                                              onChange={(e) => setCompanyConfig({ ...companyConfig, ultima_nfce: parseInt(e.target.value) || 0 })}
+                                              placeholder="0"
+                                              type="number"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Último número emitido de NFC-e</p>
+                                          </div>
+                                        </div>
+                    
+                                        <div className="pt-4 border-t">
+                                          <Button onClick={handleSaveEmissionConfig} className="bg-orange-600 hover:bg-orange-700">
+                                            <CheckCircle className="mr-2 h-4 w-4" />
+                                            Salvar Configurações
+                                          </Button>
+                                        </div>
                   </div>
                 </CardContent>
               </Card>

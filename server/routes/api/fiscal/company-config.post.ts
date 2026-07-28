@@ -34,6 +34,10 @@ export default defineEventHandler(async (event) => {
           telefone = ${config.telefone},
           email = ${config.email},
           ambiente = ${config.ambiente || 'homologacao'},
+          serie_nfe = ${config.serie_nfe || 1},
+          serie_nfce = ${config.serie_nfce || 1},
+          ultima_nfe = ${config.ultima_nfe || 0},
+          ultima_nfce = ${config.ultima_nfce || 0},
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ${existing[0].id}
         RETURNING *
@@ -46,7 +50,8 @@ export default defineEventHandler(async (event) => {
           cnpj, razao_social, nome_fantasia, inscricao_estadual,
           inscricao_municipal, cnae, cnpj_matriz, regime_tributario,
           CRT, cep, logradouro, numero, complemento, bairro,
-          municipio, uf, telefone, email, ambiente
+          municipio, uf, telefone, email, ambiente, 
+          serie_nfe, serie_nfce, ultima_nfe, ultima_nfce
         ) VALUES (
           ${config.cnpj},
           ${config.razao_social},
@@ -66,7 +71,11 @@ export default defineEventHandler(async (event) => {
           ${config.uf},
           ${config.telefone},
           ${config.email},
-          ${config.ambiente || 'homologacao'}
+          ${config.ambiente || 'homologacao'},
+          ${config.serie_nfe || 1},
+          ${config.serie_nfce || 1},
+          ${config.ultima_nfe || 0},
+          ${config.ultima_nfce || 0}
         ) RETURNING *
       `;
       return result[0];
