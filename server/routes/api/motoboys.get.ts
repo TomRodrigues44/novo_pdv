@@ -1,14 +1,7 @@
+import { sql } from '../../../lib/db';
+
 export default defineEventHandler(async () => {
-  try {
-    const { neon } = await import('@neondatabase/serverless');
-    const dbUrl = process.env.DATABASE_URL;
-    
-    if (!dbUrl) {
-      throw new Error('DATABASE_URL is not set');
-    }
-    
-    const sql = neon(dbUrl);
-    const motoboys = await sql`
+  try {const motoboys = await sql`
       SELECT * FROM motoboys
       ORDER BY name ASC
     `;

@@ -1,16 +1,10 @@
+import { sql } from '../../../lib/db';
+
 export default defineEventHandler(async () => {
   try {
-    const { neon } = await import('@neondatabase/serverless');
-    const dbUrl = process.env.DATABASE_URL;
-    
-    if (!dbUrl) {
-      throw new Error('DATABASE_URL is not set');
-    }
-    
-    const sql = neon(dbUrl);
     const products = await sql`
       SELECT * FROM products
-      ORDER BY 
+      ORDER BY
         CASE category
           WHEN 'salgados' THEN 1
           WHEN 'bolos' THEN 2
@@ -20,7 +14,7 @@ export default defineEventHandler(async () => {
           WHEN 'diversos' THEN 6
           ELSE 7
         END ASC,
-        CASE 
+        CASE
           WHEN category = 'salgados' THEN
             CASE name
               WHEN 'Cento - 100 unidades' THEN 1
