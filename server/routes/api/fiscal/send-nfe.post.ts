@@ -1,5 +1,5 @@
 import { readBody } from 'h3';
-import { sql } from '../../../../lib/db';
+import { sql } from '../../../lib/db';
 
 export default defineEventHandler(async (event) => {
   try {
