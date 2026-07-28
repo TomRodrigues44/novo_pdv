@@ -14,7 +14,6 @@ import {
   Bike,
   Shield,
   FileText,
-  AlertTriangle,
 } from "lucide-react";
 
 const AdminSidebar = () => {
@@ -30,7 +29,6 @@ const AdminSidebar = () => {
     { path: "/admin/reports", icon: BarChart3, label: "Relatórios" },
     { path: "/admin/fiscal", icon: Shield, label: "Configurações Fiscais" },
     { path: "/admin/xmls", icon: FileText, label: "XMLs Fiscais" },
-    { path: "/admin/contingency", icon: AlertTriangle, label: "Contingência" },
     { path: "/kitchen", icon: ChefHat, label: "Cozinha" },
     { path: "/", icon: ShoppingCart, label: "Ir para PDV" },
   ];

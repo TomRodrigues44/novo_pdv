@@ -46,18 +46,6 @@ declare module "nitropack/types" {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/company-config.get').default>>>>
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/company-config.post').default>>>>
     }
-    '/api/fiscal/contingency': {
-      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/contingency.get').default>>>>
-    }
-    '/api/fiscal/contingency/:id': {
-      'delete': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/contingency/[id].delete').default>>>>
-    }
-    '/api/fiscal/contingency/:id/retry': {
-      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/contingency/[id]/retry.post').default>>>>
-    }
-    '/api/fiscal/send-nfe': {
-      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/send-nfe.post').default>>>>
-    }
     '/api/fiscal/test-connection': {
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/test-connection.post').default>>>>
     }
