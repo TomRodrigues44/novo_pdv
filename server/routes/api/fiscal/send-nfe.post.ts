@@ -1,4 +1,4 @@
-import { readBody } from 'nitro';
+import { readBody } from 'h3';
 import { sql } from '../../lib/db';
 
 export default defineEventHandler(async (event) => {
