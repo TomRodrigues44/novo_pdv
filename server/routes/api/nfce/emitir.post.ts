@@ -1,6 +1,6 @@
 import { sql } from '../../../lib/db';
-import { generateNfceXml } from '../../lib/nfce/generator';
-import { enviarParaSefaz } from '../../lib/nfce/sefaz';
+import { generateNfceXml } from '../../../lib/nfce/generator';
+import { enviarParaSefaz } from '../../../lib/nfce/sefaz';
 
 export default defineEventHandler(async (event) => {
   try {

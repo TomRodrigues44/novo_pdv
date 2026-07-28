@@ -1,5 +1,5 @@
-import { sql } from '../../../lib/db';
-import { generateQrCodeImage } from '../../../lib/nfce/qr-code';
+import { sql } from '../../../../lib/db';
+import { generateQrCodeImage } from '../../../../lib/nfce/qr-code';
 
 export default defineEventHandler(async (event) => {
   try {
