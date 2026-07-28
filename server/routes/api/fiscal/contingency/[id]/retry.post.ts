@@ -1,5 +1,5 @@
 import { defineEventHandler, getRouterParam } from 'nitro';
-import { sql } from '../../lib/db';
+import { sql } from '../../../lib/db';
 
 export default defineEventHandler(async (event) => {
   try {
