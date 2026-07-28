@@ -1,14 +1,7 @@
+import { sql } from '../../../lib/db';
+
 export default defineEventHandler(async (event) => {
   try {
-    const { neon } = await import('@neondatabase/serverless');
-    const dbUrl = process.env.DATABASE_URL;
-    
-    if (!dbUrl) {
-      throw new Error('DATABASE_URL is not set');
-    }
-    
-    const sql = neon(dbUrl);
-    
     // Buscar configuração da empresa
     const configResult = await sql`
       SELECT * FROM company_fiscal_config

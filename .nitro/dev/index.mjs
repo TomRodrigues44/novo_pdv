@@ -24,6 +24,7 @@ import { SourceMapConsumer } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das
 import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
+import { neon } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs';
 import { v4 } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
 
 const serverAssets = [{"baseName":"server","dir":"C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/server/assets"}];
@@ -932,7 +933,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"19f57-Rxrnu4oKEgC5XIJwpQY02YexPP4\"",
+    "mtime": "2026-07-28T14:43:19.285Z",
+    "size": 106327,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"55ccf-Q+UqH8Zdz6QQKKx9pYl3oRPt5pc\"",
+    "mtime": "2026-07-28T14:43:19.284Z",
+    "size": 351439,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -2057,14 +2073,17 @@ const sales_get$3 = /*#__PURE__*/Object.freeze({
   default: sales_get$2
 });
 
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) {
+  console.error("ERROR: DATABASE_URL environment variable is not set!");
+  console.error("Available env vars:", Object.keys(process.env).filter((k) => k.includes("DATABASE") || k.includes("NEON")));
+  throw new Error("DATABASE_URL is required but not set");
+}
+console.log("DATABASE_URL is set:", dbUrl.substring(0, 20) + "...");
+const sql = neon(dbUrl);
+
 const certificates_get = defineEventHandler(async () => {
   try {
-    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) {
-      throw new Error("DATABASE_URL is not set");
-    }
-    const sql = neon(dbUrl);
     const certificates = await sql`
       SELECT id, nome, data_validade, ativo, created_at
       FROM digital_certificates
@@ -2090,12 +2109,6 @@ const certificates_get$1 = /*#__PURE__*/Object.freeze({
 
 const certificates_post = defineEventHandler(async (event) => {
   try {
-    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) {
-      throw new Error("DATABASE_URL is not set");
-    }
-    const sql = neon(dbUrl);
     const formData = await readFormData(event);
     const file = formData.get("file");
     const nome = formData.get("nome");
@@ -2133,12 +2146,6 @@ const certificates_post$1 = /*#__PURE__*/Object.freeze({
 
 const companyConfig_get = defineEventHandler(async () => {
   try {
-    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) {
-      throw new Error("DATABASE_URL is not set");
-    }
-    const sql = neon(dbUrl);
     const configs = await sql`
       SELECT * FROM company_fiscal_config
       ORDER BY created_at DESC
@@ -2161,12 +2168,6 @@ const companyConfig_get$1 = /*#__PURE__*/Object.freeze({
 
 const companyConfig_post = defineEventHandler(async (event) => {
   try {
-    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) {
-      throw new Error("DATABASE_URL is not set");
-    }
-    const sql = neon(dbUrl);
     const config = await readBody(event);
     const existing = await sql`
       SELECT id FROM company_fiscal_config
@@ -2247,12 +2248,6 @@ const companyConfig_post$1 = /*#__PURE__*/Object.freeze({
 
 const testConnection_post = defineEventHandler(async (event) => {
   try {
-    const { neon } = await import('file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs');
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) {
-      throw new Error("DATABASE_URL is not set");
-    }
-    const sql = neon(dbUrl);
     const configResult = await sql`
       SELECT * FROM company_fiscal_config
       ORDER BY created_at DESC

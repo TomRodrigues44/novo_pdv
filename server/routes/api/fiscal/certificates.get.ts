@@ -1,13 +1,7 @@
+import { sql } from '../../../lib/db';
+
 export default defineEventHandler(async () => {
   try {
-    const { neon } = await import('@neondatabase/serverless');
-    const dbUrl = process.env.DATABASE_URL;
-    
-    if (!dbUrl) {
-      throw new Error('DATABASE_URL is not set');
-    }
-    
-    const sql = neon(dbUrl);
     const certificates = await sql`
       SELECT id, nome, data_validade, ativo, created_at
       FROM digital_certificates
