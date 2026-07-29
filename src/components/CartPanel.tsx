@@ -242,16 +242,23 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
           });
   
           if (response.ok) {
-            const data = await response.json();
-            setNfceData(data.nfce);
-            toast.success('NFC-e emitida e autorizada com sucesso!');
-            setIsReceiptDialogOpen(true);
-          } else {
-            const error = await response.json();
-            toast.error('Erro ao emitir NFC-e: ' + error.statusMessage);
-            // Mesmo com erro, abrir o dialog para orçamento
-            setIsReceiptDialogOpen(true);
-          }
+                      const data = await response.json();
+                      setNfceData(data.nfce);
+                      toast.success('NFC-e emitida e autorizada com sucesso!');
+                      setIsReceiptDialogOpen(true);
+                    } else {
+                      let errorMessage = 'Erro ao emitir NFC-e';
+                      try {
+                        const error = await response.json();
+                        errorMessage = error.statusMessage || error.message || errorMessage;
+                      } catch (e) {
+                        errorMessage = `Erro ao emitir NFC-e (Status: ${response.status})`;
+                      }
+                      console.error('NFC-e emission error:', errorMessage);
+                      toast.error(errorMessage);
+                      // Mesmo com erro, abrir o dialog para orçamento
+                      setIsReceiptDialogOpen(true);
+                    }
         } catch (error) {
           console.error('Error emitting NFC-e:', error);
           toast.error('Erro ao emitir NFC-e');

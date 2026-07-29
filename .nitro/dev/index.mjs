@@ -3024,9 +3024,10 @@ const emitir_post = defineEventHandler(async (event) => {
     if (error.statusCode) {
       throw error;
     }
+    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido ao emitir NFC-e";
     throw createError({
       statusCode: 500,
-      statusMessage: "Erro ao emitir NFC-e"
+      statusMessage: errorMessage
     });
   }
 });

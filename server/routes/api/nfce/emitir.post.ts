@@ -159,15 +159,17 @@ export default defineEventHandler(async (event) => {
       },
     };
   } catch (error) {
-    console.error('Error emitting NFC-e:', error);
-    
-    if (error.statusCode) {
-      throw error;
+      console.error('Error emitting NFC-e:', error);
+      
+      if (error.statusCode) {
+        throw error;
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao emitir NFC-e';
+      
+      throw createError({
+        statusCode: 500,
+        statusMessage: errorMessage,
+      });
     }
-    
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Erro ao emitir NFC-e',
-    });
-  }
 });
