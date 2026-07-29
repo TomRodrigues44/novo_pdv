@@ -51,7 +51,7 @@ const AdminFiscal = () => {
     serie_nfe: "1",
     serie_nfce: "15",
     ultima_nfe: "15200",
-    ultima_nfe: "15200",
+    ultima_nfce: "15200",
   });
   
   // Certificados
@@ -64,6 +64,37 @@ const AdminFiscal = () => {
     arquivo: null as File | null,
     senha: "",
   });
+
+  const fetchCertificates = async () => {
+    try {
+      const response = await fetch('/api/fiscal/certificates');
+      if (response.ok) {
+        const data = await response.json();
+        setCertificates(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching certificates:', error);
+    }
+  };
+
+  const handleActivateCert = async (id: string) => {
+    try {
+      const response = await fetch(`/api/fiscal/certificates/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ativo: true }),
+      });
+
+      if (response.ok) {
+        toast.success('Certificado ativado com sucesso!');
+        fetchCertificates();
+      } else {
+        toast.error('Erro ao ativar certificado');
+      }
+    } catch (error) {
+      toast.error('Erro ao ativar certificado');
+    }
+  };
 
   // Carregar configurações
   useEffect(() => {
@@ -200,7 +231,7 @@ const AdminFiscal = () => {
         toast.error('Erro ao adicionar certificado');
       }
     } catch (error) {
-      toast.error('Erro ao adicionar certificado');
+      toast.error('Erro ao adicionar certado');
     } finally {
       setUploadingCert(false);
     }
@@ -287,7 +318,7 @@ const AdminFiscal = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="empresa">
+            <tabsTrigger value="empresa">
               <Building2 className="h-4 w-4 mr-2" />
               Dados da Empresa
             </TabsTrigger>
