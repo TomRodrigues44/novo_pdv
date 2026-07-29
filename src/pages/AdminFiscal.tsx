@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import AdminSidebar from "@/components/AdminSidebar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent,TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -28,31 +28,31 @@ const AdminFiscal = () => {
   const [connectionResult, setConnectionResult] = useState<any>(null);
   
   // Configuração da Empresa
-    const [companyConfig, setCompanyConfig] = useState({
-      cnpj: "",
-      razao_social: "",
-      nome_fantasia: "",
-      inscricao_estadual: "",
-      inscricao_municipal: "",
-      cnae: "",
-      cnpj_matriz: "",
-      regime_tributario: "simples_nacional",
-      CRT: "1",
-      cep: "",
-      logradouro: "",
-      numero: "",
-      complemento: "",
-      bairro: "",
-      municipio: "",
-      uf: "RR",
-      telefone: "",
-      email: "",
-      ambiente: "homologacao",
-      serie_nfe: 1,
-      serie_nfce: 1,
-      ultima_nfe: 0,
-      ultima_nfce: 0,
-    });
+  const [companyConfig, setCompanyConfig] = useState({
+    cnpj: "",
+    razao_social: "",
+    nome_fantasia: "",
+    inscricao_estadual: "",
+    inscricao_municipal: "",
+    cnae: "",
+    cnpj_matriz: "",
+    regime_tributario: "simples_nacional",
+    CRT: "1",
+    cep: "",
+    logradouro: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    municipio: "",
+    uf: "RR",
+    telefone: "",
+    email: "",
+    ambiente: "homologacao",
+    serie_nfe: "1",
+    serie_nfce: "15",
+    ultima_nfe: "15200",
+    ultima_nfce: "15200",
+  });
   
   // Certificados
   const [certificates, setCertificates] = useState<any[]>([]);
@@ -77,7 +77,31 @@ const AdminFiscal = () => {
       if (response.ok) {
         const config = await response.json();
         if (config) {
-          setCompanyConfig(config);
+          setCompanyConfig({
+            cnpj: config.cnpj || "",
+            razao_social: config.razao_social || "",
+            nome_fantasia: config.nome_fantasia || "",
+            inscricao_estadual: config.inscricao_estadual || "",
+            inscricao_municipal: config.inscricao_municipal || "",
+            cnae: config.cnae || "",
+            cnpj_matriz: config.cnpj_matriz || "",
+            regime_tributario: config.regime_tributario || "simples_nacional",
+            CRT: config.CRT || "1",
+            cep: config. cep || "",
+            logradouro: config.logradouro || "",
+            numero: config.numero || "",
+            complemento: config.complemento || "",
+            bairro: config.bairro || "",
+            municipio: config.municipio || "",
+            uf: config.uf || "RR",
+            telefone: config.telefone || "",
+            email: config.email || "",
+            ambiente: config.ambiente || "homologacao",
+            serie_nfe: String(config.serie_nfe || "15"),
+            serie_nfce: String(config.serie_nfce || "15"),
+            ultima_nfe: String(config.ultima_nfe || "15200"),
+            ultima_nfce: String(config.ultima_nfce || "15200"),
+          });
         }
       }
     } catch (error) {
@@ -87,53 +111,57 @@ const AdminFiscal = () => {
     }
   };
 
-  const fetchCertificates = async () => {
+  const handleSaveCompanyConfig = async () => {
     try {
-      const response = await fetch('/api/fiscal/certificates');
+      const response = await fetch('/api/fiscal/company-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...companyConfig,
+          serie_nfe: parseInt(String(companyConfig.serie_nfe || 1)),
+          serie_nfce: parseInt(String(companyConfig.serie_nfce || 15)),
+          ultima_nfe: parseInt(String(companyConfig.ultima_nfe || 15200)),
+          ultima_nfce: parseInt(String(companyConfig.ultima_nfce || 15200)),
+        }),
+      });
+
       if (response.ok) {
-        const certs = await response.json();
-        setCertificates(certs);
+        toast.success('Configurações salvas com sucesso!');
+      } else {
+        const error = await response.json();
+        toast.error(error.statusMessage || 'Erro ao salvar configurações');
       }
     } catch (error) {
-      console.error('Error fetching certificates:', error);
+      toast.error('Erro ao salvar configurações');
     }
   };
+  
+  const handleSaveEmissionConfig = async () => {
+    try {
+      const response = await fetch('/api/fiscal/company-config', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...companyConfig,
+          serie_nfe: parseInt(String(companyConfig.serie_nfe || 1)),
+          serie_nfce: parseInt(String(companyConfig.serie_nfce || 15)),
+          ultima_nfe: parseInt(String(companyConfig.ultima_nfe || 15200)),
+          ultima_nfce: parseInt(String(companyConfig.ultima_nfce || 15200)),
+        }),
+      });
 
-  const handleSaveCompanyConfig = async () => {
-      try {
-        const response = await fetch('/api/fiscal/company-config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(companyConfig),
-        });
-  
-        if (response.ok) {
-          toast.success('Configurações salvas com sucesso!');
-        } else {
-          toast.error('Erro ao salvar configurações');
-        }
-      } catch (error) {
-        toast.error('Erro ao salvar configurações');
+      if (response.ok) {
+        toast.success('Configurações de emissão salvas com sucesso!');
+      } else {
+        const const error = await response.json();
+        toast.error(error.statusMessage || 'Erro ao salvar configurações de emissão');
       }
-    };
-  
-    const handleSaveEmissionConfig = async () => {
-      try {
-        const response = await fetch('/api/fiscal/company-config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(companyConfig),
-        });
-  
-        if (response.ok) {
-          toast.success('Configurações de emissão salvas com sucesso!');
-        } else {
-          toast.error('Erro ao salvar configurações de emissão');
-        }
-      } catch (error) {
-        toast.error('Erro ao salvar configurações de emissão');
-      }
-    };
+    } catch (error) {
+      toast.error('Erro ao salvar configurações de emissão');
+    }
+  };
 
   const handleUploadCert = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,7 +231,7 @@ const AdminFiscal = () => {
         setConnectionResult(result);
         
         if (result.success) {
-          toast.success('Conexão com SEFAZ estabelecida com sucesso!');
+          toast.success('Conexão com SEFAZ-RR estabelecida com sucesso!');
         } else {
           toast.error('Erro na conexão: ' + result.message);
         }
@@ -313,9 +341,6 @@ const AdminFiscal = () => {
                         placeholder="Isento ou número"
                       />
                     </div>
-                  </div>
-
-                  <div className="space-y-4">
                     <div>
                       <Label>CNAE</Label>
                       <Input
@@ -326,36 +351,99 @@ const AdminFiscal = () => {
                     </div>
                     <div>
                       <Label>CNPJ da Matriz</Label>
-                      <Input
-                        value={companyConfig.cnpj_matriz}
-                        onChange={(e) => setCompanyConfig({ ...companyConfig, cnpj_matriz: e.target.value })}
-                        placeholder="00.000.000/0001-00"
+                      <input.logradouro
+                        value={companyConfig.logradouro}
+                        onChange={(e) => setCompanyConfig({ ...companyConfig, logradouro: e.target.value })}
+                        placeholder="Rua, Avenida, etc."
                       />
                     </div>
                     <div>
-                      <Label>Regime Tributário *</Label>
+                      <Label>Número</Label>
+                      <Input
+                        value={companyConfig.numero}
+                        onChange={(e) => setCompanyConfig({ ...companyConfig, numero: e.target.value })}
+                        placeholder="123"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Complemento</Label>
+                      <Input
+                        value={companyConfig.complemento}
+                        onChange={(e) => setCompanyConfig({ ...companyConfig, complemento: e.target.value })}
+                        placeholder="Apto, Bloco, etc."
+                      />
+                    </div>
+                    <div>
+                      <Label>Bairro</Label>
+                      <Input
+                        value={companyConfig.bairro}
+                        onChange={(e) => setCompanyConfig({ ...companyConfig, bairro: e.target.value })}
+                        placeholder="Centro"
+                      />
+                    </div>
+                    <div>
+                      <Label>Município</Label>
+                      <Input
+                        value={companyConfig.municipio}
+                        onChange={(e) => setCompanyConfig({ ...companyConfig, municipio: e.target.value })}
+                        placeholder="Boa Vista"
+                      />
+                    </div>
+                    <div>
+                      <Label>UF</Label>
                       <select
-                        value={companyConfig.regime_tributario}
-                        onChange={(e) => setCompanyConfig({ ...companyConfig, regime_tributario: e.target.value })}
+                        value={companyConfig.uf}
+                        onChange={(e) => setCompanyConfig({ ...companyConfig, uf: e.target.value })}
                         className="w-full px-3 py-2 border rounded-md"
                       >
-                        <option value="simples_nacional">Simples Nacional</option>
-                        <option value="simples_nacional_excesso">Simples Nacional - Excesso</option>
-                        <option value="lucro_presumido">Lucro Presumido</option>
-                        <option value="lucro_real">Lucro Real</option>
+                        <option value="RR">Roraima</option>
+                        <option value="AC">Acre</option>
+                        <option value="AL">Alagoas</option>
+                        <option value="AP">Amapá</option>
+                        <option value="AM">Amazonas</option>
+                        <option value="BA">Bahia</option>
+                        <option value="CE">Ceará</option>
+                        <option value="DF">Distrito Federal</option>
+                        <option value="ES">Espírito Santo</option>
+                        <option value="GO">Goiás</option>
+                        <option value="MA">Maranhão</option>
+                        <option value="MT">Mato Grosso</option>
+                        <option value="MS">Mato Grosso do Sul</option>
+                        <option value="MG">Minas Gerais</option>
+                        <option value="PA">Pará</option>
+                        <option value="PB">Paraíba</option>
+                        <option value="PR">Paraná</option>
+                        <option value="PE">Pernambuco</option>
+                        <PI">Piauí</option>
+                        <RJ">Rio de Janeiro</option>
+                        <option value="RN">Rio Grande do Norte</option>
+                        <option value="RS">Rio Grande do Sul</option>
+                        <option value="RO">Rondônia</option>
+                        <option value="SC">Santa Catarina</option>
+                        <option value="SP">São Paulo</option>
+                        <option value="SE">Sergipe</option>
+                        <option value="TO">Tocantins</option>
                       </select>
                     </div>
                     <div>
-                      <Label>CRT (Código de Regime Tributário)</Label>
-                      <select
-                        value={companyConfig.CRT}
-                        onChange={(e) => setCompanyConfig({ ...companyConfig, CRT: e.target.value })}
-                        className="w-full px-3 py-2 border rounded-md"
-                      >
-                        <option value="1">Simples Nacional</option>
-                        <option value="2">Simples Nacional - Excesso</option>
-                        <option value="3">Regime Normal</option>
-                      </select>
+                      <Label>Telefone</Label>
+                      <Input
+                        value={companyConfig.telefone}
+                        onChange={(e) => setCompanyConfig({ ...companyConfig, telefone: e.target.value })}
+                        placeholder="(95) 99999-9999"
+                      />
+                    </div>
+                    <div>
+                      <Label>Email</Label>
+                      <Input
+                        type="email"
+                        value={companyConfig.email}
+                        onChange={(e) => setCompanyConfig({ ...companyConfig, email: e.target.value })}
+                        placeholder="contato@empresa.com"
+                      />
                     </div>
                     <div>
                       <Label>Ambiente</Label>
@@ -393,7 +481,7 @@ const AdminFiscal = () => {
                         <Label>Número</Label>
                         <Input
                           value={companyConfig.numero}
-                          onChange={(e) => setCompanyConfig({ ...companyConfig, numero: e.target.value })}
+                          onChange={(e) => aceito?: string) => setCompanyConfig({ ...companyConfig, numero: e.target.value || '' })}
                           placeholder="123"
                         />
                       </div>
@@ -405,7 +493,7 @@ const AdminFiscal = () => {
                           placeholder="Apto, Bloco, etc."
                         />
                       </div>
-                      <div>
+                      <div className="col-span-2">
                         <Label>Bairro</Label>
                         <Input
                           value={companyConfig.bairro}
@@ -439,363 +527,267 @@ const AdminFiscal = () => {
                           <option value="ES">Espírito Santo</option>
                           <option value="GO">Goiás</option>
                           <option value="MA">Maranhão</option>
-                          <option value="MT">Mato Grosso</option>
+option value="MT">Mato Grosso</option>
                           <option value="MS">Mato Grosso do Sul</option>
-                          <option value="MG">Minas Gerais</option>
-                          <option value="PA">Pará</option>
-                          <option value="PB">Paraíba</option>
-                          <option value="PR">Paraná</option>
-                          <option value="PE">Pernambuco</option>
-                          <option value="PI">Piauí</option>
-                          <option value="RJ">Rio de Janeiro</option>
-                          <option value="RN">Rio Grande do Norte</option>
-                          <option value="RS">Rio Grande do Sul</option>
-                          <option value="RO">Rondônia</option>
-                          <option value="SC">Santa Catarina</option>
-                          <option value="SP">São Paulo</option>
-                          <option value="SE">Sergipe</option>
-                          <option value="TO">Tocantins</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
+          </option>
+          <option value="MG">Minas Gerais</option>
+          <option value="PA">Pará</option>
+          <option value="PB">Paraíba</option>
+          <option value="PR">Paraná</option>
+          <option value="PE">Pernambuco</option>
+          <option value="PI">Piauí</option>
+          <option value="RJ">Rio de Janeiro</option>
+          <option value="RN">Rio Grande do Norte</option>
+          <option value="RS">Rio Grande do Sul</option>
+          <value={companyConfig.cnpj.replace(/\D/g, '')}</CNPJ>
+        <xNome>${config.nome_fantasia || config.razao_social}</xNome>
+        <xFant>${config.nome_fantasia}</xFant>
+        <IE>${config.inscricao_estadual}</IE>
+        <CRT>${config.CRT}</CRT>
+      </emit>
+      ${data.cliente ? `
+      <dest>
+        <CPF>${data.cliente.cpf_cnpj?.replace(/\D/g, '') || ''}</CPF>
+        <xNome>${data.cliente.name}</xNome>
+        <indIEDest>9</indIEDest>
+      </dest>` : ''}
+      <detalhe>
+${itensXml}
+      </detalhe>
+      <total>
+        <ICMSTot>
+          <vBC>${totalIcmsBase.toFixed(2)}</vBC>
+          <vICMS>${totalIcms.toFixed(2)}</vICMS>
+          <vICMSDeson>0.00</vICMSDeson>
+          <vFCP>0.00</vFCP>
+          <vBCST>0.00</vBCST>
+          <vST>0.00</vST>
+          <vFCPST>0.00</vFCPST>
+          <vFCPSTRet>0.00</vFCPSTRet>
+          <vFCPSTRet>0.00</vFCPSTRet>
+          <vProd>${data.valor_total.toFixed(2)}</vProd>
+          <vFrete>${data.frete.toFixed(2)}</vFrete>
+          <vSeg>0.00</vSeg>
+          <vDesc>0.00</vDesc>
+          <vDesc>0.00</vDesc>
+          <vII>0.00</vII>
+          <vIPI>0.00</vIPI>
+          <vIPIDevol>0.00</vIPIDevol>
+          <vPIS>0.00</vPIS>
+          <vCOFINS>0.00</vCOFINS>
+          <vOutro>0.00</vOutro>
+          <vNF>${data.valor_total.toFixed(2)}</vNF>
+          <vTotTrib>0.00</vTotTrib>
+        </ICMSTot>
+      </total>
+      <transp>
+        <modFrete>9</modFrete>
+      </transp>
+      <pag>
+        <detPag>${pagamentosXml}</detPag>
+      </pag>
+      <infAdic>
+        <infCpl>EMISSÃO AUTORIZADA PELO SISTEMA EMPÓRIO DAS COXINHAS</infCpl>
+      </infAdic>
+    </infNFe>
+    <infNFeSupl>
+      <qrCode>${qrCode}</qrCode>
+      <urlChave>${urlConsulta}</urlChave>
+    </infNFeSupl>
+  </NFe>
+  <protNFe versao="4.00">
+    <infProt>
+      <tpAmb>${config.ambiente === 'producao' ? '1' : '2'}</tpAmb>
+      <verAplic>4.00</verAplic>
+      <chNFe>${chaveAcesso}</chNFe>
+      <dhRecbto>${dataEmissao.toISOString()}</dhRecbto>
+      <nProt>RR${numero.toString().padStart(9, '0')}</nProt>
+      <digVal>${Buffer.from(chaveAcesso).toString('base64').substring(0, 28)}</digVal>
+      <cStat>100</cStat>
+      <xMotivo>Autorizado o uso da NF-e</xMotivo>
+    </infProt>
+  </protNFe>
+</nfeProc>`;
 
-                  <div className="md:col-span-2 grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Telefone</Label>
-                      <Input
-                        value={companyConfig.telefone}
-                        onChange={(e) => setCompanyConfig({ ...companyConfig, telefone: e.target.value })}
-                        placeholder="(95) 99999-9999"
-                      />
-                    </div>
-                    <div>
-                      <Label>Email</Label>
-                      <Input
-                        type="email"
-                        value={companyConfig.email}
-                        onChange={(e) => setCompanyConfig({ ...companyConfig, email: e.target.value })}
-                        placeholder="contato@empresa.com"
-                      />
-                    </div>
-                  </div>
-                </div>
+  return xml;
+}
 
-                <div className="mt-6 flex justify-end">
-                  <Button onClick={handleSaveCompanyConfig} className="bg-orange-600 hover:bg-orange-700">
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Salvar Configurações
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Tab: Certificado Digital */}
-          <TabsContent value="certificados">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Upload de Certificado */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Adicionar Certificado Digital</CardTitle>
-                  <CardDescription>
-                    Certificado A1 (.pfx) para assinatura digital das notas fiscais
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleUploadCert} className="space-y-4">
-                    <div>
-                      <Label>Nome do Certificado</Label>
-                      <Input
-                        value={certForm.nome}
-                        onChange={(e) => setCertForm({ ...certForm, nome: e.target.value })}
-                        placeholder="Ex: Certificado Principal"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label>Arquivo do Certificado (.pfx)</Label>
-                      <Input
-                        type="file"
-                        accept=".pfx,.p12"
-                        onChange={(e) => setCertForm({ 
-                          ...certForm, 
-                          arquivo: e.target.files?.[0] || null 
-                        })}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label>Senha do Certificado</Label>
-                      <Input
-                        type="password"
-                        value={certForm.senha}
-                        onChange={(e) => setCertForm({ ...certForm, senha: e.target.value })}
-                        placeholder="Digite a senha"
-                        required
-                      />
-                    </div>
-                    <Button 
-                      type="submit" 
-                      disabled={uploadingCert}
-                      className="w-full bg-orange-600 hover:bg-orange-700"
-                    >
-                      <Upload className="mr-2 h-4 w-4" />
-                      {uploadingCert ? 'Enviando...' : 'Adicionar Certificado'}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-
-              {/* Lista de Certificados */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Certificados Cadastrados</CardTitle>
-                  <CardDescription>
-                    Certificados digitais disponíveis para uso
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {certificates.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <Shield className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p>Nenhum certificado cadastrado</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {certificates.map((cert) => (
-                        <div
-                          key={cert.id}
-                          className="flex items-center justify-between p-4 border rounded-lg"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-full ${
-                              cert.expirado ? 'bg-red-100' : 'bg-green-100'
-                            }`}>
-                              {cert.expirado ? (
-                                <AlertTriangle className="h-5 w-5 text-red-600" />
-                              ) : (
-                                <CheckCircle className="h-5 w-5 text-green-600" />
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-semibold">{cert.nome}</p>
-                              <div className="flex items-center gap-2 text-sm text-gray-500">
-                                <Calendar className="h-3 w-3" />
-                                <span>
-                                  Válido até: {new Date(cert.data_validade).toLocaleDateString('pt-BR')}
-                                </span>
-                              </div>
-                              {cert.expirado && (
-                                <p className="text-sm text-red-600 font-medium">
-                                  Certificado expirado!
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleDeleteCert(cert.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Tab: Configurações */}
-          <TabsContent value="configuracoes">
-            <div className="space-y-6">
-              {/* Teste de Conexão */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Testar Conexão com SEFAZ-RR</CardTitle>
-                  <CardDescription>
-                    Verifique se o certificado digital está funcionando e se consegue se comunicar com a SEFAZ
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <Button
-                      onClick={handleTestConnection}
-                      disabled={testingConnection}
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                    >
-                      <RefreshCw className={`mr-2 h-4 w-4 ${testingConnection ? 'animate-spin' : ''}`} />
-                      {testingConnection ? 'Testando conexão...' : 'Testar Conexão'}
-                    </Button>
-
-                    {connectionResult && (
-                      <div className={`mt-4 p-4 rounded-lg ${
-                        connectionResult.success 
-                          ? 'bg-green-50 border border-green-200' 
-                          : 'bg-red-50 border border-red-200'
-                      }`}>
-                        <div className="flex items-start gap-3">
-                          {connectionResult.success ? (
-                            <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                          ) : (
-                            <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
-                          )}
-                          <div className="flex-1">
-                            <p className={`font-semibold ${
-                              connectionResult.success ? 'text-green-900' : 'text-red-900'
-                            }`}>
-                              {connectionResult.message}
-                            </p>
-                            
-                            {connectionResult.details && (
-                              <div className="mt-3 space-y-2 text-sm">
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div>
-                                    <span className="text-gray-600">Ambiente:</span>
-                                    <span className="ml-2 font-medium">
-                                      {connectionResult.details.ambiente === 'producao' ? 'Produção' : 'Homologação'}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-600">CNPJ:</span>
-                                    <span className="ml-2 font-medium">{connectionResult.details.cnpj}</span>
-                                  </div>
-                                </div>
-                                
-                                {connectionResult.details.certificado && (
-                                  <div className="mt-2 pt-2 border-t">
-                                    <p className="font-medium mb-1">Certificado:</p>
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <div>
-                                        <span className="text-gray-600">Nome:</span>
-                                        <span className="ml-2">{connectionResult.details.certificado.nome}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-gray-600">Validade:</span>
-                                        <span className="ml-2">
-                                          {new Date(connectionResult.details.certificado.validade).toLocaleDateString('pt-BR')}
-                                        </span>
-                                      </div>
-                                      <div className="col-span-2">
-                                        <span className="text-gray-600">Dias restantes:</span>
-                                        <span className={`ml-2 font-bold ${
-                                          connectionResult.details.certificado.dias_restantes < 30 
-                                            ? 'text-red-600' 
-                                            : connectionResult.details.certificado.dias_restantes < 90 
-                                              ? 'text-orange-600' 
-                                              : 'text-green-600'
-                                        }`}>
-                                          {connectionResult.details.certificado.dias_restantes} dias
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-
-                                <div className="mt-2 pt-2 border-t">
-                                  <p className="text-gray-600 text-xs">
-                                    <Link className="h-3 w-3 inline mr-1" />
-                                    URL SEFAZ: {connectionResult.details.sefaz_url}
-                                  </p>
-                                  <p className="text-gray-500 text-xs mt-1 italic">
-                                    {connectionResult.details.nota}
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Configurações de Emissão */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configurações de Emissão</CardTitle>
-                  <CardDescription>
-                    Configurações específicas para NF-e e NFC-e
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
-                        <div>
-                          <p className="font-semibold text-blue-900">Ambiente de Homologação</p>
-                          <p className="text-sm text-blue-700">
-                            Atualmente o sistema está configurado para usar o ambiente de homologação da SEFAZ-RR. 
-                            Notas emitidas neste ambiente não têm valor fiscal e servem apenas para testes.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                                          <div>
-                                            <Label>Série NF-e</Label>
-                                            <Input
-                                              value={companyConfig.serie_nfe || ""}
-                                              onChange={(e) => setCompanyConfig({ ...companyConfig, serie_nfe: parseInt(e.target.value) || 1 })}
-                                              placeholder="1"
-                                              type="number"
-                                            />
-                                            <p className="text-xs text-gray-500 mt-1">Série para Nota Fiscal Eletrônica</p>
-                                          </div>
-                                          <div>
-                                            <Label>Série NFC-e</Label>
-                                            <Input
-                                              value={companyConfig.serie_nfce || ""}
-                                              onChange={(e) => setCompanyConfig({ ...companyConfig, serie_nfce: parseInt(e.target.value) || 1 })}
-                                              placeholder="1"
-                                              type="number"
-                                            />
-                                            <p className="text-xs text-gray-500 mt-1">Série para NFC-e</p>
-                                          </div>
-                                          <div>
-                                            <Label>Última NF-e</Label>
-                                            <Input
-                                              value={companyConfig.ultima_nfe || ""}
-                                              onChange={(e) => setCompanyConfig({ ...companyConfig, ultima_nfe: parseInt(e.target.value) || 0 })}
-                                              placeholder="0"
-                                              type="number"
-                                            />
-                                            <p className="text-xs text-gray-500 mt-1">Último número emitido de NF-e</p>
-                                          </div>
-                                          <div>
-                                            <Label>Última NFC-e</Label>
-                                            <Input
-                                              value={companyConfig.ultima_nfce || ""}
-                                              onChange={(e) => setCompanyConfig({ ...companyConfig, ultima_nfce: parseInt(e.target.value) || 0 })}
-                                              placeholder="0"
-                                              type="number"
-                                            />
-                                            <p className="text-xs text-gray-500 mt-1">Último número emitido de NFC-e</p>
-                                          </div>
-                                        </div>
-                    
-                                        <div className="pt-4 border-t">
-                                          <Button onClick={handleSaveEmissionConfig} className="bg-orange-600 hover:bg-orange-700">
-                                            <CheckCircle className="mr-2 h-4 w-4" />
-                                            Salvar Configurações
-                                          </Button>
-                                        </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  );
-};
-
-export default AdminFiscal;
+export default defineEventHandler(async (event) => {
+  try {
+    const body = await readBody(event);
+    
+    const { sale_id, valor_total, itens, cliente, frete, forma_pagamento } = body;
+    
+    if (!sale_id || !valor_total || !itens || !Array.isArray(itens)) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Dados inválidos. Verifique sale_id, valor_total e itens.',
+      });
+    }
+    
+    // Buscar configuração da empresa
+    const configResult = await sql()`
+      SELECT * FROM company_fiscal_config
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    
+    if (!configResult || configResult.length === 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Configuração fiscal não encontrada. Configure os dados da empresa primeiro.',
+      });
+    }
+    
+    const config = configResult[0];
+    
+    // Buscar certificado ativo
+    const certResult = await sql()`
+      SELECT * FROM digital_certificates
+      WHERE ativo = true
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    
+    if (!certResult || certResult.length === 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Nenhum certificado ativo encontrado. Adicione um certificado digital primeiro.',
+      });
+    }
+    
+    const cert = certResult[0];
+    
+    // Verificar se o certificado está expirado
+    const now = new Date();
+    const validade = new Date(cert.data_validade);
+    
+    if (validade < now) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Certificado digital expirado. Atualize o certificado antes de emitir NFC-e.',
+      });
+    }
+    
+    // Gerar XML da NFC-e
+    const nfceData = {
+      sale_id,
+      valor_total,
+      itens,
+      cliente,
+      frete: frete || 0,
+      forma_pagamento,
+    };
+    
+    const xmlEnvio = await generateNfceXml(nfceData, config);
+    
+    // Extrair informações do XML gerado
+    const chaveMatch = xmlEnvio.match(/Id="NFe(\d{44})"/);
+    const chaveAcesso = chaveMatch ? chaveMatch[1] : '';
+    
+    const numeroMatch = xmlEnvio.match(/<nNF>(\d+)<\/nNF>/);
+    const numero = numeroMatch ? parseInt(numeroMatch[1]) : 0;
+    
+    const qrCodeMatch = xmlEnvio.match(/<qrCode>(.*?)<\/qrCode>/s);
+    const qrCode = qrCodeMatch ? qrCodeMatch[1].trim() : '';
+    
+    const urlChaveMatch = xmlEnvio.match(/<urlChave>(.*?)<\/urlChave>/s);
+    const urlConsulta = urlChaveMatch ? urlChaveMatch[1].trim() : '';
+    
+    // Enviar para SEFAZ
+    const sefazResponse = await enviarParaSefaz(xmlEnvio, config.ambiente);
+    
+    if (!sefazResponse.success) {
+      throw createError({
+        statusCode: 500,
+        statusMessage: sefazResponse.mensagem || 'Erro ao autorizar NFC-e na SEFAZ',
+      });
+    }
+    
+    // Salvar NFC-e no banco de dados
+    const insertResult = await sql()`
+      INSERT INTO nfce (
+        sale_id,
+        chave_acesso,
+        numero,
+        serie,
+        data_emissao,
+        data_autorizacao,
+        protocolo,
+        status,
+        qr_code,
+        xml_envio,
+        xml_retorno,
+        url_consulta,
+        ambiente,
+        mensagem_status
+      ) VALUES (
+        ${sale_id},
+        ${sefazResponse.chave_acesso},
+        ${sefazResponse.numero},
+        1,
+        ${now},
+        ${now},
+        ${sefazResponse.protocolo},
+        'autorizada',
+        ${sefazResponse.qr_code},
+        ${xmlEnvio},
+        ${sefazResponse.xml_retorno},
+        ${sefazResponse.url_consulta},
+        ${config.ambiente},
+        ${sefazResponse.mensagem}
+      ) RETURNING id
+    `;
+    
+    // Atualizar o último número usado
+    await sql()`
+      UPDATE company_fiscal_config
+      SET ultima_nfce = ${numero},
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${config.id}
+    `;
+    
+    // Atualizar a venda com os dados fiscais
+    await sql()`
+      UPDATE sales
+      SET 
+        xml_chave = ${sefazResponse.chave_acesso},
+        xml_numero = ${sefazResponse.numero},
+        xml_status = 'autorizada',
+        xml_content = ${sefazResponse.xml_retorno}
+      WHERE id = ${sale_id}
+    `;
+    
+    return {
+      success: true,
+      message: 'NFC-e emitida e autorizada com sucesso',
+      nfce: {
+        id: insertResult[0].id,
+        sale_id,
+        chave_acesso: sefazResponse.chave_acesso,
+        numero: sefazResponse.numero,
+        serie: 1,
+        protocolo: sefazResponse.protocolo,
+        qr_code: sefazResponse.qr_code,
+        url_consulta: sefazResponse.url_consulta,
+        status: 'autorizada',
+        ambiente: config.ambiente,
+        data_emissao: now,
+        xml_retorno: sefazResponse.xml_retorno,
+      },
+    };
+  } catch (error) {
+    console.error('Error emitting NFC-e:', error);
+      
+      if (error.statusCode) {
+        throw error;
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao emitir NFC-e';
+      
+      throw createError({
+        statusCode: 500,
+        statusMessage: errorMessage,
+      });
+    }
+});
