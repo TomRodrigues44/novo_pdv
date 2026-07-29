@@ -937,16 +937,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1bb3d-JhVaKKs1ON4HFfyBaYPYxrPjVKk\"",
-    "mtime": "2026-07-29T13:19:17.234Z",
-    "size": 113469,
+    "etag": "\"1bd89-WuyGM/i55Jys2yqafmD+82WThrc\"",
+    "mtime": "2026-07-29T13:35:06.275Z",
+    "size": 114057,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"62cab-oypzWQr7tzhvh8CXiZHDPCwu/mY\"",
-    "mtime": "2026-07-29T13:19:17.234Z",
-    "size": 404651,
+    "etag": "\"62fe5-9YNUe1ZfCHxHSSnjTSkvpRVwBF0\"",
+    "mtime": "2026-07-29T13:35:06.275Z",
+    "size": 405477,
     "path": "index.mjs.map"
   }
 };
@@ -2690,8 +2690,8 @@ async function generateNfceXml(data, config) {
         <NCM>${config.cnae || "4721100"}</NCM>
         <CFOP>5102</CFOP>
         <uCom>UN</uCom>
-        <qCom>${item.quantity.toFixed(4)}</qCom>
-        <vUnCom>${item.price.toFixed(4)}</vUnCom>
+        <qCom>${typeof item.quantity === "number" ? item.quantity : parseFloat(String(item.quantity || 0)).toFixed(4)}</qCom>
+        <vUnCom>${itemPrice.toFixed(4)}</vUnCom>
         <vProd>${valorTotal.toFixed(2)}</vProd>
         <cEANTrib/>
         <uTrib>UN</uTrib>

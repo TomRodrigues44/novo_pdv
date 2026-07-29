@@ -177,17 +177,17 @@ export async function generateNfceXml(data: NfceData, config: CompanyConfig): Pr
   }).join('');
   
   // Mapear itens
-const itensXml = data.itens.map((item, index) => {
-  const nItem = index + 1;
-  const itemPrice = typeof item.price === 'number' ? item.price : parseFloat(String(item.price || 0));
-  const valorTotal = itemPrice * item.quantity;
-  
-  // Impostos (simplificado)
-  const icmsBase = valorTotal;
-  const icmsAliquota = 0.18;
-  const icmsValor = icmsBase * icmsAliquota;
-  const pisValor = valorTotal * 0.0065; // 0.65%
-  const cofinsValor = valorTotal * 0.03; // 3%
+  const itensXml = data.itens.map((item, index) => {
+    const nItem = index + 1;
+    const itemPrice = typeof item.price === 'number' ? item.price : parseFloat(String(item.price || 0));
+    const valorTotal = itemPrice * item.quantity;
+    
+    // Impostos (simplificado)
+    const icmsBase = valorTotal;
+    const icmsAliquota = 0.18;
+    const icmsValor = icmsBase * icmsAliquota;
+    const pisValor = valorTotal * 0.0065; // 0.65%
+    const cofinsValor = valorTotal * 0.03; // 3%
     
     return `
     <det nItem="${nItem}">
@@ -198,8 +198,8 @@ const itensXml = data.itens.map((item, index) => {
         <NCM>${config.cnae || '4721100'}</NCM>
         <CFOP>5102</CFOP>
         <uCom>UN</uCom>
-        <qCom>${item.quantity.toFixed(4)}</qCom>
-        <vUnCom>${item.price.toFixed(4)}</vUnCom>
+        <qCom>${typeof item.quantity === 'number' ? item.quantity : parseFloat(String(item.quantity || 0)).toFixed(4)}</qCom>
+        <vUnCom>${itemPrice.toFixed(4)}</vUnCom>
         <vProd>${valorTotal.toFixed(2)}</vProd>
         <cEANTrib/>
         <uTrib>UN</uTrib>
