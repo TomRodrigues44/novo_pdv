@@ -180,7 +180,8 @@ export async function generateNfceXml(data: NfceData, config: CompanyConfig): Pr
   const itensXml = data.itens.map((item, index) => {
     const nItem = index + 1;
     const itemPrice = typeof item.price === 'number' ? item.price : parseFloat(String(item.price || 0));
-    const valorTotal = itemPrice * item.quantity;
+    const itemQuantity = typeof item.quantity === 'number' ? item.quantity : parseFloat(String(item.quantity || 0));
+    const valorTotal = itemPrice * itemQuantity;
     
     // Impostos (simplificado)
     const icmsBase = valorTotal;
@@ -198,9 +199,13 @@ export async function generateNfceXml(data: NfceData, config: CompanyConfig): Pr
         <NCM>${config.cnae || '4721100'}</NCM>
         <CFOP>5102</CFOP>
         <uCom>UN</uCom>
-        <qCom>${typeof item.quantity === 'number' ? item.quantity : parseFloat(String(item.quantity || 0)).toFixed(4)}</qCom>
+        <qCom>${itemQuantity.toFixed(4)}</qCom>
         <vUnCom>${itemPrice.toFixed(4)}</vUnCom>
         <vProd>${valorTotal.toFixed(2)}</vProd>
+        <cEANTrib/>
+        <uTrib>UN</uTrib>
+        <qTrib>${itemQuantity.toFixed(4)}</qTrib>
+        <vUnTrib>${itemPrice.toFixed(4)}</vUnTrib>
         <cEANTrib/>
         <uTrib>UN</uTrib>
         <qTrib>${item.quantity.toFixed(4)}</qTrib>

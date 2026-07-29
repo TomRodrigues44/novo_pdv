@@ -937,15 +937,15 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1bd89-WuyGM/i55Jys2yqafmD+82WThrc\"",
-    "mtime": "2026-07-29T13:35:06.275Z",
+    "etag": "\"1bd89-qCl1W+SPizPEicUKrFoYDHxMJTc\"",
+    "mtime": "2026-07-29T13:35:07.732Z",
     "size": 114057,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
     "etag": "\"62fe5-9YNUe1ZfCHxHSSnjTSkvpRVwBF0\"",
-    "mtime": "2026-07-29T13:35:06.275Z",
+    "mtime": "2026-07-29T13:35:07.735Z",
     "size": 405477,
     "path": "index.mjs.map"
   }
@@ -2675,7 +2675,8 @@ async function generateNfceXml(data, config) {
   const itensXml = data.itens.map((item, index) => {
     const nItem = index + 1;
     const itemPrice = typeof item.price === "number" ? item.price : parseFloat(String(item.price || 0));
-    const valorTotal = itemPrice * item.quantity;
+    const itemQuantity = typeof item.quantity === "number" ? item.quantity : parseFloat(String(item.quantity || 0));
+    const valorTotal = itemPrice * itemQuantity;
     const icmsBase = valorTotal;
     const icmsAliquota = 0.18;
     const icmsValor = icmsBase * icmsAliquota;
@@ -2690,9 +2691,13 @@ async function generateNfceXml(data, config) {
         <NCM>${config.cnae || "4721100"}</NCM>
         <CFOP>5102</CFOP>
         <uCom>UN</uCom>
-        <qCom>${typeof item.quantity === "number" ? item.quantity : parseFloat(String(item.quantity || 0)).toFixed(4)}</qCom>
+        <qCom>${itemQuantity.toFixed(4)}</qCom>
         <vUnCom>${itemPrice.toFixed(4)}</vUnCom>
         <vProd>${valorTotal.toFixed(2)}</vProd>
+        <cEANTrib/>
+        <uTrib>UN</uTrib>
+        <qTrib>${itemQuantity.toFixed(4)}</qTrib>
+        <vUnTrib>${itemPrice.toFixed(4)}</vUnTrib>
         <cEANTrib/>
         <uTrib>UN</uTrib>
         <qTrib>${item.quantity.toFixed(4)}</qTrib>
