@@ -388,7 +388,7 @@ const AdminFiscal = () => {
                       <Label>CNAE</Label>
                       <Input
                         value={companyConfig.cnae}
-                        onChange={(e) setCompanyConfig({ ...companyConfig, cnae: e.target.value })}
+                        onChange={(e) => setCompanyConfig({ ...companyConfig, cnae: e.target.value })}
                         placeholder="XXXX-XX-00"
                       />
                     </div>
@@ -786,8 +786,8 @@ const AdminFiscal = () => {
                       </>
                     ) : (
                       <>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Testar Conexão
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Testar Conexão
                       </>
                     )}
                   </Button>
