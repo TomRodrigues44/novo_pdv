@@ -937,16 +937,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1bd89-qCl1W+SPizPEicUKrFoYDHxMJTc\"",
-    "mtime": "2026-07-29T13:35:07.732Z",
-    "size": 114057,
+    "etag": "\"1be42-u2/qO6FD05643GgzIWodOWr2xDc\"",
+    "mtime": "2026-07-29T13:39:13.368Z",
+    "size": 114242,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"62fe5-9YNUe1ZfCHxHSSnjTSkvpRVwBF0\"",
-    "mtime": "2026-07-29T13:35:07.735Z",
-    "size": 405477,
+    "etag": "\"63330-cbRTKNNcFQIgb96hCDqjc0Gh/e0\"",
+    "mtime": "2026-07-29T13:39:13.369Z",
+    "size": 406320,
     "path": "index.mjs.map"
   }
 };
@@ -2602,50 +2602,78 @@ const _sale_id__get$1 = /*#__PURE__*/Object.freeze({
   default: _sale_id__get
 });
 
-async function generateNfceNumero() {
-  var _a;
+async function enviarParaSefaz(xml, ambiente) {
+  var _a, _b, _c, _d, _e, _f, _g, _h;
   try {
-    const result = await sql()`
-      SELECT COALESCE(MAX(numero), 0) + 1 as next_numero
-      FROM nfce
-    `;
-    return ((_a = result[0]) == null ? void 0 : _a.next_numero) || 1;
+    await new Promise((resolve) => setTimeout(resolve, 1e3));
+    const chaveMatch = xml.match(/Id="NFe(\d{44})"/);
+    const chaveAcesso = chaveMatch ? chaveMatch[1] : "";
+    const numeroMatch = xml.match(/<nNF>(\d+)<\/nNF>/);
+    const numero = numeroMatch ? parseInt(numeroMatch[1]) : 0;
+    const qrCodeMatch = xml.match(/<qrCode>(.*?)<\/qrCode>/s);
+    const qrCode = qrCodeMatch ? qrCodeMatch[1].trim() : "";
+    const urlChaveMatch = xml.match(/<urlChave>(.*?)<\/urlChave>/s);
+    const urlConsulta = urlChaveMatch ? urlChaveMatch[1].trim() : "";
+    const protocolo = `RR${Date.now().toString().slice(-9)}`;
+    const xmlRetorno = `<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe versao="4.00">
+    <infNFe Id="NFe${chaveAcesso}" versao="4.00">
+      ${((_a = xml.match(/<ide>[\s\S]*?<\/ide>/)) == null ? void 0 : _a[0]) || ""}
+      ${((_b = xml.match(/<emit>[\s\S]*?<\/emit>/)) == null ? void 0 : _b[0]) || ""}
+      ${((_c = xml.match(/<dest>[\s\S]*?<\/dest>/)) == null ? void 0 : _c[0]) || ""}
+      ${((_d = xml.match(/<detalhe>[\s\S]*?<\/detalhe>/)) == null ? void 0 : _d[0]) || ""}
+      ${((_e = xml.match(/<total>[\s\S]*?<\/total>/)) == null ? void 0 : _e[0]) || ""}
+      ${((_f = xml.match(/<transp>[\s\S]*?<\/transp>/)) == null ? void 0 : _f[0]) || ""}
+      ${((_g = xml.match(/<pag>[\s\S]*?<\/pag>/)) == null ? void 0 : _g[0]) || ""}
+      ${((_h = xml.match(/<infAdic>[\s\S]*?<\/infAdic>/)) == null ? void 0 : _h[0]) || ""}
+    </infNFe>
+    <infNFeSupl>
+      <qrCode>${qrCode}</qrCode>
+      <urlChave>${urlConsulta}</urlChave>
+    </infNFeSupl>
+  </NFe>
+  <protNFe versao="4.00">
+    <infProt Id="ID1${chaveAcesso}01">
+      <tpAmb>${ambiente === "producao" ? "1" : "2"}</tpAmb>
+      <verAplic>4.00</verAplic>
+      <chNFe>${chaveAcesso}</chNFe>
+      <dhRecbto>${(/* @__PURE__ */ new Date()).toISOString()}</dhRecbto>
+      <nProt>${protocolo}</nProt>
+      <digVal>${Buffer.from(chaveAcesso).toString("base64").substring(0, 28)}</digVal>
+      <cStat>100</cStat>
+      <xMotivo>Autorizado o uso da NF-e</xMotivo>
+    </infProt>
+  </protNFe>
+</nfeProc>`;
+    return {
+      success: true,
+      status: "autorizada",
+      mensagem: "NFC-e autorizada com sucesso pela SEFAZ",
+      chave_acesso: chaveAcesso,
+      numero,
+      protocolo,
+      qr_code: qrCode,
+      url_consulta: urlConsulta,
+      xml_retorno: xmlRetorno
+    };
   } catch (error) {
-    console.error("Error generating NFC-e number:", error);
-    return 1;
+    console.error("Error sending to SEFAZ:", error);
+    return {
+      success: false,
+      status: "rejeitada",
+      mensagem: "Erro ao comunicar com SEFAZ"
+    };
   }
 }
-function generateChaveAcesso(uf, dataEmissao, cnpj, modelo, serie, numero, tpEmissao = 1) {
-  const AAMM = dataEmissao.getFullYear().toString().slice(-2) + String(dataEmissao.getMonth() + 1).padStart(2, "0");
-  const cnpjLimpo = cnpj.replace(/\D/g, "").padStart(14, "0");
-  const modeloLimpo = modelo.padStart(2, "0");
-  const serieLimpa = String(serie).padStart(3, "0");
-  const numeroLimpo = String(numero).padStart(9, "0");
-  const tpEmissaoStr = String(tpEmissao);
-  const CNF = Math.floor(Math.random() * 1e8).toString().padStart(8, "0");
-  const chaveBase = uf + AAMM + cnpjLimpo + modeloLimpo + serieLimpa + numeroLimpo + tpEmissaoStr + CNF;
-  const dv = calculateDV(chaveBase);
-  return chaveBase + dv;
-}
-function calculateDV(chave) {
-  const pesos = [2, 3, 4, 5, 6, 7, 8, 9];
-  let soma = 0;
-  for (let i = chave.length - 1; i >= 0; i--) {
-    const peso = pesos[(chave.length - 1 - i) % 8];
-    soma += parseInt(chave[i]) * peso;
-  }
-  const resto = soma % 11;
-  const dv = resto === 0 || resto === 1 ? 0 : 11 - resto;
-  return String(dv);
-}
-function generateQrCode(chaveAcesso, ambiente, urlConsulta) {
-  const versao = "2";
-  const ambienteCod = ambiente === "producao" ? "1" : "2";
-  return `${versao}|${chaveAcesso}|${ambienteCod}|${urlConsulta}`;
-}
+
+const toNumber = (val, defaultValue = 0) => {
+  if (typeof val === "number") return val;
+  return parseFloat(String(val || defaultValue));
+};
 async function generateNfceXml(data, config) {
   var _a;
-  const numero = await generateNfceNumero();
+  const numero = 1;
   const serie = 1;
   const modelo = "65";
   const tpEmissao = 1;
@@ -2666,16 +2694,17 @@ async function generateNfceXml(data, config) {
   const totalIcmsBase = data.valor_total;
   const pagamentosXml = data.forma_pagamento.map((pag) => {
     const tipoPagamento = mapPaymentType(pag.tipo);
+    const valor = toNumber(pag.valor);
     return `
     <pag>
       <tPag>${tipoPagamento}</tPag>
-      <vPag>${pag.valor.toFixed(2)}</vPag>
+      <vPag>${valor.toFixed(2)}</vPag>
     </pag>`;
   }).join("");
   const itensXml = data.itens.map((item, index) => {
     const nItem = index + 1;
-    const itemPrice = typeof item.price === "number" ? item.price : parseFloat(String(item.price || 0));
-    const itemQuantity = typeof item.quantity === "number" ? item.quantity : parseFloat(String(item.quantity || 0));
+    const itemPrice = toNumber(item.price);
+    const itemQuantity = toNumber(item.quantity);
     const valorTotal = itemPrice * itemQuantity;
     const icmsBase = valorTotal;
     const icmsAliquota = 0.18;
@@ -2698,10 +2727,6 @@ async function generateNfceXml(data, config) {
         <uTrib>UN</uTrib>
         <qTrib>${itemQuantity.toFixed(4)}</qTrib>
         <vUnTrib>${itemPrice.toFixed(4)}</vUnTrib>
-        <cEANTrib/>
-        <uTrib>UN</uTrib>
-        <qTrib>${item.quantity.toFixed(4)}</qTrib>
-        <vUnTrib>${item.price.toFixed(4)}</vUnTrib>
         <indTot>1</indTot>
       </prod>
       <imposto>
@@ -2829,90 +2854,6 @@ ${itensXml}
 </nfeProc>`;
   return xml;
 }
-function mapPaymentType(type) {
-  switch (type) {
-    case "debit":
-      return 4;
-    // Cartão de Débito
-    case "credit":
-      return 3;
-    // Cartão de Crédito
-    case "pix":
-      return 5;
-    // PIX
-    case "cash":
-      return 1;
-    // Dinheiro
-    default:
-      return 1;
-  }
-}
-
-async function enviarParaSefaz(xml, ambiente) {
-  var _a, _b, _c, _d, _e, _f, _g, _h;
-  try {
-    await new Promise((resolve) => setTimeout(resolve, 1e3));
-    const chaveMatch = xml.match(/Id="NFe(\d{44})"/);
-    const chaveAcesso = chaveMatch ? chaveMatch[1] : "";
-    const numeroMatch = xml.match(/<nNF>(\d+)<\/nNF>/);
-    const numero = numeroMatch ? parseInt(numeroMatch[1]) : 0;
-    const qrCodeMatch = xml.match(/<qrCode>(.*?)<\/qrCode>/s);
-    const qrCode = qrCodeMatch ? qrCodeMatch[1].trim() : "";
-    const urlChaveMatch = xml.match(/<urlChave>(.*?)<\/urlChave>/s);
-    const urlConsulta = urlChaveMatch ? urlChaveMatch[1].trim() : "";
-    const protocolo = `RR${Date.now().toString().slice(-9)}`;
-    const xmlRetorno = `<?xml version="1.0" encoding="UTF-8"?>
-<nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-  <NFe versao="4.00">
-    <infNFe Id="NFe${chaveAcesso}" versao="4.00">
-      ${((_a = xml.match(/<ide>[\s\S]*?<\/ide>/)) == null ? void 0 : _a[0]) || ""}
-      ${((_b = xml.match(/<emit>[\s\S]*?<\/emit>/)) == null ? void 0 : _b[0]) || ""}
-      ${((_c = xml.match(/<dest>[\s\S]*?<\/dest>/)) == null ? void 0 : _c[0]) || ""}
-      ${((_d = xml.match(/<detalhe>[\s\S]*?<\/detalhe>/)) == null ? void 0 : _d[0]) || ""}
-      ${((_e = xml.match(/<total>[\s\S]*?<\/total>/)) == null ? void 0 : _e[0]) || ""}
-      ${((_f = xml.match(/<transp>[\s\S]*?<\/transp>/)) == null ? void 0 : _f[0]) || ""}
-      ${((_g = xml.match(/<pag>[\s\S]*?<\/pag>/)) == null ? void 0 : _g[0]) || ""}
-      ${((_h = xml.match(/<infAdic>[\s\S]*?<\/infAdic>/)) == null ? void 0 : _h[0]) || ""}
-    </infNFe>
-    <infNFeSupl>
-      <qrCode>${qrCode}</qrCode>
-      <urlChave>${urlConsulta}</urlChave>
-    </infNFeSupl>
-  </NFe>
-  <protNFe versao="4.00">
-    <infProt Id="ID1${chaveAcesso}01">
-      <tpAmb>${ambiente === "producao" ? "1" : "2"}</tpAmb>
-      <verAplic>4.00</verAplic>
-      <chNFe>${chaveAcesso}</chNFe>
-      <dhRecbto>${(/* @__PURE__ */ new Date()).toISOString()}</dhRecbto>
-      <nProt>${protocolo}</nProt>
-      <digVal>${Buffer.from(chaveAcesso).toString("base64").substring(0, 28)}</digVal>
-      <cStat>100</cStat>
-      <xMotivo>Autorizado o uso da NF-e</xMotivo>
-    </infProt>
-  </protNFe>
-</nfeProc>`;
-    return {
-      success: true,
-      status: "autorizada",
-      mensagem: "NFC-e autorizada com sucesso pela SEFAZ",
-      chave_acesso: chaveAcesso,
-      numero,
-      protocolo,
-      qr_code: qrCode,
-      url_consulta: urlConsulta,
-      xml_retorno: xmlRetorno
-    };
-  } catch (error) {
-    console.error("Error sending to SEFAZ:", error);
-    return {
-      success: false,
-      status: "rejeitada",
-      mensagem: "Erro ao comunicar com SEFAZ"
-    };
-  }
-}
-
 const emitir_post = defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
@@ -3055,7 +2996,8 @@ const emitir_post = defineEventHandler(async (event) => {
 
 const emitir_post$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: emitir_post
+  default: emitir_post,
+  generateNfceXml: generateNfceXml
 });
 
 const products_get = defineEventHandler(async () => {
