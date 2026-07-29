@@ -934,7 +934,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1bb3d-JhVaKKs1ON4HFfyBaYPYxrPjVKk\"",
+    "mtime": "2026-07-29T13:19:17.234Z",
+    "size": 113469,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"62cab-oypzWQr7tzhvh8CXiZHDPCwu/mY\"",
+    "mtime": "2026-07-29T13:19:17.234Z",
+    "size": 404651,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -2659,7 +2674,8 @@ async function generateNfceXml(data, config) {
   }).join("");
   const itensXml = data.itens.map((item, index) => {
     const nItem = index + 1;
-    const valorTotal = item.price * item.quantity;
+    const itemPrice = typeof item.price === "number" ? item.price : parseFloat(String(item.price || 0));
+    const valorTotal = itemPrice * item.quantity;
     const icmsBase = valorTotal;
     const icmsAliquota = 0.18;
     const icmsValor = icmsBase * icmsAliquota;

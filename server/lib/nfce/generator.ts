@@ -177,16 +177,17 @@ export async function generateNfceXml(data: NfceData, config: CompanyConfig): Pr
   }).join('');
   
   // Mapear itens
-  const itensXml = data.itens.map((item, index) => {
-    const nItem = index + 1;
-    const valorTotal = item.price * item.quantity;
-    
-    // Impostos (simplificado)
-    const icmsBase = valorTotal;
-    const icmsAliquota = 0.18;
-    const icmsValor = icmsBase * icmsAliquota;
-    const pisValor = valorTotal * 0.0065; // 0.65%
-    const cofinsValor = valorTotal * 0.03; // 3%
+const itensXml = data.itens.map((item, index) => {
+  const nItem = index + 1;
+  const itemPrice = typeof item.price === 'number' ? item.price : parseFloat(String(item.price || 0));
+  const valorTotal = itemPrice * item.quantity;
+  
+  // Impostos (simplificado)
+  const icmsBase = valorTotal;
+  const icmsAliquota = 0.18;
+  const icmsValor = icmsBase * icmsAliquota;
+  const pisValor = valorTotal * 0.0065; // 0.65%
+  const cofinsValor = valorTotal * 0.03; // 3%
     
     return `
     <det nItem="${nItem}">
