@@ -937,16 +937,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1be42-u2/qO6FD05643GgzIWodOWr2xDc\"",
-    "mtime": "2026-07-29T13:39:13.368Z",
-    "size": 114242,
+    "etag": "\"1b4e3-JpA0DXP2Li8dyok3ryz4Fvo7Vkw\"",
+    "mtime": "2026-07-29T13:45:15.013Z",
+    "size": 111843,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"63330-cbRTKNNcFQIgb96hCDqjc0Gh/e0\"",
-    "mtime": "2026-07-29T13:39:13.369Z",
-    "size": 406320,
+    "etag": "\"61285-vUsQ+uCUadpnhp+QXq4HQnOEN9g\"",
+    "mtime": "2026-07-29T13:45:15.013Z",
+    "size": 397957,
     "path": "index.mjs.map"
   }
 };
@@ -2671,6 +2671,52 @@ const toNumber = (val, defaultValue = 0) => {
   if (typeof val === "number") return val;
   return parseFloat(String(val || defaultValue));
 };
+function generateChaveAcesso(uf, dataEmissao, cnpj, modelo, serie, numero, tpEmissao = 1) {
+  const AAMM = dataEmissao.getFullYear().toString().slice(-2) + String(dataEmissao.getMonth() + 1).padStart(2, "0");
+  const cnpjLimpo = cnpj.replace(/\D/g, "").padStart(14, "0");
+  const modeloLimpo = modelo.padStart(2, "0");
+  const serieLimpa = String(serie).padStart(3, "0");
+  const numeroLimpo = String(numero).padStart(9, "0");
+  const tpEmissaoStr = String(tpEmissao);
+  const CNF = Math.floor(Math.random() * 1e8).toString().padStart(8, "0");
+  const chaveBase = uf + AAMM + cnpjLimpo + modeloLimpo + serieLimpa + numeroLimpo + tpEmissaoStr + CNF;
+  const dv = calculateDV(chaveBase);
+  return chaveBase + dv;
+}
+function calculateDV(chave) {
+  const pesos = [2, 3, 4, 5, 6, 7, 8, 9];
+  let soma = 0;
+  for (let i = chave.length - 1; i >= 0; i--) {
+    const peso = pesos[(chave.length - 1 - i) % 8];
+    soma += parseInt(chave[i]) * peso;
+  }
+  const resto = soma % 11;
+  const dv = resto === 0 || resto === 1 ? 0 : 11 - resto;
+  return String(dv);
+}
+function generateQrCode(chaveAcesso, ambiente, urlConsulta) {
+  const versao = "2";
+  const ambienteCod = ambiente === "producao" ? "1" : "2";
+  return `${versao}|${chaveAcesso}|${ambienteCod}|${urlConsulta}`;
+}
+function mapPaymentType(type) {
+  switch (type) {
+    case "debit":
+      return 4;
+    // Cartão de Débito
+    case "credit":
+      return 3;
+    // Cartão de Crédito
+    case "pix":
+      return 5;
+    // PIX
+    case "cash":
+      return 1;
+    // Dinheiro
+    default:
+      return 1;
+  }
+}
 async function generateNfceXml(data, config) {
   var _a;
   const numero = 1;

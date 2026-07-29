@@ -8,6 +8,92 @@ const toNumber = (val: any, defaultValue: number = 0): number => {
 };
 
 /**
+ * Gera a chave de acesso da NFC-e (44 caracteres)
+ * A chave é composta por: UF (2) + AAMM (4) + CNPJ (14) + MODELO (2) + Série (3) + Número (9) + TP_Emissão (1) + CNF (9)
+ */
+function generateChaveAcesso(
+  uf: string,
+  dataEmissao: Date,
+  cnpj: string,
+  modelo: string,
+  serie: number,
+  numero: number,
+  tpEmissao: number = 1
+): string {
+  const AAMM = dataEmissao.getFullYear().toString().slice(-2) +
+               String(dataEmissao.getMonth() + 1).padStart(2, '0');
+  const cnpjLimpo = cnpj.replace(/\D/g, '').padStart(14, '0');
+  const modeloLimpo = modelo.padStart(2, '0');
+  const serieLimpa = String(serie).padStart(3, '0');
+  const numeroLimpo = String(numero).padStart(9, '0');
+  const tpEmissaoStr = String(tpEmissao);
+  
+  // Código numérico aleatório (8 dígitos)
+  const CNF = Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
+  
+  const chaveBase =
+    uf +
+    AAMM +
+    cnpjLimpo +
+    modeloLimpo +
+    serieLimpa +
+    numeroLimpo +
+    tpEmissaoStr +
+    CNF;
+  
+  // Adicionar dígito verificador (DV) usando módulo 11
+  const dv = calculateDV(chaveBase);
+  
+  return chaveBase + dv;
+}
+
+/**
+ * Calcula o dígito verificador da chave de acesso usando módulo 11
+ */
+function calculateDV(chave: string): string {
+  const pesos = [2, 3, 4, 5, 6, 7, 8, 9];
+  let soma = 0;
+  
+  for (let i = chave.length - 1; i >= 0; i--) {
+    const peso = pesos[(chave.length - 1 - i) % 8];
+    soma += parseInt(chave[i]) * peso;
+  }
+  
+  const resto = soma % 11;
+  const dv = resto === 0 || resto === 1 ? 0 : 11 - resto;
+  
+  return String(dv);
+}
+
+/**
+ * Gera o QR Code para NFC-e
+ */
+function generateQrCode(
+  chaveAcesso: string,
+  ambiente: string,
+  urlConsulta: string
+): string {
+  // Formato do QR Code para NFC-e: versão + chave + ambiente + URL consulta
+  const versao = '2';
+  const ambienteCod = ambiente === 'producao' ? '1' : '2';
+  
+  return `${versao}|${chaveAcesso}|${ambienteCod}|${urlConsulta}`;
+}
+
+/**
+ * Mapeia tipos de pagamento para código da NFC-e
+ */
+function mapPaymentType(type: string): number {
+  switch (type) {
+    case 'debit': return 4; // Cartão de Débito
+    case 'credit': return 3; // Cartão de Crédito
+    case 'pix': return 5; // PIX
+    case 'cash': return 1; // Dinheiro
+    default: return 1;
+  }
+}
+
+/**
  * Gera o XML da NFC-e
  */
 export async function generateNfceXml(data: any, config: any): Promise<string> {
