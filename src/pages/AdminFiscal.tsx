@@ -231,7 +231,7 @@ const AdminFiscal = () => {
         toast.error('Erro ao adicionar certificado');
       }
     } catch (error) {
-      toast.error('Erro ao adicionar certado');
+      toast.error('Erro ao adicionar certificado');
     } finally {
       setUploadingCert(false);
     }
@@ -318,7 +318,7 @@ const AdminFiscal = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
-            <tabsTrigger value="empresa">
+            <TabsTrigger value="empresa">
               <Building2 className="h-4 w-4 mr-2" />
               Dados da Empresa
             </TabsTrigger>
@@ -388,7 +388,7 @@ const AdminFiscal = () => {
                       <Label>CNAE</Label>
                       <Input
                         value={companyConfig.cnae}
-                        onChange={(e) => setCompanyConfig({ ...companyConfig, cnae: e.target.value })}
+                        onChange={(e) setCompanyConfig({ ...companyConfig, cnae: e.target.value })}
                         placeholder="XXXX-XX-00"
                       />
                     </div>
@@ -786,8 +786,8 @@ const AdminFiscal = () => {
                       </>
                     ) : (
                       <>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Testar Conexão
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Testar Conexão
                       </>
                     )}
                   </Button>
