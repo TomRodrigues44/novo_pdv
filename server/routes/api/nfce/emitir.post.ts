@@ -316,7 +316,7 @@ export default defineEventHandler(async (event) => {
     }
     
     // Buscar configuração da empresa
-    const configResult = await sql()`
+    const configResult = await sql`
       SELECT * FROM company_fiscal_config
       ORDER BY created_at DESC
       LIMIT 1
@@ -337,7 +337,7 @@ export default defineEventHandler(async (event) => {
     };
     
     // Buscar certificado ativo
-    const certResult = await sql()`
+    const certResult = await sql`
       SELECT * FROM digital_certificates
       WHERE ativo = true
       ORDER BY created_at DESC
@@ -375,110 +375,114 @@ export default defineEventHandler(async (event) => {
         const proximoNumero = Math.max(ultimoNumero + 1, (config.ultima_nfce || 0) + 1);
         const serieNfce = config.serie_nfce || 15;
                 
-                // Pequeno delay para garantir unicidade no timestamp
-                await new Promise(resolve => setTimeout(resolve, 10));
+        const nfceData = {
+          sale_id: saleIdNumber,
+          valor_total,
+          itens,
+          cliente,
+          frete: frete || 0,
+          forma_pagamento,
+        };
                 
-                // Gerar XML da NFC-e
-                const nfceData = {
-                  sale_id: saleIdNumber,
-                  valor_total,
-                  itens,
-                  cliente,
-                  frete: frete || 0,
-                  forma_pagamento,
-                };
-                
-                const xmlEnvio = await generateNfceXml(nfceData, config, proximoNumero, serieNfce);
+    // Enviar para SEFAZ e salvar com retry para evitar duplicatas de chave
+    let sefazResponse;
+    let insertResult;
+    let tentativas = 0;
+    const maxTentativas = 3;
     
-    // Extrair informações do XML gerado
-    const chaveMatch = xmlEnvio.match(/Id="NFe(\d{44})"/);
-    const chaveAcesso = chaveMatch ? chaveMatch[1] : '';
+    while (tentativas < maxTentativas) {
+      try {
+        // Pequeno delay para garantir unicidade no timestamp
+        await new Promise(resolve => setTimeout(resolve, 10));
+        
+        // Gerar XML da NFC-e (cada tentativa gera uma nova chave de acesso)
+        const xmlEnvio = await generateNfceXml(nfceData, config, proximoNumero, serieNfce);
     
-    const numeroMatch = xmlEnvio.match(/<nNF>(\d+)<\/nNF>/);
-    const numero = numeroMatch ? parseInt(numeroMatch[1]) : 0;
-    
-    const qrCodeMatch = xmlEnvio.match(/<qrCode>(.*?)<\/qrCode>/s);
-    const qrCode = qrCodeMatch ? qrCodeMatch[1].trim() : '';
-    
-    const urlChaveMatch = xmlEnvio.match(/<urlChave>(.*?)<\/urlChave>/s);
-    const urlConsulta = urlChaveMatch ? urlChaveMatch[1].trim() : '';
-    
-    // Enviar para SEFAZ
-    const sefazResponse = await enviarParaSefaz(xmlEnvio, config.ambiente);
-    
-    if (!sefazResponse.success) {
-      throw createError({
-              statusCode: 500,
-              statusMessage: sefazResponse.mensagem || 'Erro ao autorizar NFC-e na SEFAZ',
-            });
-          }
-          
-          // Salvar NFC-e no banco de dados com retry para evitar duplicatas de chave
-          let insertResult;
-          let insertTentativas = 0;
-          const maxInsertTentativas = 3;
-          
-          while (insertTentativas < maxInsertTentativas) {
-            try {
-              insertResult = await sql()`
-                INSERT INTO nfce (
-                  sale_id,
-                  chave_acesso,
-                  numero,
-                  serie,
-                  data_emissao,
-                  data_autorizacao,
-                  protocolo,
-                  status,
-                  qr_code,
-                  xml_envio,
-                  xml_retorno,
-                  url_consulta,
-                  ambiente,
-                  mensagem_status
-                ) VALUES (
-                  ${String(saleIdNumber)},
-                  ${sefazResponse.chave_acesso},
-                  ${sefazResponse.numero},
-                  ${serieNfce},
-                  ${now},
-                  ${now},
-                  ${sefazResponse.protocolo},
-                  'autorizada',
-                  ${sefazResponse.qr_code},
-                  ${xmlEnvio},
-                  ${sefazResponse.xml_retorno},
-                  ${sefazResponse.url_consulta},
-                  ${config.ambiente},
-                  ${sefazResponse.mensagem}
-                ) RETURNING id
-              `;
-              
-              // Se chegou aqui, inserção foi bem-sucedida
-              break;
-              
-            } catch (insertError: any) {
-              insertTentativas++;
-              
-              // Verificar se é erro de chave duplicada
-              if (insertError.message && insertError.message.includes('duplicate key') && insertError.message.includes('chave_acesso')) {
-                // Aguardar um pouco e tentar novamente (o timestamp será diferente)
-                if (insertTentativas < maxInsertTentativas) {
-                  await new Promise(resolve => setTimeout(resolve, 100 * insertTentativas));
-                  continue;
-                }
+        // Extrair informações do XML gerado
+        const chaveMatch = xmlEnvio.match(/Id="NFe(\d{44})"/);
+        const chaveAcesso = chaveMatch ? chaveMatch[1] : '';
+        
+        const numeroMatch = xmlEnvio.match(/<nNF>(\d+)<\/nNF>/);
+        const numero = numeroMatch ? parseInt(numeroMatch[1]) : 0;
+        
+        const qrCodeMatch = xmlEnvio.match(/<qrCode>(.*?)<\/qrCode>/s);
+        const qrCode = qrCodeMatch ? qrCodeMatch[1].trim() : '';
+        
+        const urlChaveMatch = xmlEnvio.match(/<urlChave>(.*?)<\/urlChave>/s);
+        const urlConsulta = urlChaveMatch ? urlChaveMatch[1].trim() : '';
+        
+        // Enviar para SEFAZ
+        const sefazResult = await enviarParaSefaz(xmlEnvio, config.ambiente);
+        
+        if (!sefazResult.success) {
+          throw createError({
+                  statusCode: 500,
+                  statusMessage: sefazResult.mensagem || 'Erro ao autorizar NFC-e na SEFAZ',
+                });
               }
               
-              // Se não for erro de duplicata ou esgotou tentativas, propagar o erro
-              throw createError({
-                statusCode: 500,
-                statusMessage: insertError.message || 'Erro ao salvar NFC-e no banco de dados',
-              });
-            }
+        // Salvar NFC-e no banco de dados
+        const insert = await sql`
+          INSERT INTO nfce (
+            sale_id,
+            chave_acesso,
+            numero,
+            serie,
+            data_emissao,
+            data_autorizacao,
+            protocolo,
+            status,
+            qr_code,
+            xml_envio,
+            xml_retorno,
+            url_consulta,
+            ambiente,
+            mensagem_status
+          ) VALUES (
+            ${String(saleIdNumber)},
+            ${sefazResult.chave_acesso},
+            ${sefazResult.numero},
+            ${serieNfce},
+            ${now},
+            ${now},
+            ${sefazResult.protocolo},
+            'autorizada',
+            ${sefazResult.qr_code},
+            ${xmlEnvio},
+            ${sefazResult.xml_retorno},
+            ${sefazResult.url_consulta},
+            ${config.ambiente},
+            ${sefazResult.mensagem}
+          ) RETURNING id
+        `;
+        
+        // Se chegou aqui, tudo foi bem-sucedido
+        sefazResponse = sefazResult;
+        insertResult = insert;
+        break;
+        
+      } catch (insertError: any) {
+        tentativas++;
+        
+        // Verificar se é erro de chave duplicada
+        if (insertError.message && insertError.message.includes('duplicate key') && insertError.message.includes('chave_acesso')) {
+          // Aguardar um pouco e tentar novamente (o timestamp será diferente)
+          if (tentativas < maxTentativas) {
+            await new Promise(resolve => setTimeout(resolve, 100 * tentativas));
+            continue;
           }
+        }
+        
+        // Se não for erro de duplicata ou esgotou tentativas, propagar o erro
+        throw createError({
+          statusCode: 500,
+          statusMessage: insertError.message || 'Erro ao emitir NFC-e',
+        });
+      }
+    }
     
     // Atualizar a venda com os dados fiscais
-        await sql()`
+        await sql`
           UPDATE sales
           SET
             xml_chave = ${sefazResponse.chave_acesso},
@@ -489,7 +493,7 @@ export default defineEventHandler(async (event) => {
         `;
         
         // Atualizar a configuração fiscal com o novo número de NFC-e
-        await sql()`
+        await sql`
           UPDATE company_fiscal_config
           SET ultima_nfce = ${proximoNumero},
               updated_at = ${now}
