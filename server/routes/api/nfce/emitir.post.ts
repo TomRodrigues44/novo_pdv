@@ -323,18 +323,28 @@ export default defineEventHandler(async (event) => {
     `;
     
     if (!configResult || configResult.length === 0) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'Configuração fiscal não encontrada. Configure os dados da empresa primeiro.',
-      });
-    }
-    
-    const config = {
-      ...configResult[0],
-      CRT: configResult[0].crt || configResult[0].CRT || '1',
-      serie_nfce: configResult[0].serie_nfce || 15,
-      ultima_nfce: configResult[0].ultima_nfce || 0,
-    };
+          throw createError({
+            statusCode: 400,
+            statusMessage: 'Configuração fiscal não encontrada. Configure os dados da empresa primeiro.',
+          });
+        }
+        
+        const configResultFirst = configResult[0] || {};
+                
+                const config = {
+                  ...configResultFirst,
+                  id: configResultFirst.id,
+                  uf: configResultFirst.uf || 'RR',
+                  cnpj: configResultFirst.cnpj || '',
+                  razao_social: configResultFirst.razao_social || '',
+                  nome_fantasia: configResultFirst.nome_fantasia || '',
+                  inscricao_estadual: configResultFirst.inscricao_estadual || '',
+                  cnae: configResultFirst.cnae || '4721100',
+                  ambiente: configResultFirst.ambiente || 'homologacao',
+                  CRT: configResultFirst.crt || configResultFirst.CRT || '1',
+                  serie_nfce: configResultFirst.serie_nfce || 15,
+                  ultima_nfce: configResultFirst.ultima_nfce || 0,
+                };
     
     // Buscar certificado ativo
     const certResult = await sql`
@@ -412,14 +422,14 @@ export default defineEventHandler(async (event) => {
         const urlConsulta = urlChaveMatch ? urlChaveMatch[1].trim() : '';
         
         // Enviar para SEFAZ
-        const sefazResult = await enviarParaSefaz(xmlEnvio, config.ambiente);
-        
-        if (!sefazResult.success) {
-          throw createError({
-                  statusCode: 500,
-                  statusMessage: sefazResult.mensagem || 'Erro ao autorizar NFC-e na SEFAZ',
-                });
-              }
+                const sefazResult = await enviarParaSefaz(xmlEnvio, config.ambiente);
+                
+                if (!sefazResult || !sefazResult.success) {
+                  throw createError({
+                          statusCode: 500,
+                          statusMessage: sefazResult?.mensagem || 'Erro ao autorizar NFC-e na SEFAZ',
+                        });
+                      }
               
         // Salvar NFC-e no banco de dados
         const insert = await sql`
@@ -501,23 +511,23 @@ export default defineEventHandler(async (event) => {
         `;
         
         return {
-          success: true,
-          message: 'NFC-e emitida e autorizada com sucesso',
-          nfce: {
-            id: insertResult[0].id,
-            sale_id: saleIdNumber,
-            chave_acesso: sefazResponse.chave_acesso,
-            numero: sefazResponse.numero,
-            serie: serieNfce,
-            protocolo: sefazResponse.protocolo,
-            qr_code: sefazResponse.qr_code,
-            url_consulta: sefazResponse.url_consulta,
-            status: 'autorizada',
-            ambiente: config.ambiente,
-            data_emissao: now,
-            xml_retorno: sefazResponse.xml_retorno,
-          },
-        };
+                  success: true,
+                  message: 'NFC-e emitida e autorizada com sucesso',
+                  nfce: {
+                    id: insertResult?.[0]?.id || 0,
+                    sale_id: saleIdNumber,
+                    chave_acesso: sefazResponse.chave_acesso,
+                    numero: sefazResponse.numero,
+                    serie: serieNfce,
+                    protocolo: sefazResponse.protocolo,
+                    qr_code: sefazResponse.qr_code,
+                    url_consulta: sefazResponse.url_consulta,
+                    status: 'autorizada',
+                    ambiente: config.ambiente,
+                    data_emissao: now,
+                    xml_retorno: sefazResponse.xml_retorno,
+                  },
+                };
   } catch (error) {
       console.error('Error emitting NFC-e:', error);
       

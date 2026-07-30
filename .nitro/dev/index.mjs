@@ -935,19 +935,19 @@ const plugins = [
 ];
 
 const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"1c63c-OIegqGhPcaPUoZ8FJUpEHjCA8ns\"",
-    "mtime": "2026-07-30T14:46:15.193Z",
-    "size": 116284,
-    "path": "index.mjs"
-  },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"650ad-m1m5nbUnTylwGtdJpR2ArEqx57c\"",
-    "mtime": "2026-07-30T14:46:15.193Z",
-    "size": 413869,
+    "etag": "\"6553c-wDuZ04UV3HyPY40r0Cdrk+kEDZk\"",
+    "mtime": "2026-07-30T15:10:46.713Z",
+    "size": 415036,
     "path": "index.mjs.map"
+  },
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1c7c7-UkxVMrpRjdj+x/UDoxQr8Cx2Co4\"",
+    "mtime": "2026-07-30T15:10:46.713Z",
+    "size": 116679,
+    "path": "index.mjs"
   }
 };
 
@@ -2902,7 +2902,7 @@ ${itensXml}
   return xml;
 }
 const emitir_post = defineEventHandler(async (event) => {
-  var _a;
+  var _a, _b;
   try {
     const body = await readBody(event);
     const { sale_id, valor_total, itens, cliente, frete, forma_pagamento } = body;
@@ -2924,11 +2924,20 @@ const emitir_post = defineEventHandler(async (event) => {
         statusMessage: "Configura\xE7\xE3o fiscal n\xE3o encontrada. Configure os dados da empresa primeiro."
       });
     }
+    const configResultFirst = configResult[0] || {};
     const config = {
-      ...configResult[0],
-      CRT: configResult[0].crt || configResult[0].CRT || "1",
-      serie_nfce: configResult[0].serie_nfce || 15,
-      ultima_nfce: configResult[0].ultima_nfce || 0
+      ...configResultFirst,
+      id: configResultFirst.id,
+      uf: configResultFirst.uf || "RR",
+      cnpj: configResultFirst.cnpj || "",
+      razao_social: configResultFirst.razao_social || "",
+      nome_fantasia: configResultFirst.nome_fantasia || "",
+      inscricao_estadual: configResultFirst.inscricao_estadual || "",
+      cnae: configResultFirst.cnae || "4721100",
+      ambiente: configResultFirst.ambiente || "homologacao",
+      CRT: configResultFirst.crt || configResultFirst.CRT || "1",
+      serie_nfce: configResultFirst.serie_nfce || 15,
+      ultima_nfce: configResultFirst.ultima_nfce || 0
     };
     const certResult = await sql`
       SELECT * FROM digital_certificates
@@ -2984,10 +2993,10 @@ const emitir_post = defineEventHandler(async (event) => {
         const urlChaveMatch = xmlEnvio.match(/<urlChave>(.*?)<\/urlChave>/s);
         const urlConsulta = urlChaveMatch ? urlChaveMatch[1].trim() : "";
         const sefazResult = await enviarParaSefaz(xmlEnvio, config.ambiente);
-        if (!sefazResult.success) {
+        if (!sefazResult || !sefazResult.success) {
           throw createError({
             statusCode: 500,
-            statusMessage: sefazResult.mensagem || "Erro ao autorizar NFC-e na SEFAZ"
+            statusMessage: (sefazResult == null ? void 0 : sefazResult.mensagem) || "Erro ao autorizar NFC-e na SEFAZ"
           });
         }
         const insert = await sql`
@@ -3059,7 +3068,7 @@ const emitir_post = defineEventHandler(async (event) => {
       success: true,
       message: "NFC-e emitida e autorizada com sucesso",
       nfce: {
-        id: insertResult[0].id,
+        id: ((_b = insertResult == null ? void 0 : insertResult[0]) == null ? void 0 : _b.id) || 0,
         sale_id: saleIdNumber,
         chave_acesso: sefazResponse.chave_acesso,
         numero: sefazResponse.numero,
