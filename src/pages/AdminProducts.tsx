@@ -87,31 +87,31 @@ const AdminProducts = () => {
     setUploadingImage(true);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao fazer upload');
-      }
-
-      const result = await response.json();
-      
-      if (result.success && result.url) {
-        setFormData({ ...formData, image: result.url });
-        setImagePreview(result.url);
-        toast.success('Imagem carregada com sucesso!');
-      }
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error('Erro ao carregar a imagem');
-    } finally {
-      setUploadingImage(false);
-    }
+          const uploadFormData = new FormData();
+          uploadFormData.append('file', file);
+    
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: uploadFormData,
+          });
+    
+          if (!response.ok) {
+            throw new Error('Erro ao fazer upload');
+          }
+    
+          const result = await response.json();
+          
+          if (result.success && result.url) {
+            setFormData({ ...formData, image: result.url });
+            setImagePreview(result.url);
+            toast.success('Imagem carregada com sucesso!');
+          }
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          toast.error('Erro ao carregar a imagem');
+        } finally {
+          setUploadingImage(false);
+        }
   };
 
   const handleRemoveImage = () => {

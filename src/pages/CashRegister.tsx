@@ -890,10 +890,10 @@ const CashRegister = () => {
           </DialogHeader>
           
           {(() => {
-            const closedTotalsByCategory = calculateTotalsByCategory(closedRegisterData?.transactions || []);
-            const totalWithdrawals = Object.values(closedTotalsByCategory).reduce((sum: number, val: number) => sum + val, 0);
-            
-            return (
+                      const closedTotalsByCategory = calculateTotalsByCategory(closedRegisterData?.transactions || []);
+                                            const totalWithdrawals = Object.values(closedTotalsByCategory).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0) as number;
+                      
+                      return (
               <div className="printable-receipt">
                 <div className="text-center mb-4 pb-2 border-b-2 border-dashed">
                   <h2 className="text-xl font-bold">EMPÓRIO DAS COXINHAS</h2>
