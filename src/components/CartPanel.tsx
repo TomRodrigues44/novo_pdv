@@ -213,21 +213,26 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
   
       if (type === "fiscal") {
         // Emitir NFC-e
-        setEmittingNfce(true);
-        try {
-          const response = await fetch('/api/nfce/emitir', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sale_id: currentSaleId,
-              valor_total: totalWithFreight,
-              itens: cartItems.map((item) => ({
-                id: item.id,
-                name: item.name,
-                quantity: item.quantity,
-                price: item.price,
-                flavors: (item as any).flavors,
-              })),
+                setEmittingNfce(true);
+                try {
+                  // Extrair apenas o número do ID (remover prefixo "sale-")
+                  const saleIdNumber = typeof currentSaleId === 'string'
+                    ? parseInt(currentSaleId.replace('sale-', ''), 10)
+                    : currentSaleId;
+        
+                  const response = await fetch('/api/nfce/emitir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      sale_id: saleIdNumber,
+                      valor_total: totalWithFreight,
+                      itens: cartItems.map((item) => ({
+                        id: item.id,
+                        name: item.name,
+                        quantity: item.quantity,
+                        price: typeof item.price === 'number' ? item.price : parseFloat(String(item.price || 0)),
+                        flavors: (item as any).flavors,
+                      })),
               cliente: selectedCustomer ? {
                 id: selectedCustomer.id,
                 name: selectedCustomer.name,

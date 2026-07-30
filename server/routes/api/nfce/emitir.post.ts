@@ -302,7 +302,12 @@ export default defineEventHandler(async (event) => {
     
     const { sale_id, valor_total, itens, cliente, frete, forma_pagamento } = body;
     
-    if (!sale_id || !valor_total || !itens || !Array.isArray(itens)) {
+    // Converter sale_id para número (remover prefixo "sale-" se presente)
+    const saleIdNumber = typeof sale_id === 'string'
+      ? parseInt(sale_id.replace(/\D/g, ''), 10)
+      : Number(sale_id);
+    
+    if (!saleIdNumber || !valor_total || !itens || !Array.isArray(itens)) {
       throw createError({
         statusCode: 400,
         statusMessage: 'Dados inválidos. Verifique sale_id, valor_total e itens.',
@@ -354,14 +359,14 @@ export default defineEventHandler(async (event) => {
     }
     
     // Gerar XML da NFC-e
-    const nfceData = {
-      sale_id,
-      valor_total,
-      itens,
-      cliente,
-      frete: frete || 0,
-      forma_pagamento,
-    };
+        const nfceData = {
+          sale_id: saleIdNumber,
+          valor_total,
+          itens,
+          cliente,
+          frete: frete || 0,
+          forma_pagamento,
+        };
     
     const xmlEnvio = await generateNfceXml(nfceData, config);
     
@@ -389,24 +394,24 @@ export default defineEventHandler(async (event) => {
     }
     
     // Salvar NFC-e no banco de dados
-    const insertResult = await sql()`
-      INSERT INTO nfce (
-        sale_id,
-        chave_acesso,
-        numero,
-        serie,
-        data_emissao,
-        data_autorizacao,
-        protocolo,
-        status,
-        qr_code,
-        xml_envio,
-        xml_retorno,
-        url_consulta,
-        ambiente,
-        mensagem_status
-      ) VALUES (
-        ${sale_id},
+        const insertResult = await sql()`
+          INSERT INTO nfce (
+            sale_id,
+            chave_acesso,
+            numero,
+            serie,
+            data_emissao,
+            data_autorizacao,
+            protocolo,
+            status,
+            qr_code,
+            xml_envio,
+            xml_retorno,
+            url_consulta,
+            ambiente,
+            mensagem_status
+          ) VALUES (
+            ${String(saleIdNumber)},
         ${sefazResponse.chave_acesso},
         ${sefazResponse.numero},
         1,
@@ -424,22 +429,22 @@ export default defineEventHandler(async (event) => {
     `;
     
     // Atualizar a venda com os dados fiscais
-    await sql()`
-      UPDATE sales
-      SET 
-        xml_chave = ${sefazResponse.chave_acesso},
-        xml_numero = ${sefazResponse.numero},
-        xml_status = 'autorizada',
-        xml_content = ${sefazResponse.xml_retorno}
-      WHERE id = ${sale_id}
-    `;
-    
-    return {
-      success: true,
-      message: 'NFC-e emitida e autorizada com sucesso',
-      nfce: {
-        id: insertResult[0].id,
-        sale_id,
+        await sql()`
+          UPDATE sales
+          SET
+            xml_chave = ${sefazResponse.chave_acesso},
+            xml_numero = ${sefazResponse.numero},
+            xml_status = 'autorizada',
+            xml_content = ${sefazResponse.xml_retorno}
+          WHERE id = ${saleIdNumber}
+        `;
+        
+        return {
+          success: true,
+          message: 'NFC-e emitida e autorizada com sucesso',
+          nfce: {
+            id: insertResult[0].id,
+            sale_id: saleIdNumber,
         chave_acesso: sefazResponse.chave_acesso,
         numero: sefazResponse.numero,
         serie: 1,

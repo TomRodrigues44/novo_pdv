@@ -934,7 +934,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1be7d-bgsNkXjcQj/YI0xDONOW3eqR+nk\"",
+    "mtime": "2026-07-30T14:18:26.154Z",
+    "size": 114301,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"62f34-642dNtSZ2+KN2n51TrdMWxQ3pTg\"",
+    "mtime": "2026-07-30T14:18:26.154Z",
+    "size": 405300,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -2889,7 +2904,8 @@ const emitir_post = defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
     const { sale_id, valor_total, itens, cliente, frete, forma_pagamento } = body;
-    if (!sale_id || !valor_total || !itens || !Array.isArray(itens)) {
+    const saleIdNumber = typeof sale_id === "string" ? parseInt(sale_id.replace(/\D/g, ""), 10) : Number(sale_id);
+    if (!saleIdNumber || !valor_total || !itens || !Array.isArray(itens)) {
       throw createError({
         statusCode: 400,
         statusMessage: "Dados inv\xE1lidos. Verifique sale_id, valor_total e itens."
@@ -2929,7 +2945,7 @@ const emitir_post = defineEventHandler(async (event) => {
       });
     }
     const nfceData = {
-      sale_id,
+      sale_id: saleIdNumber,
       valor_total,
       itens,
       cliente,
@@ -2953,23 +2969,23 @@ const emitir_post = defineEventHandler(async (event) => {
       });
     }
     const insertResult = await sql()`
-      INSERT INTO nfce (
-        sale_id,
-        chave_acesso,
-        numero,
-        serie,
-        data_emissao,
-        data_autorizacao,
-        protocolo,
-        status,
-        qr_code,
-        xml_envio,
-        xml_retorno,
-        url_consulta,
-        ambiente,
-        mensagem_status
-      ) VALUES (
-        ${sale_id},
+          INSERT INTO nfce (
+            sale_id,
+            chave_acesso,
+            numero,
+            serie,
+            data_emissao,
+            data_autorizacao,
+            protocolo,
+            status,
+            qr_code,
+            xml_envio,
+            xml_retorno,
+            url_consulta,
+            ambiente,
+            mensagem_status
+          ) VALUES (
+            ${String(saleIdNumber)},
         ${sefazResponse.chave_acesso},
         ${sefazResponse.numero},
         1,
@@ -2986,20 +3002,20 @@ const emitir_post = defineEventHandler(async (event) => {
       ) RETURNING id
     `;
     await sql()`
-      UPDATE sales
-      SET 
-        xml_chave = ${sefazResponse.chave_acesso},
-        xml_numero = ${sefazResponse.numero},
-        xml_status = 'autorizada',
-        xml_content = ${sefazResponse.xml_retorno}
-      WHERE id = ${sale_id}
-    `;
+          UPDATE sales
+          SET
+            xml_chave = ${sefazResponse.chave_acesso},
+            xml_numero = ${sefazResponse.numero},
+            xml_status = 'autorizada',
+            xml_content = ${sefazResponse.xml_retorno}
+          WHERE id = ${saleIdNumber}
+        `;
     return {
       success: true,
       message: "NFC-e emitida e autorizada com sucesso",
       nfce: {
         id: insertResult[0].id,
-        sale_id,
+        sale_id: saleIdNumber,
         chave_acesso: sefazResponse.chave_acesso,
         numero: sefazResponse.numero,
         serie: 1,
