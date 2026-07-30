@@ -316,18 +316,20 @@ export default defineEventHandler(async (event) => {
     }
     
     // Buscar configuração da empresa
-    const configResult = await sql`
-      SELECT * FROM company_fiscal_config
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
-    
-    if (!configResult || configResult.length === 0) {
-          throw createError({
-            statusCode: 400,
-            statusMessage: 'Configuração fiscal não encontrada. Configure os dados da empresa primeiro.',
-          });
-        }
+        const configResult = await sql`
+          SELECT * FROM company_fiscal_config
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
+        
+        console.log('[NFC-e] Configurações fiscais encontradas:', configResult ? configResult.length : 0);
+        
+        if (!configResult || configResult.length === 0) {
+              throw createError({
+                statusCode: 400,
+                statusMessage: 'Configuração fiscal não encontrada. Configure os dados da empresa primeiro.',
+              });
+            }
         
         const configResultFirst = configResult[0] || {};
                 
@@ -347,19 +349,20 @@ export default defineEventHandler(async (event) => {
                 };
     
     // Buscar certificado ativo
-    const certResult = await sql`
-      SELECT * FROM digital_certificates
-      WHERE ativo = true
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
-    
-    if (!certResult || certResult.length === 0 || !certResult[0]) {
-          throw createError({
-            statusCode: 400,
-            statusMessage: 'Nenhum certificado ativo encontrado. Adicione um certificado digital primeiro.',
-          });
-        }
+            const certResult = await sql`
+              SELECT * FROM digital_certificates
+              ORDER BY created_at DESC
+              LIMIT 1
+            `;
+        
+        console.log('[NFC-e] Certificados encontrados:', certResult ? certResult.length : 0);
+        
+        if (!certResult || certResult.length === 0 || !certResult[0]) {
+              throw createError({
+                statusCode: 400,
+                statusMessage: 'Nenhum certificado ativo encontrado. Adicione um certificado digital primeiro.',
+              });
+            }
         
         const cert = certResult[0];
         

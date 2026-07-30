@@ -937,16 +937,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1cb6f-qNnFpGshtd0ID1Nj4mv1UjLtZlg\"",
-    "mtime": "2026-07-30T15:18:21.306Z",
-    "size": 117615,
+    "etag": "\"1cc29-Xah8aVYNe+Ilg9cJFJ2+RAv22vs\"",
+    "mtime": "2026-07-30T15:26:39.903Z",
+    "size": 117801,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"663ab-1E7uX//Esxt/NSPyh/DVzf+zVHE\"",
-    "mtime": "2026-07-30T15:18:21.306Z",
-    "size": 418731,
+    "etag": "\"6672f-d+XzHZbVwHYhuZ3HPiDku9XmEtc\"",
+    "mtime": "2026-07-30T15:26:39.903Z",
+    "size": 419631,
     "path": "index.mjs.map"
   }
 };
@@ -2914,10 +2914,11 @@ const emitir_post = defineEventHandler(async (event) => {
       });
     }
     const configResult = await sql`
-      SELECT * FROM company_fiscal_config
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
+          SELECT * FROM company_fiscal_config
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
+    console.log("[NFC-e] Configura\xE7\xF5es fiscais encontradas:", configResult ? configResult.length : 0);
     if (!configResult || configResult.length === 0) {
       throw createError({
         statusCode: 400,
@@ -2940,11 +2941,11 @@ const emitir_post = defineEventHandler(async (event) => {
       ultima_nfce: configResultFirst.ultima_nfce || 0
     };
     const certResult = await sql`
-      SELECT * FROM digital_certificates
-      WHERE ativo = true
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
+              SELECT * FROM digital_certificates
+              ORDER BY created_at DESC
+              LIMIT 1
+            `;
+    console.log("[NFC-e] Certificados encontrados:", certResult ? certResult.length : 0);
     if (!certResult || certResult.length === 0 || !certResult[0]) {
       throw createError({
         statusCode: 400,
