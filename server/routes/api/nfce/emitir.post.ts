@@ -28,18 +28,19 @@ function generateChaveAcesso(
   const numeroLimpo = String(numero).padStart(9, '0');
   const tpEmissaoStr = String(tpEmissao);
     
-    // Código numérico aleatório (9 dígitos)
-    const CNF = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
-  
-  const chaveBase =
-    uf +
-    AAMM +
-    cnpjLimpo +
-    modeloLimpo +
-    serieLimpa +
-    numeroLimpo +
-    tpEmissaoStr +
-    CNF;
+    // Código numérico único (9 dígitos) - Usa timestamp atual com microsegundos para garantir unicidade
+    const timestamp = Date.now().toString().slice(-9); // 9 últimos dígitos do timestamp (inclui microsegundos)
+    const CNF = timestamp.padStart(9, '0');
+    
+    const chaveBase =
+      uf +
+      AAMM +
+      cnpjLimpo +
+      modeloLimpo +
+      serieLimpa +
+      numeroLimpo +
+      tpEmissaoStr +
+      CNF;
   
   // Adicionar dígito verificador (DV) usando módulo 11
   const dv = calculateDV(chaveBase);
@@ -373,18 +374,21 @@ export default defineEventHandler(async (event) => {
         const ultimoNumero = lastNfceResult[0]?.ultimo_numero || 0;
         const proximoNumero = Math.max(ultimoNumero + 1, (config.ultima_nfce || 0) + 1);
         const serieNfce = config.serie_nfce || 15;
-        
-        // Gerar XML da NFC-e
-        const nfceData = {
-          sale_id: saleIdNumber,
-          valor_total,
-          itens,
-          cliente,
-          frete: frete || 0,
-          forma_pagamento,
-        };
-        
-        const xmlEnvio = await generateNfceXml(nfceData, config, proximoNumero, serieNfce);
+                
+                // Pequeno delay para garantir unicidade no timestamp
+                await new Promise(resolve => setTimeout(resolve, 10));
+                
+                // Gerar XML da NFC-e
+                const nfceData = {
+                  sale_id: saleIdNumber,
+                  valor_total,
+                  itens,
+                  cliente,
+                  frete: frete || 0,
+                  forma_pagamento,
+                };
+                
+                const xmlEnvio = await generateNfceXml(nfceData, config, proximoNumero, serieNfce);
     
     // Extrair informações do XML gerado
     const chaveMatch = xmlEnvio.match(/Id="NFe(\d{44})"/);
@@ -404,45 +408,74 @@ export default defineEventHandler(async (event) => {
     
     if (!sefazResponse.success) {
       throw createError({
-        statusCode: 500,
-        statusMessage: sefazResponse.mensagem || 'Erro ao autorizar NFC-e na SEFAZ',
-      });
-    }
-    
-    // Salvar NFC-e no banco de dados
-        const insertResult = await sql()`
-          INSERT INTO nfce (
-            sale_id,
-            chave_acesso,
-            numero,
-            serie,
-            data_emissao,
-            data_autorizacao,
-            protocolo,
-            status,
-            qr_code,
-            xml_envio,
-            xml_retorno,
-            url_consulta,
-            ambiente,
-            mensagem_status
-          ) VALUES (
-            ${String(saleIdNumber)},
-        ${sefazResponse.chave_acesso},
-        ${sefazResponse.numero},
-        1,
-        ${now},
-        ${now},
-        ${sefazResponse.protocolo},
-        'autorizada',
-        ${sefazResponse.qr_code},
-        ${xmlEnvio},
-        ${sefazResponse.xml_retorno},
-        ${sefazResponse.url_consulta},
-        ${config.ambiente},
-        ${sefazResponse.mensagem}
-      ) RETURNING id
-    `;
+              statusCode: 500,
+              statusMessage: sefazResponse.mensagem || 'Erro ao autorizar NFC-e na SEFAZ',
+            });
+          }
+          
+          // Salvar NFC-e no banco de dados com retry para evitar duplicatas de chave
+          let insertResult;
+          let insertTentativas = 0;
+          const maxInsertTentativas = 3;
+          
+          while (insertTentativas < maxInsertTentativas) {
+            try {
+              insertResult = await sql()`
+                INSERT INTO nfce (
+                  sale_id,
+                  chave_acesso,
+                  numero,
+                  serie,
+                  data_emissao,
+                  data_autorizacao,
+                  protocolo,
+                  status,
+                  qr_code,
+                  xml_envio,
+                  xml_retorno,
+                  url_consulta,
+                  ambiente,
+                  mensagem_status
+                ) VALUES (
+                  ${String(saleIdNumber)},
+                  ${sefazResponse.chave_acesso},
+                  ${sefazResponse.numero},
+                  ${serieNfce},
+                  ${now},
+                  ${now},
+                  ${sefazResponse.protocolo},
+                  'autorizada',
+                  ${sefazResponse.qr_code},
+                  ${xmlEnvio},
+                  ${sefazResponse.xml_retorno},
+                  ${sefazResponse.url_consulta},
+                  ${config.ambiente},
+                  ${sefazResponse.mensagem}
+                ) RETURNING id
+              `;
+              
+              // Se chegou aqui, inserção foi bem-sucedida
+              break;
+              
+            } catch (insertError: any) {
+              insertTentativas++;
+              
+              // Verificar se é erro de chave duplicada
+              if (insertError.message && insertError.message.includes('duplicate key') && insertError.message.includes('chave_acesso')) {
+                // Aguardar um pouco e tentar novamente (o timestamp será diferente)
+                if (insertTentativas < maxInsertTentativas) {
+                  await new Promise(resolve => setTimeout(resolve, 100 * insertTentativas));
+                  continue;
+                }
+              }
+              
+              // Se não for erro de duplicata ou esgotou tentativas, propagar o erro
+              throw createError({
+                statusCode: 500,
+                statusMessage: insertError.message || 'Erro ao salvar NFC-e no banco de dados',
+              });
+            }
+          }
     
     // Atualizar a venda com os dados fiscais
         await sql()`

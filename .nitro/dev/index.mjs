@@ -937,16 +937,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1c162-uFm/u4XZ/NJ33pACMZQAkRnvMdw\"",
-    "mtime": "2026-07-30T14:24:10.842Z",
-    "size": 115042,
+    "etag": "\"1c26b-FU3vFJj2xUCtTdZMX7oDvpsC+as\"",
+    "mtime": "2026-07-30T14:45:10.532Z",
+    "size": 115307,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"63b61-98SQURu0UZG0YCJSLzVQFttZQ5I\"",
-    "mtime": "2026-07-30T14:24:10.842Z",
-    "size": 408417,
+    "etag": "\"63fee-/ynHmvxdFe5iQimMllZCq5q7em4\"",
+    "mtime": "2026-07-30T14:45:10.532Z",
+    "size": 409582,
     "path": "index.mjs.map"
   }
 };
@@ -2678,7 +2678,8 @@ function generateChaveAcesso(uf, dataEmissao, cnpj, modelo, serie, numero, tpEmi
   const serieLimpa = String(serie).padStart(3, "0");
   const numeroLimpo = String(numero).padStart(9, "0");
   const tpEmissaoStr = String(tpEmissao);
-  const CNF = Math.floor(Math.random() * 1e9).toString().padStart(9, "0");
+  const timestamp = Date.now().toString().slice(-9);
+  const CNF = timestamp.padStart(9, "0");
   const chaveBase = uf + AAMM + cnpjLimpo + modeloLimpo + serieLimpa + numeroLimpo + tpEmissaoStr + CNF;
   const dv = calculateDV(chaveBase);
   return chaveBase + dv;
@@ -2958,6 +2959,7 @@ const emitir_post = defineEventHandler(async (event) => {
     const ultimoNumero = ((_a = lastNfceResult[0]) == null ? void 0 : _a.ultimo_numero) || 0;
     const proximoNumero = Math.max(ultimoNumero + 1, (config.ultima_nfce || 0) + 1);
     const serieNfce = config.serie_nfce || 15;
+    await new Promise((resolve) => setTimeout(resolve, 10));
     const nfceData = {
       sale_id: saleIdNumber,
       valor_total,
@@ -2982,39 +2984,59 @@ const emitir_post = defineEventHandler(async (event) => {
         statusMessage: sefazResponse.mensagem || "Erro ao autorizar NFC-e na SEFAZ"
       });
     }
-    const insertResult = await sql()`
-          INSERT INTO nfce (
-            sale_id,
-            chave_acesso,
-            numero,
-            serie,
-            data_emissao,
-            data_autorizacao,
-            protocolo,
-            status,
-            qr_code,
-            xml_envio,
-            xml_retorno,
-            url_consulta,
-            ambiente,
-            mensagem_status
-          ) VALUES (
-            ${String(saleIdNumber)},
-        ${sefazResponse.chave_acesso},
-        ${sefazResponse.numero},
-        1,
-        ${now},
-        ${now},
-        ${sefazResponse.protocolo},
-        'autorizada',
-        ${sefazResponse.qr_code},
-        ${xmlEnvio},
-        ${sefazResponse.xml_retorno},
-        ${sefazResponse.url_consulta},
-        ${config.ambiente},
-        ${sefazResponse.mensagem}
-      ) RETURNING id
-    `;
+    let insertResult;
+    let insertTentativas = 0;
+    const maxInsertTentativas = 3;
+    while (insertTentativas < maxInsertTentativas) {
+      try {
+        insertResult = await sql()`
+                INSERT INTO nfce (
+                  sale_id,
+                  chave_acesso,
+                  numero,
+                  serie,
+                  data_emissao,
+                  data_autorizacao,
+                  protocolo,
+                  status,
+                  qr_code,
+                  xml_envio,
+                  xml_retorno,
+                  url_consulta,
+                  ambiente,
+                  mensagem_status
+                ) VALUES (
+                  ${String(saleIdNumber)},
+                  ${sefazResponse.chave_acesso},
+                  ${sefazResponse.numero},
+                  ${serieNfce},
+                  ${now},
+                  ${now},
+                  ${sefazResponse.protocolo},
+                  'autorizada',
+                  ${sefazResponse.qr_code},
+                  ${xmlEnvio},
+                  ${sefazResponse.xml_retorno},
+                  ${sefazResponse.url_consulta},
+                  ${config.ambiente},
+                  ${sefazResponse.mensagem}
+                ) RETURNING id
+              `;
+        break;
+      } catch (insertError) {
+        insertTentativas++;
+        if (insertError.message && insertError.message.includes("duplicate key") && insertError.message.includes("chave_acesso")) {
+          if (insertTentativas < maxInsertTentativas) {
+            await new Promise((resolve) => setTimeout(resolve, 100 * insertTentativas));
+            continue;
+          }
+        }
+        throw createError({
+          statusCode: 500,
+          statusMessage: insertError.message || "Erro ao salvar NFC-e no banco de dados"
+        });
+      }
+    }
     await sql()`
           UPDATE sales
           SET
