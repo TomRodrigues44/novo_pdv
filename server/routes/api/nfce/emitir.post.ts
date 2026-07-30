@@ -27,9 +27,9 @@ function generateChaveAcesso(
   const serieLimpa = String(serie).padStart(3, '0');
   const numeroLimpo = String(numero).padStart(9, '0');
   const tpEmissaoStr = String(tpEmissao);
-  
-  // Código numérico aleatório (8 dígitos)
-  const CNF = Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
+    
+    // Código numérico aleatório (9 dígitos)
+    const CNF = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
   
   const chaveBase =
     uf +
@@ -96,9 +96,9 @@ function mapPaymentType(type: string): number {
 /**
  * Gera o XML da NFC-e
  */
-export async function generateNfceXml(data: any, config: any): Promise<string> {
-  const numero = 1; // Simplificado - na prática buscaria do banco
-  const serie = 1;
+export async function generateNfceXml(data: any, config: any, numeroNfce: number, serieNfce: number): Promise<string> {
+  const numero = numeroNfce;
+  const serie = serieNfce;
   const modelo = '65'; // NFC-e
   const tpEmissao = 1; // Emissão normal
   
@@ -226,10 +226,10 @@ export async function generateNfceXml(data: any, config: any): Promise<string> {
       </ide>
       <emit>
         <CNPJ>${config.cnpj.replace(/\D/g, '')}</CNPJ>
-        <xNome>${config.nome_fantasia || config.razao_social}</xNome>
-        <xFant>${config.nome_fantasia}</xFant>
-        <IE>${config.inscricao_estadual}</IE>
-        <CRT>${config.CRT}</CRT>
+                <xNome>${config.nome_fantasia || config.razao_social}</xNome>
+                <xFant>${config.nome_fantasia}</xFant>
+                <IE>${config.inscricao_estadual}</IE>
+                <CRT>${config.CRT || '1'}</CRT>
       </emit>
       ${data.cliente ? `
       <dest>
@@ -328,7 +328,12 @@ export default defineEventHandler(async (event) => {
       });
     }
     
-    const config = configResult[0];
+    const config = {
+      ...configResult[0],
+      CRT: configResult[0].crt || configResult[0].CRT || '1',
+      serie_nfce: configResult[0].serie_nfce || 15,
+      ultima_nfce: configResult[0].ultima_nfce || 0,
+    };
     
     // Buscar certificado ativo
     const certResult = await sql()`
@@ -348,17 +353,28 @@ export default defineEventHandler(async (event) => {
     const cert = certResult[0];
     
     // Verificar se o certificado está expirado
-    const now = new Date();
-    const validade = new Date(cert.data_validade);
-    
-    if (validade < now) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'Certificado digital expirado. Atualize o certificado antes de emitir NFC-e.',
-      });
-    }
-    
-    // Gerar XML da NFC-e
+        const now = new Date();
+        const validade = new Date(cert.data_validade);
+        
+        if (validade < now) {
+          throw createError({
+            statusCode: 400,
+            statusMessage: 'Certificado digital expirado. Atualize o certificado antes de emitir NFC-e.',
+          });
+        }
+        
+        // Buscar o último número de NFC-e emitido
+        const lastNfceResult = await sql`
+          SELECT MAX(numero) as ultimo_numero
+          FROM nfce
+          WHERE ambiente = ${config.ambiente}
+        `;
+        
+        const ultimoNumero = lastNfceResult[0]?.ultimo_numero || 0;
+        const proximoNumero = Math.max(ultimoNumero + 1, (config.ultima_nfce || 0) + 1);
+        const serieNfce = config.serie_nfce || 15;
+        
+        // Gerar XML da NFC-e
         const nfceData = {
           sale_id: saleIdNumber,
           valor_total,
@@ -367,8 +383,8 @@ export default defineEventHandler(async (event) => {
           frete: frete || 0,
           forma_pagamento,
         };
-    
-    const xmlEnvio = await generateNfceXml(nfceData, config);
+        
+        const xmlEnvio = await generateNfceXml(nfceData, config, proximoNumero, serieNfce);
     
     // Extrair informações do XML gerado
     const chaveMatch = xmlEnvio.match(/Id="NFe(\d{44})"/);
@@ -439,24 +455,32 @@ export default defineEventHandler(async (event) => {
           WHERE id = ${saleIdNumber}
         `;
         
+        // Atualizar a configuração fiscal com o novo número de NFC-e
+        await sql()`
+          UPDATE company_fiscal_config
+          SET ultima_nfce = ${proximoNumero},
+              updated_at = ${now}
+          WHERE id = ${config.id}
+        `;
+        
         return {
           success: true,
           message: 'NFC-e emitida e autorizada com sucesso',
           nfce: {
             id: insertResult[0].id,
             sale_id: saleIdNumber,
-        chave_acesso: sefazResponse.chave_acesso,
-        numero: sefazResponse.numero,
-        serie: 1,
-        protocolo: sefazResponse.protocolo,
-        qr_code: sefazResponse.qr_code,
-        url_consulta: sefazResponse.url_consulta,
-        status: 'autorizada',
-        ambiente: config.ambiente,
-        data_emissao: now,
-        xml_retorno: sefazResponse.xml_retorno,
-      },
-    };
+            chave_acesso: sefazResponse.chave_acesso,
+            numero: sefazResponse.numero,
+            serie: serieNfce,
+            protocolo: sefazResponse.protocolo,
+            qr_code: sefazResponse.qr_code,
+            url_consulta: sefazResponse.url_consulta,
+            status: 'autorizada',
+            ambiente: config.ambiente,
+            data_emissao: now,
+            xml_retorno: sefazResponse.xml_retorno,
+          },
+        };
   } catch (error) {
       console.error('Error emitting NFC-e:', error);
       

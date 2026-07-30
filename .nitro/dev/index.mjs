@@ -937,16 +937,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1be7d-bgsNkXjcQj/YI0xDONOW3eqR+nk\"",
-    "mtime": "2026-07-30T14:18:26.154Z",
-    "size": 114301,
+    "etag": "\"1c162-uFm/u4XZ/NJ33pACMZQAkRnvMdw\"",
+    "mtime": "2026-07-30T14:24:10.842Z",
+    "size": 115042,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"62f34-642dNtSZ2+KN2n51TrdMWxQ3pTg\"",
-    "mtime": "2026-07-30T14:18:26.154Z",
-    "size": 405300,
+    "etag": "\"63b61-98SQURu0UZG0YCJSLzVQFttZQ5I\"",
+    "mtime": "2026-07-30T14:24:10.842Z",
+    "size": 408417,
     "path": "index.mjs.map"
   }
 };
@@ -2678,7 +2678,7 @@ function generateChaveAcesso(uf, dataEmissao, cnpj, modelo, serie, numero, tpEmi
   const serieLimpa = String(serie).padStart(3, "0");
   const numeroLimpo = String(numero).padStart(9, "0");
   const tpEmissaoStr = String(tpEmissao);
-  const CNF = Math.floor(Math.random() * 1e8).toString().padStart(8, "0");
+  const CNF = Math.floor(Math.random() * 1e9).toString().padStart(9, "0");
   const chaveBase = uf + AAMM + cnpjLimpo + modeloLimpo + serieLimpa + numeroLimpo + tpEmissaoStr + CNF;
   const dv = calculateDV(chaveBase);
   return chaveBase + dv;
@@ -2717,10 +2717,10 @@ function mapPaymentType(type) {
       return 1;
   }
 }
-async function generateNfceXml(data, config) {
+async function generateNfceXml(data, config, numeroNfce, serieNfce) {
   var _a;
-  const numero = 1;
-  const serie = 1;
+  const numero = numeroNfce;
+  const serie = serieNfce;
   const modelo = "65";
   const tpEmissao = 1;
   const dataEmissao = /* @__PURE__ */ new Date();
@@ -2832,10 +2832,10 @@ async function generateNfceXml(data, config) {
       </ide>
       <emit>
         <CNPJ>${config.cnpj.replace(/\D/g, "")}</CNPJ>
-        <xNome>${config.nome_fantasia || config.razao_social}</xNome>
-        <xFant>${config.nome_fantasia}</xFant>
-        <IE>${config.inscricao_estadual}</IE>
-        <CRT>${config.CRT}</CRT>
+                <xNome>${config.nome_fantasia || config.razao_social}</xNome>
+                <xFant>${config.nome_fantasia}</xFant>
+                <IE>${config.inscricao_estadual}</IE>
+                <CRT>${config.CRT || "1"}</CRT>
       </emit>
       ${data.cliente ? `
       <dest>
@@ -2901,6 +2901,7 @@ ${itensXml}
   return xml;
 }
 const emitir_post = defineEventHandler(async (event) => {
+  var _a;
   try {
     const body = await readBody(event);
     const { sale_id, valor_total, itens, cliente, frete, forma_pagamento } = body;
@@ -2922,7 +2923,12 @@ const emitir_post = defineEventHandler(async (event) => {
         statusMessage: "Configura\xE7\xE3o fiscal n\xE3o encontrada. Configure os dados da empresa primeiro."
       });
     }
-    const config = configResult[0];
+    const config = {
+      ...configResult[0],
+      CRT: configResult[0].crt || configResult[0].CRT || "1",
+      serie_nfce: configResult[0].serie_nfce || 15,
+      ultima_nfce: configResult[0].ultima_nfce || 0
+    };
     const certResult = await sql()`
       SELECT * FROM digital_certificates
       WHERE ativo = true
@@ -2944,6 +2950,14 @@ const emitir_post = defineEventHandler(async (event) => {
         statusMessage: "Certificado digital expirado. Atualize o certificado antes de emitir NFC-e."
       });
     }
+    const lastNfceResult = await sql`
+          SELECT MAX(numero) as ultimo_numero
+          FROM nfce
+          WHERE ambiente = ${config.ambiente}
+        `;
+    const ultimoNumero = ((_a = lastNfceResult[0]) == null ? void 0 : _a.ultimo_numero) || 0;
+    const proximoNumero = Math.max(ultimoNumero + 1, (config.ultima_nfce || 0) + 1);
+    const serieNfce = config.serie_nfce || 15;
     const nfceData = {
       sale_id: saleIdNumber,
       valor_total,
@@ -2952,7 +2966,7 @@ const emitir_post = defineEventHandler(async (event) => {
       frete: frete || 0,
       forma_pagamento
     };
-    const xmlEnvio = await generateNfceXml(nfceData, config);
+    const xmlEnvio = await generateNfceXml(nfceData, config, proximoNumero, serieNfce);
     const chaveMatch = xmlEnvio.match(/Id="NFe(\d{44})"/);
     const chaveAcesso = chaveMatch ? chaveMatch[1] : "";
     const numeroMatch = xmlEnvio.match(/<nNF>(\d+)<\/nNF>/);
@@ -3010,6 +3024,12 @@ const emitir_post = defineEventHandler(async (event) => {
             xml_content = ${sefazResponse.xml_retorno}
           WHERE id = ${saleIdNumber}
         `;
+    await sql()`
+          UPDATE company_fiscal_config
+          SET ultima_nfce = ${proximoNumero},
+              updated_at = ${now}
+          WHERE id = ${config.id}
+        `;
     return {
       success: true,
       message: "NFC-e emitida e autorizada com sucesso",
@@ -3018,7 +3038,7 @@ const emitir_post = defineEventHandler(async (event) => {
         sale_id: saleIdNumber,
         chave_acesso: sefazResponse.chave_acesso,
         numero: sefazResponse.numero,
-        serie: 1,
+        serie: serieNfce,
         protocolo: sefazResponse.protocolo,
         qr_code: sefazResponse.qr_code,
         url_consulta: sefazResponse.url_consulta,
