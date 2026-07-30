@@ -935,19 +935,19 @@ const plugins = [
 ];
 
 const assets = {
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"6553c-wDuZ04UV3HyPY40r0Cdrk+kEDZk\"",
-    "mtime": "2026-07-30T15:10:46.713Z",
-    "size": 415036,
-    "path": "index.mjs.map"
-  },
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1c7c7-UkxVMrpRjdj+x/UDoxQr8Cx2Co4\"",
-    "mtime": "2026-07-30T15:10:46.713Z",
-    "size": 116679,
+    "etag": "\"1cb6f-qNnFpGshtd0ID1Nj4mv1UjLtZlg\"",
+    "mtime": "2026-07-30T15:18:21.306Z",
+    "size": 117615,
     "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"663ab-1E7uX//Esxt/NSPyh/DVzf+zVHE\"",
+    "mtime": "2026-07-30T15:18:21.306Z",
+    "size": 418731,
+    "path": "index.mjs.map"
   }
 };
 
@@ -2945,7 +2945,7 @@ const emitir_post = defineEventHandler(async (event) => {
       ORDER BY created_at DESC
       LIMIT 1
     `;
-    if (!certResult || certResult.length === 0) {
+    if (!certResult || certResult.length === 0 || !certResult[0]) {
       throw createError({
         statusCode: 400,
         statusMessage: "Nenhum certificado ativo encontrado. Adicione um certificado digital primeiro."
@@ -2953,6 +2953,12 @@ const emitir_post = defineEventHandler(async (event) => {
     }
     const cert = certResult[0];
     const now = /* @__PURE__ */ new Date();
+    if (!cert.data_validade) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Certificado digital sem data de validade. Atualize o certificado."
+      });
+    }
     const validade = new Date(cert.data_validade);
     if (validade < now) {
       throw createError({
@@ -2976,8 +2982,8 @@ const emitir_post = defineEventHandler(async (event) => {
       frete: frete || 0,
       forma_pagamento
     };
-    let sefazResponse;
-    let insertResult;
+    let sefazResponse = null;
+    let insertResult = null;
     let tentativas = 0;
     const maxTentativas = 3;
     while (tentativas < maxTentativas) {
@@ -3000,38 +3006,38 @@ const emitir_post = defineEventHandler(async (event) => {
           });
         }
         const insert = await sql`
-          INSERT INTO nfce (
-            sale_id,
-            chave_acesso,
-            numero,
-            serie,
-            data_emissao,
-            data_autorizacao,
-            protocolo,
-            status,
-            qr_code,
-            xml_envio,
-            xml_retorno,
-            url_consulta,
-            ambiente,
-            mensagem_status
-          ) VALUES (
-            ${String(saleIdNumber)},
-            ${sefazResult.chave_acesso},
-            ${sefazResult.numero},
-            ${serieNfce},
-            ${now},
-            ${now},
-            ${sefazResult.protocolo},
-            'autorizada',
-            ${sefazResult.qr_code},
-            ${xmlEnvio},
-            ${sefazResult.xml_retorno},
-            ${sefazResult.url_consulta},
-            ${config.ambiente},
-            ${sefazResult.mensagem}
-          ) RETURNING id
-        `;
+                  INSERT INTO nfce (
+                    sale_id,
+                    chave_acesso,
+                    numero,
+                    serie,
+                    data_emissao,
+                    data_autorizacao,
+                    protocolo,
+                    status,
+                    qr_code,
+                    xml_envio,
+                    xml_retorno,
+                    url_consulta,
+                    ambiente,
+                    mensagem_status
+                  ) VALUES (
+                    ${String(saleIdNumber)},
+                    ${sefazResult.chave_acesso || ""},
+                    ${sefazResult.numero || 0},
+                    ${serieNfce},
+                    ${now},
+                    ${now},
+                    ${sefazResult.protocolo || ""},
+                    'autorizada',
+                    ${sefazResult.qr_code || ""},
+                    ${xmlEnvio},
+                    ${sefazResult.xml_retorno || ""},
+                    ${sefazResult.url_consulta || ""},
+                    ${config.ambiente},
+                    ${sefazResult.mensagem || ""}
+                  ) RETURNING id
+                `;
         sefazResponse = sefazResult;
         insertResult = insert;
         break;
@@ -3049,37 +3055,45 @@ const emitir_post = defineEventHandler(async (event) => {
         });
       }
     }
+    if (!sefazResponse || !insertResult) {
+      throw createError({
+        statusCode: 500,
+        statusMessage: "N\xE3o foi poss\xEDvel emitir a NFC-e ap\xF3s " + maxTentativas + " tentativas"
+      });
+    }
     await sql`
-          UPDATE sales
-          SET
-            xml_chave = ${sefazResponse.chave_acesso},
-            xml_numero = ${sefazResponse.numero},
-            xml_status = 'autorizada',
-            xml_content = ${sefazResponse.xml_retorno}
-          WHERE id = ${saleIdNumber}
-        `;
-    await sql`
-          UPDATE company_fiscal_config
-          SET ultima_nfce = ${proximoNumero},
-              updated_at = ${now}
-          WHERE id = ${config.id}
-        `;
+                    UPDATE sales
+                    SET
+                      xml_chave = ${sefazResponse.chave_acesso || ""},
+                      xml_numero = ${sefazResponse.numero || 0},
+                      xml_status = 'autorizada',
+                      xml_content = ${sefazResponse.xml_retorno || ""}
+                    WHERE id = ${saleIdNumber}
+                  `;
+    if (config.id) {
+      await sql`
+                      UPDATE company_fiscal_config
+                      SET ultima_nfce = ${proximoNumero},
+                          updated_at = ${now}
+                      WHERE id = ${config.id}
+                    `;
+    }
     return {
       success: true,
       message: "NFC-e emitida e autorizada com sucesso",
       nfce: {
         id: ((_b = insertResult == null ? void 0 : insertResult[0]) == null ? void 0 : _b.id) || 0,
         sale_id: saleIdNumber,
-        chave_acesso: sefazResponse.chave_acesso,
-        numero: sefazResponse.numero,
+        chave_acesso: sefazResponse.chave_acesso || "",
+        numero: sefazResponse.numero || 0,
         serie: serieNfce,
-        protocolo: sefazResponse.protocolo,
-        qr_code: sefazResponse.qr_code,
-        url_consulta: sefazResponse.url_consulta,
+        protocolo: sefazResponse.protocolo || "",
+        qr_code: sefazResponse.qr_code || "",
+        url_consulta: sefazResponse.url_consulta || "",
         status: "autorizada",
         ambiente: config.ambiente,
         data_emissao: now,
-        xml_retorno: sefazResponse.xml_retorno
+        xml_retorno: sefazResponse.xml_retorno || ""
       }
     };
   } catch (error) {

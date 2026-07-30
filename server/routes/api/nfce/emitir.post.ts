@@ -354,25 +354,33 @@ export default defineEventHandler(async (event) => {
       LIMIT 1
     `;
     
-    if (!certResult || certResult.length === 0) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'Nenhum certificado ativo encontrado. Adicione um certificado digital primeiro.',
-      });
-    }
-    
-    const cert = certResult[0];
-    
-    // Verificar se o certificado está expirado
-        const now = new Date();
-        const validade = new Date(cert.data_validade);
-        
-        if (validade < now) {
+    if (!certResult || certResult.length === 0 || !certResult[0]) {
           throw createError({
             statusCode: 400,
-            statusMessage: 'Certificado digital expirado. Atualize o certificado antes de emitir NFC-e.',
+            statusMessage: 'Nenhum certificado ativo encontrado. Adicione um certificado digital primeiro.',
           });
         }
+        
+        const cert = certResult[0];
+        
+        // Verificar se o certificado está expirado
+            const now = new Date();
+            
+            if (!cert.data_validade) {
+              throw createError({
+                statusCode: 400,
+                statusMessage: 'Certificado digital sem data de validade. Atualize o certificado.',
+              });
+            }
+            
+            const validade = new Date(cert.data_validade);
+            
+            if (validade < now) {
+              throw createError({
+                statusCode: 400,
+                statusMessage: 'Certificado digital expirado. Atualize o certificado antes de emitir NFC-e.',
+              });
+            }
         
         // Buscar o último número de NFC-e emitido
         const lastNfceResult = await sql`
@@ -395,10 +403,10 @@ export default defineEventHandler(async (event) => {
         };
                 
     // Enviar para SEFAZ e salvar com retry para evitar duplicatas de chave
-    let sefazResponse;
-    let insertResult;
-    let tentativas = 0;
-    const maxTentativas = 3;
+        let sefazResponse: any = null;
+        let insertResult: any = null;
+        let tentativas = 0;
+        const maxTentativas = 3;
     
     while (tentativas < maxTentativas) {
       try {
@@ -432,39 +440,39 @@ export default defineEventHandler(async (event) => {
                       }
               
         // Salvar NFC-e no banco de dados
-        const insert = await sql`
-          INSERT INTO nfce (
-            sale_id,
-            chave_acesso,
-            numero,
-            serie,
-            data_emissao,
-            data_autorizacao,
-            protocolo,
-            status,
-            qr_code,
-            xml_envio,
-            xml_retorno,
-            url_consulta,
-            ambiente,
-            mensagem_status
-          ) VALUES (
-            ${String(saleIdNumber)},
-            ${sefazResult.chave_acesso},
-            ${sefazResult.numero},
-            ${serieNfce},
-            ${now},
-            ${now},
-            ${sefazResult.protocolo},
-            'autorizada',
-            ${sefazResult.qr_code},
-            ${xmlEnvio},
-            ${sefazResult.xml_retorno},
-            ${sefazResult.url_consulta},
-            ${config.ambiente},
-            ${sefazResult.mensagem}
-          ) RETURNING id
-        `;
+                const insert = await sql`
+                  INSERT INTO nfce (
+                    sale_id,
+                    chave_acesso,
+                    numero,
+                    serie,
+                    data_emissao,
+                    data_autorizacao,
+                    protocolo,
+                    status,
+                    qr_code,
+                    xml_envio,
+                    xml_retorno,
+                    url_consulta,
+                    ambiente,
+                    mensagem_status
+                  ) VALUES (
+                    ${String(saleIdNumber)},
+                    ${sefazResult.chave_acesso || ''},
+                    ${sefazResult.numero || 0},
+                    ${serieNfce},
+                    ${now},
+                    ${now},
+                    ${sefazResult.protocolo || ''},
+                    'autorizada',
+                    ${sefazResult.qr_code || ''},
+                    ${xmlEnvio},
+                    ${sefazResult.xml_retorno || ''},
+                    ${sefazResult.url_consulta || ''},
+                    ${config.ambiente},
+                    ${sefazResult.mensagem || ''}
+                  ) RETURNING id
+                `;
         
         // Se chegou aqui, tudo foi bem-sucedido
         sefazResponse = sefazResult;
@@ -489,26 +497,36 @@ export default defineEventHandler(async (event) => {
           statusMessage: insertError.message || 'Erro ao emitir NFC-e',
         });
       }
-    }
-    
-    // Atualizar a venda com os dados fiscais
-        await sql`
-          UPDATE sales
-          SET
-            xml_chave = ${sefazResponse.chave_acesso},
-            xml_numero = ${sefazResponse.numero},
-            xml_status = 'autorizada',
-            xml_content = ${sefazResponse.xml_retorno}
-          WHERE id = ${saleIdNumber}
-        `;
-        
-        // Atualizar a configuração fiscal com o novo número de NFC-e
-        await sql`
-          UPDATE company_fiscal_config
-          SET ultima_nfce = ${proximoNumero},
-              updated_at = ${now}
-          WHERE id = ${config.id}
-        `;
+          }
+          
+          // Verificar se a emissão foi bem-sucedida
+          if (!sefazResponse || !insertResult) {
+            throw createError({
+              statusCode: 500,
+              statusMessage: 'Não foi possível emitir a NFC-e após ' + maxTentativas + ' tentativas',
+            });
+          }
+          
+          // Atualizar a venda com os dados fiscais
+                  await sql`
+                    UPDATE sales
+                    SET
+                      xml_chave = ${sefazResponse.chave_acesso || ''},
+                      xml_numero = ${sefazResponse.numero || 0},
+                      xml_status = 'autorizada',
+                      xml_content = ${sefazResponse.xml_retorno || ''}
+                    WHERE id = ${saleIdNumber}
+                  `;
+                  
+                  // Atualizar a configuração fiscal com o novo número de NFC-e (se tiver ID)
+                  if (config.id) {
+                    await sql`
+                      UPDATE company_fiscal_config
+                      SET ultima_nfce = ${proximoNumero},
+                          updated_at = ${now}
+                      WHERE id = ${config.id}
+                    `;
+                  }
         
         return {
                   success: true,
@@ -516,16 +534,16 @@ export default defineEventHandler(async (event) => {
                   nfce: {
                     id: insertResult?.[0]?.id || 0,
                     sale_id: saleIdNumber,
-                    chave_acesso: sefazResponse.chave_acesso,
-                    numero: sefazResponse.numero,
+                    chave_acesso: sefazResponse.chave_acesso || '',
+                    numero: sefazResponse.numero || 0,
                     serie: serieNfce,
-                    protocolo: sefazResponse.protocolo,
-                    qr_code: sefazResponse.qr_code,
-                    url_consulta: sefazResponse.url_consulta,
+                    protocolo: sefazResponse.protocolo || '',
+                    qr_code: sefazResponse.qr_code || '',
+                    url_consulta: sefazResponse.url_consulta || '',
                     status: 'autorizada',
                     ambiente: config.ambiente,
                     data_emissao: now,
-                    xml_retorno: sefazResponse.xml_retorno,
+                    xml_retorno: sefazResponse.xml_retorno || '',
                   },
                 };
   } catch (error) {
