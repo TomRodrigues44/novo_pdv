@@ -1,1 +1,44 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+.pnpm-workspace-state-v1.json
+
+# Testing
+coverage/
+*.lcov
+
+# Production
+dist/
+build/
+.next/
+out/
+.nitro/
+
+# Misc
+.DS_Store
+*.pem
+*.log
+*.env
+.env*
+.env.local
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Local env files
+.env*.local
+.env.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Dyad
 .dyad/
