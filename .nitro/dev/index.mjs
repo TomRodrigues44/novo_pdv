@@ -937,16 +937,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1d2cf-cb++WT0SC9px4VM9SfC47BzA0hs\"",
-    "mtime": "2026-07-31T13:18:47.653Z",
-    "size": 119503,
+    "etag": "\"1d2cd-lgHeX6BCFHY4dIT78NvJRbn0Iuc\"",
+    "mtime": "2026-07-31T13:42:09.829Z",
+    "size": 119501,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"68700-275zSZQVpQ0iKze7X1SCwl8E7rk\"",
-    "mtime": "2026-07-31T13:18:47.654Z",
-    "size": 427776,
+    "etag": "\"686d8-DcqacvZMqGnrOvEDaeWvt5FsCiY\"",
+    "mtime": "2026-07-31T13:42:09.830Z",
+    "size": 427736,
     "path": "index.mjs.map"
   }
 };
