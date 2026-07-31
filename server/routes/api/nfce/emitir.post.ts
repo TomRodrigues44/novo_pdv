@@ -302,29 +302,29 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event);
     
     const { sale_id, valor_total, itens, cliente, frete, forma_pagamento } = body;
-    
-    // Converter sale_id para número (remover prefixo "sale-" se presente)
-        const saleIdNumber = typeof sale_id === 'string'
-          ? parseInt(sale_id.replace(/\D/g, ''), 10)
-          : Number(sale_id);
         
-        // Buscar a venda pelo sale_id original para obter o ID correto do banco
-        const saleResult = await sql`
-          SELECT id, total_amount, created_at FROM sales
-          WHERE id = ${saleIdNumber}
-          LIMIT 1
-        `;
+        // Converter sale_id para número (remover prefixo "sale-" se presente)
+            const saleIdNumber = typeof sale_id === 'string'
+              ? parseInt(sale_id.replace(/\D/g, ''), 10)
+              : Number(sale_id);
+            
+            // Buscar a venda para verificar se existe
+            const saleResult = await sql`
+              SELECT id, total_amount, created_at FROM sales
+              WHERE id = ${saleIdNumber}
+              LIMIT 1
+            `;
+            
+            if (!saleResult || saleResult.length === 0) {
+              throw createError({
+                statusCode: 404,
+                statusMessage: 'Venda não encontrada. Verifique o sale_id.',
+              });
+            }
+            
+            const saleDbId = saleResult[0].id;
         
-        if (!saleResult || saleResult.length === 0) {
-          throw createError({
-            statusCode: 404,
-            statusMessage: 'Venda não encontrada. Verifique o sale_id.',
-          });
-        }
-        
-        const saleDbId = saleResult[0].id;
-    
-    if (!saleIdNumber || !valor_total || !itens || !Array.isArray(itens)) {
+        if (!saleDbId || !valor_total || !itens || !Array.isArray(itens)) {
       throw createError({
         statusCode: 400,
         statusMessage: 'Dados inválidos. Verifique sale_id, valor_total e itens.',

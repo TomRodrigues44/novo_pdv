@@ -934,22 +934,7 @@ const plugins = [
   
 ];
 
-const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"1d5ca-UySc9agkm4cc+bmlQijt02QxMDc\"",
-    "mtime": "2026-07-31T14:46:58.989Z",
-    "size": 120266,
-    "path": "index.mjs"
-  },
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"69480-m9vHtxrd7uPM6wZFjn/xrtBvCtY\"",
-    "mtime": "2026-07-31T14:46:58.989Z",
-    "size": 431232,
-    "path": "index.mjs.map"
-  }
-};
+const assets = {};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -2898,10 +2883,10 @@ const emitir_post = defineEventHandler(async (event) => {
     const { sale_id, valor_total, itens, cliente, frete, forma_pagamento } = body;
     const saleIdNumber = typeof sale_id === "string" ? parseInt(sale_id.replace(/\D/g, ""), 10) : Number(sale_id);
     const saleResult = await sql`
-          SELECT id, total_amount, created_at FROM sales
-          WHERE id = ${saleIdNumber}
-          LIMIT 1
-        `;
+              SELECT id, total_amount, created_at FROM sales
+              WHERE id = ${saleIdNumber}
+              LIMIT 1
+            `;
     if (!saleResult || saleResult.length === 0) {
       throw createError({
         statusCode: 404,
@@ -2909,7 +2894,7 @@ const emitir_post = defineEventHandler(async (event) => {
       });
     }
     const saleDbId = saleResult[0].id;
-    if (!saleIdNumber || !valor_total || !itens || !Array.isArray(itens)) {
+    if (!saleDbId || !valor_total || !itens || !Array.isArray(itens)) {
       throw createError({
         statusCode: 400,
         statusMessage: "Dados inv\xE1lidos. Verifique sale_id, valor_total e itens."

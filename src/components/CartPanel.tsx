@@ -181,13 +181,9 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
     setIsPaymentDialogOpen(true);
   };
 
-  const handlePaymentConfirm = (payments: any[]) => {
+  const handlePaymentConfirm = async (payments: any[]) => {
     // Registrar a venda
-    const saleId = `sale-${Date.now()}`;
-    setCurrentSaleId(saleId);
-    
-    recordSale({
-      id: saleId,
+    const result = await recordSale({
       items: cartItems.map((item) => ({
         id: item.id,
         name: item.name,
@@ -201,6 +197,9 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
       freight: freight,
       customerId: selectedCustomer?.id || null,
     });
+
+    // Usar o ID real do banco de dados
+    setCurrentSaleId(String(result.id));
 
     setCurrentPayments(payments);
     setIsPaymentDialogOpen(false);
