@@ -32,7 +32,6 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -55,7 +54,7 @@ interface Motoboy {
 
 interface CartPanelProps {
   selectedCustomer: Customer | null;
-  onCustomerChange: (customer: Customer | null) => void;
+  onCustomerChange: (customer: | null) => void;
   onOpenCustomerForm?: () => void;
   isCashRegisterOpen?: boolean;
 }
@@ -139,6 +138,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
         toast.error('Erro ao registrar frete');
       }
     } catch (error) {
+      console.error('Error adding freight:', error);
       toast.error('Erro ao registrar frete');
     }
   };
@@ -207,102 +207,98 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
   };
 
   const handleGenerateDocument = async (type: "quote" | "fiscal") => {
-      setCurrentDocumentType(type);
-      setIsDocumentDialogOpen(false);
+    setCurrentDocumentType(type);
+    setIsDocumentDialogOpen(false);
   
-      if (type === "fiscal") {
-        // Emitir NFC-e
-                setEmittingNfce(true);
-                try {
-                  // Extrair apenas o número do ID (remover prefixo "sale-")
-                  const saleIdNumber = typeof currentSaleId === 'string'
-                    ? parseInt(currentSaleId.replace('sale-', ''), 10)
-                    : currentSaleId;
+    if (type === "fiscal") {
+      // Emitir NFC-e
+      setEmittingNfce(true);
+      try {
+        // Extrair apenas o número do ID (remover prefixo "sale-")
+        const saleIdNumber = typeof currentSaleId === 'string'
+          ? parseInt(currentSaleId.replace(/\D/g, ''), 10)
+          : currentSaleId;
         
-                  const response = await fetch('/api/nfce/emitir', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      sale_id: saleIdNumber,
-                      valor_total: totalWithFreight,
-                      itens: cartItems.map((item) => ({
-                        id: item.id,
-                        name: item.name,
-                        quantity: item.quantity,
-                        price: typeof item.price === 'number' ? item.price : parseFloat(String(item.price || 0)),
-                        flavors: (item as any).flavors,
-                      })),
-              cliente: selectedCustomer ? {
-                id: selectedCustomer.id,
-                name: selectedCustomer.name,
-                cpf_cnpj: selectedCustomer.phone, // Simplificado
-              } : undefined,
-              frete: freight,
-              forma_pagamento: currentPayments.map((p) => ({
-                tipo: p.type,
-                valor: p.amount,
-              })),
-            }),
-          });
+        const response = await fetch('/api/nfce/emitir', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sale_id: saleIdNumber,
+            valor_total: totalWithFreight,
+            itens: cartItems.map((item) => ({
+              id: item.id,
+              name: item.name,
+              price: typeof item.price === 'number' ? item.price : parseFloat(String(item.price || 0)),
+              quantity: typeof item.quantity === 'number' ? item.quantity : parseInt(String(item.quantity || 0)),
+              flavors: (item as any).flavors,
+            })),
+            cliente: selectedCustomer ? {
+              id: selectedCustomer.id,
+              name: selectedCustomer.name,
+              cpf_cnpj: selectedCustomer.phone,
+            } : undefined,
+            frete: freight,
+            forma_pagamento: currentPayments.map((p) => ({
+              tipo: p.type,
+              valor: p.amount,
+            })),
+          }),
+        });
   
-          if (response.ok) {
-                                const data = await response.json();
-                                
-                                // Verificar se é uma NFC-e que já foi emitida anteriormente
-                                            if (data.message && data.message.includes('já emitida anteriormente')) {
-                                              toast.info('NFC-e já foi emitida anteriormente. Utilizando os dados existentes.');
-                                              setNfceData(data.nfce);
-                                              setIsReceiptDialogOpen(true);
-                                              setEmittingNfce(false);
-                                            } else {
-                                              setNfceData(data.nfce);
-                                              toast.success('NFC-e emitida e autorizada com sucesso!');
-                                              setIsReceiptDialogOpen(true);
-                                              setEmittingNfce(false);
-                                            }
-                              } else {
-                                let errorMessage = 'Erro ao emitir NFC-e';
-                                try {
-                                  const error = await response.json();
-                                  errorMessage = error.statusMessage || error.message || errorMessage;
-                                } catch (e) {
-                                  errorMessage = `Erro ao emitir NFC-e (Status: ${response.status})`;
-                                }
-                                
-                                // Tratamento específico para erro de conflito
-                                                                if (response.status === 409 || errorMessage.includes('processamento')) {
-                                                                  toast.warning('Já existe uma NFC-e em processamento. Aguarde alguns instantes e tente novamente.');
-                                                                  setEmittingNfce(false);
-                                                                  return; // Não abrir o dialog
-                                                                }
-                                                                
-                                                                console.error('NFC-e emission error:', errorMessage);
-                                                                toast.error(errorMessage);
-                                                                // Mesmo com erro, abrir o dialog para orçamento
-                                                                setIsReceiptDialogOpen(true);
-                              }
-        } catch (error) {
-          console.error('Error emitting NFC-e:', error);
-          toast.error('Erro ao emitir NFC-e');
-          // Mesmo com erro, abrir o dialog para orçamento
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Verificar se é uma NFC-e que já foi emitida anteriormente
+          if (data.message && data.message.includes('já emitida anteriormente')) {
+            toast.info('NFC-e já foi emitida anteriormente. Utilizando os dados existentes.');
+            setNfceData(data.nfce);
+            setIsReceiptDialogOpen(true);
+            setEmittingNfce(false);
+          } else {
+            setNfceData(data.nfce);
+            toast.success('NFC-e emitida e autorizada com sucesso!');
+            setIsReceiptDialogOpen(true);
+            setEmittingNfce(false);
+          }
+        } else {
+          let errorMessage = 'Erro ao emitir NFC-e (Status: ' + response.status + ')';
+          
+          // Tentar extrair uma mensagem mais detalhada
+          try {
+            const errorData = await response.json();
+            if (errorData) {
+              errorMessage = errorData.message || errorData.statusMessage || errorMessage;
+            }
+          } catch (e) {
+            // Se falhar o parse JSON, manter a mensagem padrão
+          }
+          
+          console.error('NFC-e emission error:', errorMessage);
+          toast.error(errorMessage);
           setIsReceiptDialogOpen(true);
-        } finally {
           setEmittingNfce(false);
         }
-      } else {
-        // Orçamento - abrir diretamente
+      } catch (error) {
+        console.error('Error emitting NFC-e:', error);
+        toast.error('Erro ao emitir NFC-e');
+        // Mesmo com erro, abrir o dialog para orçamento
         setIsReceiptDialogOpen(true);
+        setEmittingNfce(false);
       }
-    };
+    } else {
+      // Orçamento - abrir diretamente
+      setIsReceiptDialogOpen(true);
+    }
+  };
   
-    const handleReceiptClose = () => {
-      setIsReceiptDialogOpen(false);
-      clearCart();
-      setCurrentPayments([]);
-      setCurrentSaleId(null);
-      setNfceData(null);
-      onCustomerChange(null);
-    };
+  const handleReceiptClose = () => {
+    setIsReceiptDialogOpen(false);
+    clearCart();
+    setCurrentPayments([]);
+    setCurrentSaleId(null);
+    setNfceData(null);
+    onCustomerChange(null);
+  };
 
   return (
     <>
@@ -528,27 +524,27 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
       />
 
       <DocumentDialog
-                    open={isDocumentDialogOpen}
-                    onClose={() => setIsDocumentDialogOpen(false)}
-                    total={totalWithFreight}
-                    freight={freight}
-                    cartItems={cartItems}
-                    payments={currentPayments}
-                    onGenerateDocument={handleGenerateDocument}
-                    isEmitting={emittingNfce}
-                  />
+        open={isDocumentDialogOpen}
+        onClose={() => setIsDocumentDialogOpen(false)}
+        total={totalWithFreight}
+        freight={freight}
+        cartItems={cartItems}
+        payments={currentPayments}
+        onGenerateDocument={handleGenerateDocument}
+        isEmitting={emittingNfce}
+      />
       
-            <ReceiptDialog
-                    open={isReceiptDialogOpen}
-                    onClose={handleReceiptClose}
-                    total={totalWithFreight}
-                    freight={freight}
-                    cartItems={cartItems}
-                    payments={currentPayments}
-                    documentType={currentDocumentType}
-                    saleId={currentSaleId || undefined}
-                    nfceData={nfceData}
-                  />
+      <ReceiptDialog
+        open={isReceiptDialogOpen}
+        onClose={handleReceiptClose}
+        total={totalWithFreight}
+        freight={freight}
+        cartItems={cartItems}
+        payments={currentPayments}
+        documentType={currentDocumentType}
+        saleId={currentSaleId || undefined}
+        nfceData={nfceData}
+      />
           </>
         );
-      };
+};
