@@ -249,17 +249,17 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
                                 const data = await response.json();
                                 
                                 // Verificar se é uma NFC-e que já foi emitida anteriormente
-                                                      if (data.message && data.message.includes('já emitida anteriormente')) {
-                                                        toast.info('NFC-e já foi emitida anteriormente. Utilizando os dados existentes.');
-                                                        setNfceData(data.nfce);
-                                                        setIsReceiptDialogOpen(true);
-                                                        setEmittingNfce(false);
-                                                      } else {
-                                                        setNfceData(data.nfce);
-                                                        toast.success('NFC-e emitida e autorizada com sucesso!');
-                                                        setIsReceiptDialogOpen(true);
-                                                        setEmittingNfce(false);
-                                                      }
+                                            if (data.message && data.message.includes('já emitida anteriormente')) {
+                                              toast.info('NFC-e já foi emitida anteriormente. Utilizando os dados existentes.');
+                                              setNfceData(data.nfce);
+                                              setIsReceiptDialogOpen(true);
+                                              setEmittingNfce(false);
+                                            } else {
+                                              setNfceData(data.nfce);
+                                              toast.success('NFC-e emitida e autorizada com sucesso!');
+                                              setIsReceiptDialogOpen(true);
+                                              setEmittingNfce(false);
+                                            }
                               } else {
                                 let errorMessage = 'Erro ao emitir NFC-e';
                                 try {
