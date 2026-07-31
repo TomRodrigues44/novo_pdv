@@ -2,12 +2,12 @@ import { sql } from '../../lib/db';
 
 export default defineEventHandler(async () => {
   try {// Buscar caixa aberto
-    const openRegister = await sql()`
-      SELECT * FROM cash_registers
-      WHERE status = 'open'
-      ORDER BY opened_at DESC
-      LIMIT 1
-    `;
+      const openRegister = await sql`
+        SELECT * FROM cash_registers
+        WHERE status = 'open'
+        ORDER BY opened_at DESC
+        LIMIT 1
+      `;
     
     if (openRegister.length === 0) {
       return { transactions: [] };
@@ -16,11 +16,11 @@ export default defineEventHandler(async () => {
     const cashRegisterId = openRegister[0].id;
     
     // Buscar transações
-    const transactions = await sql()`
-      SELECT * FROM cash_transactions
-      WHERE cash_register_id = ${cashRegisterId}
-      ORDER BY created_at DESC
-    `;
+        const transactions = await sql`
+          SELECT * FROM cash_transactions
+          WHERE cash_register_id = ${cashRegisterId}
+          ORDER BY created_at DESC
+        `;
     
     return { transactions };
   } catch (error) {

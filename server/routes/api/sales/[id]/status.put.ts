@@ -15,21 +15,21 @@ export default defineEventHandler(async (event) => {
     }
     
     // Verificar se a coluna status existe, se não, criar
-    try {
-      await sql()`
-        ALTER TABLE sales ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending'
-      `;
-    } catch (e) {
-      // Ignorar erro se a coluna já existe
-    }
+        try {
+          await sql`
+            ALTER TABLE sales ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending'
+          `;
+        } catch (e) {
+          // Ignorar erro se a coluna já existe
+        }
     
     // Atualizar status
-    const result = await sql()`
-      UPDATE sales
-      SET status = ${status}
-      WHERE id = ${id}
-      RETURNING *
-    `;
+        const result = await sql`
+          UPDATE sales
+          SET status = ${status}
+          WHERE id = ${id}
+          RETURNING *
+        `;
     
     if (result.length === 0) {
       throw createError({

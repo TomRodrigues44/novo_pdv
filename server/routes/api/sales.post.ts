@@ -29,21 +29,21 @@ export default defineEventHandler(async (event) => {
     console.log('Creating sale:', { total, freight, paymentMethodSummary, customerId, itemsCount: saleData.items?.length });
     
     // Criar a venda
-    const saleResult = await sql()`
-      INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id, payments, xml_content, xml_chave, xml_numero)
-      VALUES (
-        ${total}, 
-        ${paymentMethodSummary}, 
-        ${freight}, 
-        ${createdAt},
-        ${customerId},
-        ${JSON.stringify(payments)}::jsonb,
-        ${xmlContent},
-        ${xmlChave},
-        ${xmlNumero}
-      )
-      RETURNING id
-    `;
+        const saleResult = await sql`
+          INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id, payments, xml_content, xml_chave, xml_numero)
+          VALUES (
+            ${total},
+            ${paymentMethodSummary},
+            ${freight},
+            ${createdAt},
+            ${customerId},
+            ${JSON.stringify(payments)}::jsonb,
+            ${xmlContent},
+            ${xmlChave},
+            ${xmlNumero}
+          )
+          RETURNING id
+        `;
     
     const saleId = saleResult[0].id;
     console.log('Sale created with ID:', saleId);
@@ -65,39 +65,39 @@ export default defineEventHandler(async (event) => {
         
         const flavorsArray = item.flavors && Array.isArray(item.flavors) ? item.flavors : null;
         
-        await sql()`
-          INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, flavors)
-          VALUES (
-            ${saleId},
-            ${item.id},
-            ${item.name},
-            ${itemQuantity},
-            ${itemPrice},
-            ${flavorsArray}::text[]
-          )
-        `;
+        await sql`
+                  INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, flavors)
+                  VALUES (
+                    ${saleId},
+                    ${item.id},
+                    ${item.name},
+                    ${itemQuantity},
+                    ${itemPrice},
+                    ${flavorsArray}::text[]
+                  )
+                `;
         
         // Atualizar estoque
-        await sql()`
-          UPDATE products
-          SET stock = stock - ${itemQuantity},
-              available = (stock - ${itemQuantity}) > 0
-          WHERE id = ${item.id}
-        `;
+                await sql`
+                  UPDATE products
+                  SET stock = stock - ${itemQuantity},
+                      available = (stock - ${itemQuantity}) > 0
+                  WHERE id = ${item.id}
+                `;
       }
     }
     
     // Atualizar pontos e total gasto do cliente
     if (customerId) {
       const pointsEarned = Math.floor(total);
-      await sql()`
-        UPDATE customers
-        SET 
-          points = points + ${pointsEarned},
-          total_spent = total_spent + ${total},
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ${customerId}
-      `;
+      await sql`
+              UPDATE customers
+              SET
+                points = points + ${pointsEarned},
+                total_spent = total_spent + ${total},
+                updated_at = CURRENT_TIMESTAMP
+              WHERE id = ${customerId}
+            `;
       console.log(`Updated customer ${customerId}: +${pointsEarned} points, +${total} total spent`);
     }
     

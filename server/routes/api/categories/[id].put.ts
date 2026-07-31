@@ -5,15 +5,15 @@ export default defineEventHandler(async (event) => {
     const id = getRouterParam(event, 'id');
     const category = await readBody(event);
     
-    const result = await sql()`
-      UPDATE categories
-      SET 
-        name = ${category.name},
-        icon = ${category.icon},
-        active = ${category.active ?? true}
-      WHERE id = ${id}
-      RETURNING *
-    `;
+    const result = await sql`
+          UPDATE categories
+          SET
+            name = ${category.name},
+            icon = ${category.icon},
+            active = ${category.active ?? true}
+          WHERE id = ${id}
+          RETURNING *
+        `;
     
     if (result.length === 0) {
       throw createError({

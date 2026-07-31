@@ -4,11 +4,11 @@ export default defineEventHandler(async (event) => {
   try {
     const category = await readBody(event);
     
-    const result = await sql()`
-      INSERT INTO categories (id, name, icon, active)
-      VALUES (${category.id}, ${category.name}, ${category.icon}, ${category.active ?? true})
-      RETURNING *
-    `;
+    const result = await sql`
+          INSERT INTO categories (id, name, icon, active)
+          VALUES (${category.id}, ${category.name}, ${category.icon}, ${category.active ?? true})
+          RETURNING *
+        `;
     
     return result[0];
   } catch (error) {

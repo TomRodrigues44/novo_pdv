@@ -4,12 +4,12 @@ export default defineEventHandler(async () => {
   try {
     
     // Buscar caixa aberto
-    const openRegister = await sql()`
-      SELECT * FROM cash_registers
-      WHERE status = 'open'
-      ORDER BY opened_at DESC
-      LIMIT 1
-    `;
+        const openRegister = await sql`
+          SELECT * FROM cash_registers
+          WHERE status = 'open'
+          ORDER BY opened_at DESC
+          LIMIT 1
+        `;
     
     let currentRegister = null;
     let salesTotal = 0;
@@ -24,10 +24,10 @@ export default defineEventHandler(async () => {
       currentRegister = openRegister[0];
       
       // Buscar todas as vendas do período
-      const sales = await sql()`
-        SELECT * FROM sales
-        WHERE created_at >= ${currentRegister.opened_at}
-      `;
+            const sales = await sql`
+              SELECT * FROM sales
+              WHERE created_at >= ${currentRegister.opened_at}
+            `;
       
       // Calcular totais por forma de pagamento a partir do JSON
       sales.forEach((sale) => {
@@ -67,11 +67,11 @@ export default defineEventHandler(async () => {
       });
       
       // Buscar transações (sangrias/adições)
-      const transactionsResult = await sql()`
-        SELECT * FROM cash_transactions
-        WHERE cash_register_id = ${currentRegister.id}
-        ORDER BY created_at DESC
-      `;
+            const transactionsResult = await sql`
+              SELECT * FROM cash_transactions
+              WHERE cash_register_id = ${currentRegister.id}
+              ORDER BY created_at DESC
+            `;
       
       currentRegister = {
         ...currentRegister,
@@ -82,12 +82,12 @@ export default defineEventHandler(async () => {
     }
     
     // Buscar histórico dos últimos 10 fechamentos
-    const history = await sql()`
-      SELECT * FROM cash_registers
-      WHERE status = 'closed'
-      ORDER BY closed_at DESC
-      LIMIT 10
-    `;
+        const history = await sql`
+          SELECT * FROM cash_registers
+          WHERE status = 'closed'
+          ORDER BY closed_at DESC
+          LIMIT 10
+        `;
     
     return {
       current: currentRegister,

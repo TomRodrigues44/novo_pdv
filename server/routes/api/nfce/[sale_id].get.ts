@@ -11,12 +11,12 @@ export default defineEventHandler(async (event) => {
       });
     }
     
-    const result = await sql()`
-      SELECT * FROM nfce
-      WHERE sale_id = ${saleId}
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
+    const result = await sql`
+          SELECT * FROM nfce
+          WHERE sale_id = ${saleId}
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
     
     if (!result || result.length === 0) {
       throw createError({

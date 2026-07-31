@@ -2,11 +2,11 @@ import { sql } from '../../../lib/db';
 
 export default defineEventHandler(async () => {
   try {
-    const certificates = await sql()`
-      SELECT id, nome, data_validade, ativo, created_at
-      FROM digital_certificates
-      ORDER BY created_at DESC
-    `;
+    const certificates = await sql`
+          SELECT id, nome, data_validade, ativo, created_at
+          FROM digital_certificates
+          ORDER BY created_at DESC
+        `;
     
     // Não retornar o arquivo do certificado e senha na listagem
     return certificates.map(cert => ({

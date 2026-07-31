@@ -937,16 +937,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1cc29-Xah8aVYNe+Ilg9cJFJ2+RAv22vs\"",
-    "mtime": "2026-07-30T15:26:39.903Z",
-    "size": 117801,
+    "etag": "\"1d2cf-cb++WT0SC9px4VM9SfC47BzA0hs\"",
+    "mtime": "2026-07-31T13:18:47.653Z",
+    "size": 119503,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"6672f-d+XzHZbVwHYhuZ3HPiDku9XmEtc\"",
-    "mtime": "2026-07-30T15:26:39.903Z",
-    "size": 419631,
+    "etag": "\"68700-275zSZQVpQ0iKze7X1SCwl8E7rk\"",
+    "mtime": "2026-07-31T13:18:47.654Z",
+    "size": 427776,
     "path": "index.mjs.map"
   }
 };
@@ -1401,12 +1401,12 @@ const sql = () => {
 
 const cashRegister_get = defineEventHandler(async () => {
   try {
-    const openRegister = await sql()`
-      SELECT * FROM cash_registers
-      WHERE status = 'open'
-      ORDER BY opened_at DESC
-      LIMIT 1
-    `;
+    const openRegister = await sql`
+          SELECT * FROM cash_registers
+          WHERE status = 'open'
+          ORDER BY opened_at DESC
+          LIMIT 1
+        `;
     let currentRegister = null;
     let salesTotal = 0;
     let salesByPayment = {
@@ -1417,10 +1417,10 @@ const cashRegister_get = defineEventHandler(async () => {
     };
     if (openRegister.length > 0) {
       currentRegister = openRegister[0];
-      const sales = await sql()`
-        SELECT * FROM sales
-        WHERE created_at >= ${currentRegister.opened_at}
-      `;
+      const sales = await sql`
+              SELECT * FROM sales
+              WHERE created_at >= ${currentRegister.opened_at}
+            `;
       sales.forEach((sale) => {
         const total = parseFloat(sale.total_amount);
         salesTotal += total;
@@ -1448,11 +1448,11 @@ const cashRegister_get = defineEventHandler(async () => {
           }
         }
       });
-      const transactionsResult = await sql()`
-        SELECT * FROM cash_transactions
-        WHERE cash_register_id = ${currentRegister.id}
-        ORDER BY created_at DESC
-      `;
+      const transactionsResult = await sql`
+              SELECT * FROM cash_transactions
+              WHERE cash_register_id = ${currentRegister.id}
+              ORDER BY created_at DESC
+            `;
       currentRegister = {
         ...currentRegister,
         salesTotal,
@@ -1460,12 +1460,12 @@ const cashRegister_get = defineEventHandler(async () => {
         transactions: transactionsResult
       };
     }
-    const history = await sql()`
-      SELECT * FROM cash_registers
-      WHERE status = 'closed'
-      ORDER BY closed_at DESC
-      LIMIT 10
-    `;
+    const history = await sql`
+          SELECT * FROM cash_registers
+          WHERE status = 'closed'
+          ORDER BY closed_at DESC
+          LIMIT 10
+        `;
     return {
       current: currentRegister,
       history
@@ -1487,12 +1487,12 @@ const cashRegister_get$1 = /*#__PURE__*/Object.freeze({
 const close_post = defineEventHandler(async (event) => {
   try {
     const { closingAmount, notes } = await readBody(event);
-    const openRegister = await sql()`
-      SELECT * FROM cash_registers
-      WHERE status = 'open'
-      ORDER BY opened_at DESC
-      LIMIT 1
-    `;
+    const openRegister = await sql`
+          SELECT * FROM cash_registers
+          WHERE status = 'open'
+          ORDER BY opened_at DESC
+          LIMIT 1
+        `;
     if (openRegister.length === 0) {
       throw createError({
         statusCode: 400,
@@ -1500,11 +1500,11 @@ const close_post = defineEventHandler(async (event) => {
       });
     }
     const register = openRegister[0];
-    const sales = await sql()`
-      SELECT payment_method, payments, total_amount
-      FROM sales
-      WHERE created_at >= ${register.opened_at}
-    `;
+    const sales = await sql`
+          SELECT payment_method, payments, total_amount
+          FROM sales
+          WHERE created_at >= ${register.opened_at}
+        `;
     let salesTotal = 0;
     let cashSales = 0;
     sales.forEach((sale) => {
@@ -1526,12 +1526,12 @@ const close_post = defineEventHandler(async (event) => {
         }
       }
     });
-    const transactionsResult = await sql()`
-      SELECT type, COALESCE(SUM(amount), 0) as total
-      FROM cash_transactions
-      WHERE cash_register_id = ${register.id}
-      GROUP BY type
-    `;
+    const transactionsResult = await sql`
+          SELECT type, COALESCE(SUM(amount), 0) as total
+          FROM cash_transactions
+          WHERE cash_register_id = ${register.id}
+          GROUP BY type
+        `;
     let withdrawals = 0;
     let additions = 0;
     let vouchers = 0;
@@ -1550,17 +1550,17 @@ const close_post = defineEventHandler(async (event) => {
     const expectedCashAmount = openingAmount + cashSales + additions - withdrawals - vouchers;
     const expectedTotalAmount = openingAmount + salesTotal + additions - withdrawals - vouchers;
     const difference = closingAmount - expectedCashAmount;
-    await sql()`
-      UPDATE cash_registers
-      SET 
-        closed_at = CURRENT_TIMESTAMP,
-        closing_amount = ${closingAmount},
-        expected_amount = ${expectedCashAmount},
-        difference = ${difference},
-        status = 'closed',
-        notes = ${notes || null}
-      WHERE id = ${register.id}
-    `;
+    await sql`
+          UPDATE cash_registers
+          SET
+            closed_at = CURRENT_TIMESTAMP,
+            closing_amount = ${closingAmount},
+            expected_amount = ${expectedCashAmount},
+            difference = ${difference},
+            status = 'closed',
+            notes = ${notes || null}
+          WHERE id = ${register.id}
+        `;
     return {
       success: true,
       salesTotal,
@@ -1591,11 +1591,11 @@ const close_post$1 = /*#__PURE__*/Object.freeze({
 const open_post = defineEventHandler(async (event) => {
   try {
     const { openingAmount, notes } = await readBody(event);
-    const existing = await sql()`
-      SELECT * FROM cash_registers
-      WHERE status = 'open'
-      LIMIT 1
-    `;
+    const existing = await sql`
+          SELECT * FROM cash_registers
+          WHERE status = 'open'
+          LIMIT 1
+        `;
     if (existing.length > 0) {
       throw createError({
         statusCode: 400,
@@ -1603,10 +1603,10 @@ const open_post = defineEventHandler(async (event) => {
       });
     }
     const id = `cash-${Date.now()}`;
-    await sql()`
-      INSERT INTO cash_registers (id, opening_amount, status, notes)
-      VALUES (${id}, ${openingAmount}, 'open', ${notes || null})
-    `;
+    await sql`
+          INSERT INTO cash_registers (id, opening_amount, status, notes)
+          VALUES (${id}, ${openingAmount}, 'open', ${notes || null})
+        `;
     return { success: true, id };
   } catch (error) {
     console.error("Error opening cash register:", error);
@@ -1624,21 +1624,21 @@ const open_post$1 = /*#__PURE__*/Object.freeze({
 
 const cashTransactions_get = defineEventHandler(async () => {
   try {
-    const openRegister = await sql()`
-      SELECT * FROM cash_registers
-      WHERE status = 'open'
-      ORDER BY opened_at DESC
-      LIMIT 1
-    `;
+    const openRegister = await sql`
+        SELECT * FROM cash_registers
+        WHERE status = 'open'
+        ORDER BY opened_at DESC
+        LIMIT 1
+      `;
     if (openRegister.length === 0) {
       return { transactions: [] };
     }
     const cashRegisterId = openRegister[0].id;
-    const transactions = await sql()`
-      SELECT * FROM cash_transactions
-      WHERE cash_register_id = ${cashRegisterId}
-      ORDER BY created_at DESC
-    `;
+    const transactions = await sql`
+          SELECT * FROM cash_transactions
+          WHERE cash_register_id = ${cashRegisterId}
+          ORDER BY created_at DESC
+        `;
     return { transactions };
   } catch (error) {
     console.error("Error fetching cash transactions:", error);
@@ -1657,12 +1657,12 @@ const cashTransactions_get$1 = /*#__PURE__*/Object.freeze({
 const cashTransactions_post = defineEventHandler(async (event) => {
   try {
     const { type, amount, description } = await readBody(event);
-    const openRegister = await sql()`
-      SELECT * FROM cash_registers
-      WHERE status = 'open'
-      ORDER BY opened_at DESC
-      LIMIT 1
-    `;
+    const openRegister = await sql`
+          SELECT * FROM cash_registers
+          WHERE status = 'open'
+          ORDER BY opened_at DESC
+          LIMIT 1
+        `;
     if (openRegister.length === 0) {
       throw createError({
         statusCode: 400,
@@ -1671,10 +1671,10 @@ const cashTransactions_post = defineEventHandler(async (event) => {
     }
     const cashRegisterId = openRegister[0].id;
     const id = `trans-${Date.now()}`;
-    await sql()`
-      INSERT INTO cash_transactions (id, cash_register_id, type, amount, description)
-      VALUES (${id}, ${cashRegisterId}, ${type}, ${amount}, ${description || null})
-    `;
+    await sql`
+          INSERT INTO cash_transactions (id, cash_register_id, type, amount, description)
+          VALUES (${id}, ${cashRegisterId}, ${type}, ${amount}, ${description || null})
+        `;
     return { success: true, id };
   } catch (error) {
     console.error("Error creating cash transaction:", error);
@@ -1693,11 +1693,11 @@ const cashTransactions_post$1 = /*#__PURE__*/Object.freeze({
 const _id__delete$8 = defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
-    const result = await sql()`
-      DELETE FROM cash_transactions
-      WHERE id = ${id}
-      RETURNING *
-    `;
+    const result = await sql`
+          DELETE FROM cash_transactions
+          WHERE id = ${id}
+          RETURNING *
+        `;
     if (result.length === 0) {
       throw createError({
         statusCode: 404,
@@ -1721,20 +1721,20 @@ const _id__delete$9 = /*#__PURE__*/Object.freeze({
 
 const categories_get = defineEventHandler(async () => {
   try {
-    const categories = await sql()`
-      SELECT * FROM categories
-      ORDER BY
-        CASE id
-          WHEN 'salgados' THEN 1
-          WHEN 'bolos' THEN 2
-          WHEN 'brigadeiros' THEN 3
-          WHEN 'bebidas' THEN 4
-          WHEN 'combos' THEN 5
-          WHEN 'diversos' THEN 6
-          ELSE 7
-        END ASC,
-        name ASC
-    `;
+    const categories = await sql`
+          SELECT * FROM categories
+          ORDER BY
+            CASE id
+              WHEN 'salgados' THEN 1
+              WHEN 'bolos' THEN 2
+              WHEN 'brigadeiros' THEN 3
+              WHEN 'bebidas' THEN 4
+              WHEN 'combos' THEN 5
+              WHEN 'diversos' THEN 6
+              ELSE 7
+            END ASC,
+            name ASC
+        `;
     return categories;
   } catch (error) {
     console.error("Error fetching categories:", error);
@@ -1754,11 +1754,11 @@ const categories_post$2 = defineEventHandler(async (event) => {
   var _a;
   try {
     const category = await readBody(event);
-    const result = await sql()`
-      INSERT INTO categories (id, name, icon, active)
-      VALUES (${category.id}, ${category.name}, ${category.icon}, ${(_a = category.active) != null ? _a : true})
-      RETURNING *
-    `;
+    const result = await sql`
+          INSERT INTO categories (id, name, icon, active)
+          VALUES (${category.id}, ${category.name}, ${category.icon}, ${(_a = category.active) != null ? _a : true})
+          RETURNING *
+        `;
     return result[0];
   } catch (error) {
     console.error("Error creating category:", error);
@@ -1777,12 +1777,12 @@ const categories_post$3 = /*#__PURE__*/Object.freeze({
 const _id__delete$6 = defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
-    await sql()`DELETE FROM products WHERE category = ${id}`;
-    const result = await sql()`
-      DELETE FROM categories
-      WHERE id = ${id}
-      RETURNING *
-    `;
+    await sql`DELETE FROM products WHERE category = ${id}`;
+    const result = await sql`
+          DELETE FROM categories
+          WHERE id = ${id}
+          RETURNING *
+        `;
     if (result.length === 0) {
       throw createError({
         statusCode: 404,
@@ -1809,15 +1809,15 @@ const _id__put$6 = defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
     const category = await readBody(event);
-    const result = await sql()`
-      UPDATE categories
-      SET 
-        name = ${category.name},
-        icon = ${category.icon},
-        active = ${(_a = category.active) != null ? _a : true}
-      WHERE id = ${id}
-      RETURNING *
-    `;
+    const result = await sql`
+          UPDATE categories
+          SET
+            name = ${category.name},
+            icon = ${category.icon},
+            active = ${(_a = category.active) != null ? _a : true}
+          WHERE id = ${id}
+          RETURNING *
+        `;
     if (result.length === 0) {
       throw createError({
         statusCode: 404,
@@ -1841,15 +1841,15 @@ const _id__put$7 = /*#__PURE__*/Object.freeze({
 
 const customers_get = defineEventHandler(async () => {
   try {
-    const customers = await sql()`
-      SELECT 
-        c.*,
-        COUNT(s.id) as total_orders
-      FROM customers c
-      LEFT JOIN sales s ON c.id = s.customer_id
-      GROUP BY c.id
-      ORDER BY c.created_at DESC
-    `;
+    const customers = await sql`
+        SELECT
+          c.*,
+          COUNT(s.id) as total_orders
+        FROM customers c
+        LEFT JOIN sales s ON c.id = s.customer_id
+        GROUP BY c.id
+        ORDER BY c.created_at DESC
+      `;
     return customers;
   } catch (error) {
     console.error("Error fetching customers:", error);
@@ -1868,19 +1868,19 @@ const customers_get$1 = /*#__PURE__*/Object.freeze({
 const customers_post = defineEventHandler(async (event) => {
   try {
     const customer = await readBody(event);
-    const result = await sql()`
-      INSERT INTO customers (id, name, phone, address, email, points, total_spent)
-      VALUES (
-        ${customer.id},
-        ${customer.name},
-        ${customer.phone || null},
-        ${customer.address || null},
-        ${customer.email || null},
-        ${customer.points || 0},
-        ${customer.total_spent || 0}
-      )
-      RETURNING *
-    `;
+    const result = await sql`
+          INSERT INTO customers (id, name, phone, address, email, points, total_spent)
+          VALUES (
+            ${customer.id},
+            ${customer.name},
+            ${customer.phone || null},
+            ${customer.address || null},
+            ${customer.email || null},
+            ${customer.points || 0},
+            ${customer.total_spent || 0}
+          )
+          RETURNING *
+        `;
     return result[0];
   } catch (error) {
     console.error("Error creating customer:", error);
@@ -1899,12 +1899,12 @@ const customers_post$1 = /*#__PURE__*/Object.freeze({
 const _id__delete$4 = defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
-    await sql()`UPDATE sales SET customer_id = NULL WHERE customer_id = ${id}`;
-    const result = await sql()`
-      DELETE FROM customers
-      WHERE id = ${id}
-      RETURNING *
-    `;
+    await sql`UPDATE sales SET customer_id = NULL WHERE customer_id = ${id}`;
+    const result = await sql`
+          DELETE FROM customers
+          WHERE id = ${id}
+          RETURNING *
+        `;
     if (result.length === 0) {
       throw createError({
         statusCode: 404,
@@ -1930,19 +1930,19 @@ const _id__put$4 = defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
     const customer = await readBody(event);
-    const result = await sql()`
-      UPDATE customers
-      SET 
-        name = ${customer.name},
-        phone = ${customer.phone || null},
-        address = ${customer.address || null},
-        email = ${customer.email || null},
-        points = ${customer.points || 0},
-        total_spent = ${customer.total_spent || 0},
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${id}
-      RETURNING *
-    `;
+    const result = await sql`
+          UPDATE customers
+          SET
+            name = ${customer.name},
+            phone = ${customer.phone || null},
+            address = ${customer.address || null},
+            email = ${customer.email || null},
+            points = ${customer.points || 0},
+            total_spent = ${customer.total_spent || 0},
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = ${id}
+          RETURNING *
+        `;
     if (result.length === 0) {
       throw createError({
         statusCode: 404,
@@ -1967,26 +1967,26 @@ const _id__put$5 = /*#__PURE__*/Object.freeze({
 const sales_get$2 = defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
-    const sales = await sql()`
-      SELECT 
-        s.*,
-        json_agg(
-          json_build_object(
-            'id', si.id,
-            'product_id', si.product_id,
-            'product_name', si.product_name,
-            'quantity', si.quantity,
-            'price', si.price,
-            'flavors', si.flavors
-          )
-        ) as items
-      FROM sales s
-      LEFT JOIN sale_items si ON s.id = si.sale_id
-      WHERE s.customer_id = ${id}
-      GROUP BY s.id
-      ORDER BY s.created_at DESC
-      LIMIT 50
-    `;
+    const sales = await sql`
+          SELECT
+            s.*,
+            json_agg(
+              json_build_object(
+                'id', si.id,
+                'product_id', si.product_id,
+                'product_name', si.product_name,
+                'quantity', si.quantity,
+                'price', si.price,
+                'flavors', si.flavors
+              )
+            ) as items
+          FROM sales s
+          LEFT JOIN sale_items si ON s.id = si.sale_id
+          WHERE s.customer_id = ${id}
+          GROUP BY s.id
+          ORDER BY s.created_at DESC
+          LIMIT 50
+        `;
     return sales;
   } catch (error) {
     console.error("Error fetching customer sales:", error);
@@ -2004,11 +2004,11 @@ const sales_get$3 = /*#__PURE__*/Object.freeze({
 
 const certificates_get = defineEventHandler(async () => {
   try {
-    const certificates = await sql()`
-      SELECT id, nome, data_validade, ativo, created_at
-      FROM digital_certificates
-      ORDER BY created_at DESC
-    `;
+    const certificates = await sql`
+          SELECT id, nome, data_validade, ativo, created_at
+          FROM digital_certificates
+          ORDER BY created_at DESC
+        `;
     return certificates.map((cert) => ({
       ...cert,
       expirado: new Date(cert.data_validade) < /* @__PURE__ */ new Date()
@@ -2044,11 +2044,11 @@ const certificates_post = defineEventHandler(async (event) => {
     const dataValidade = /* @__PURE__ */ new Date();
     dataValidade.setFullYear(dataValidade.getFullYear() + 1);
     const id = `cert-${Date.now()}`;
-    const result = await sql()`
-      INSERT INTO digital_certificates (id, nome, arquivo, senha, data_validade)
-      VALUES (${id}, ${nome}, ${buffer}, ${senha}, ${dataValidade})
-      RETURNING id, nome, data_validade
-    `;
+    const result = await sql`
+          INSERT INTO digital_certificates (id, nome, arquivo, senha, data_validade)
+          VALUES (${id}, ${nome}, ${buffer}, ${senha}, ${dataValidade})
+          RETURNING id, nome, data_validade
+        `;
     return result[0];
   } catch (error) {
     console.error("Error saving certificate:", error);
@@ -2066,11 +2066,11 @@ const certificates_post$1 = /*#__PURE__*/Object.freeze({
 
 const companyConfig_get = defineEventHandler(async () => {
   try {
-    const configs = await sql()`
-      SELECT * FROM company_fiscal_config
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
+    const configs = await sql`
+          SELECT * FROM company_fiscal_config
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
     return configs[0] || null;
   } catch (error) {
     console.error("Error fetching company config:", error);
@@ -2089,76 +2089,76 @@ const companyConfig_get$1 = /*#__PURE__*/Object.freeze({
 const companyConfig_post = defineEventHandler(async (event) => {
   try {
     const config = await readBody(event);
-    const existing = await sql()`
-      SELECT id FROM company_fiscal_config
-      LIMIT 1
-    `;
+    const existing = await sql`
+          SELECT id FROM company_fiscal_config
+          LIMIT 1
+        `;
     if (existing.length > 0) {
-      const result = await sql()`
-        UPDATE company_fiscal_config
-        SET 
-          cnpj = ${config.cnpj},
-          razao_social = ${config.razao_social},
-          nome_fantasia = ${config.nome_fantasia},
-          inscricao_estadual = ${config.inscricao_estadual || null},
-          inscricao_municipal = ${config.inscricao_municipal || null},
-          cnae = ${config.cnae || null},
-          cnpj_matriz = ${config.cnpj_matriz || null},
-          regime_tributario = ${config.regime_tributario || "simples_nacional"},
-          CRT = ${config.CRT || "1"},
-          cep = ${config.cep || null},
-          logradouro = ${config.logradouro || null},
-          numero = ${config.numero || null},
-          complemento = ${config.complemento || null},
-          bairro = ${config.bairro || null},
-          municipio = ${config.municipio || null},
-          uf = config.uf || 'RR'},
-          telefone = ${config.telefone || null},
-          email = ${config.email || null},
-          ambiente = ${config.ambiente || "homologacao"},
-          serie_nfe = ${config.serie_nfe || 1},
-          serie_nfce = ${config.serie_nfce || 15},
-          ultima_nfe = ${config.ultima_nfe || 0},
-          ultima_nfce = ${config.ultima_nfce || 0},
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ${existing[0].id}
-        RETURNING *
-      `;
+      const result = await sql`
+              UPDATE company_fiscal_config
+              SET
+                cnpj = ${config.cnpj},
+                razao_social = ${config.razao_social},
+                nome_fantasia = ${config.nome_fantasia},
+                inscricao_estadual = ${config.inscricao_estadual || null},
+                inscricao_municipal = ${config.inscricao_municipal || null},
+                cnae = ${config.cnae || null},
+                cnpj_matriz = ${config.cnpj_matriz || null},
+                regime_tributario = ${config.regime_tributario || "simples_nacional"},
+                CRT = ${config.CRT || "1"},
+                cep = ${config.cep || null},
+                logradouro = ${config.logradouro || null},
+                numero = ${config.numero || null},
+                complemento = ${config.complemento || null},
+                bairro = ${config.bairro || null},
+                municipio = ${config.municipio || null},
+                uf = config.uf || 'RR'},
+                telefone = ${config.telefone || null},
+                email = ${config.email || null},
+                ambiente = ${config.ambiente || "homologacao"},
+                serie_nfe = ${config.serie_nfe || 1},
+                serie_nfce = ${config.serie_nfce || 15},
+                ultima_nfe = ${config.ultima_nfe || 0},
+                ultima_nfce = ${config.ultima_nfce || 0},
+                updated_at = CURRENT_TIMESTAMP
+              WHERE id = ${existing[0].id}
+              RETURNING *
+            `;
       return result[0];
     } else {
-      const result = await sql()`
-        INSERT INTO company_fiscal_config (
-          cnpj, razao_social, nome_fantasia, inscricao_estadual,
-          inscricao_municipal, cnae, cnpj_matriz, regime_tributario,
-          CRT, cep, logradouro, numero, complemento, bairro,
-          municipio, uf, telefone, email, ambiente, 
-          serie_nfe, serie_nfce, ultima_nfe, ultima_nfce
-        ) VALUES (
-          ${config.cnpj},
-          ${config.razao_social},
-          ${config.nome_fantasia},
-          ${config.inscricao_estadual || null},
-          ${config.inscricao_municipal || null},
-          ${config.cnae || null},
-          ${config.cnpj_matriz || null},
-          ${config.regime_tributario || "simples_nacional"},
-          ${config.CRT || "1"},
-          ${config.cep || null},
-          ${config.logradouro || null},
-          ${configConfig.numero || null},
-          ${config.complemento || null},
-          ${config.bairro || null},
-          ${config.municipio || null},
-          ${config.uf || "RR"},
-          ${config.telefone || null},
-          ${config.email || null},
-          ${config.ambiente || "homologacao"},
-          ${config.serie_nfe || 1},
-          ${config.serie_nfce || 15},
-          ${config.ultima_nfe || 0},
-          ${config.ultima_nfce || 0}
-        ) RETURNING *
-      `;
+      const result = await sql`
+              INSERT INTO company_fiscal_config (
+                cnpj, razao_social, nome_fantasia, inscricao_estadual,
+                inscricao_municipal, cnae, cnpj_matriz, regime_tributario,
+                CRT, cep, logradouro, numero, complemento, bairro,
+                municipio, uf, telefone, email, ambiente,
+                serie_nfe, serie_nfce, ultima_nfe, ultima_nfce
+              ) VALUES (
+                ${config.cnpj},
+                ${config.razao_social},
+                ${config.nome_fantasia},
+                ${config.inscricao_estadual || null},
+                ${config.inscricao_municipal || null},
+                ${config.cnae || null},
+                ${config.cnpj_matriz || null},
+                ${config.regime_tributario || "simples_nacional"},
+                ${config.CRT || "1"},
+                ${config.cep || null},
+                ${config.logradouro || null},
+                ${configConfig.numero || null},
+                ${config.complemento || null},
+                ${config.bairro || null},
+                ${config.municipio || null},
+                ${config.uf || "RR"},
+                ${config.telefone || null},
+                ${config.email || null},
+                ${config.ambiente || "homologacao"},
+                ${config.serie_nfe || 1},
+                ${config.serie_nfce || 15},
+                ${config.ultima_nfe || 0},
+                ${config.ultima_nfce || 0}
+              ) RETURNING *
+            `;
       return result[0];
     }
   } catch (error) {
@@ -2177,11 +2177,11 @@ const companyConfig_post$1 = /*#__PURE__*/Object.freeze({
 
 const testConnection_post = defineEventHandler(async (event) => {
   try {
-    const configResult = await sql()`
-      SELECT * FROM company_fiscal_config
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
+    const configResult = await sql`
+          SELECT * FROM company_fiscal_config
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
     if (!configResult || configResult.length === 0) {
       throw createError({
         statusCode: 400,
@@ -2189,12 +2189,12 @@ const testConnection_post = defineEventHandler(async (event) => {
       });
     }
     const config = configResult[0];
-    const certResult = await sql()`
-      SELECT * FROM digital_certificates
-      WHERE ativo = true
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
+    const certResult = await sql`
+          SELECT * FROM digital_certificates
+          WHERE ativo = true
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
     if (!certResult || certResult.length === 0) {
       throw createError({
         statusCode: 400,
@@ -2397,10 +2397,10 @@ const sales_post$3 = /*#__PURE__*/Object.freeze({
 
 const motoboys_get = defineEventHandler(async () => {
   try {
-    const motoboys = await sql()`
-      SELECT * FROM motoboys
-      ORDER BY name ASC
-    `;
+    const motoboys = await sql`
+        SELECT * FROM motoboys
+        ORDER BY name ASC
+      `;
     return motoboys;
   } catch (error) {
     console.error("Error fetching motoboys:", error);
@@ -2419,11 +2419,11 @@ const motoboys_get$1 = /*#__PURE__*/Object.freeze({
 const motoboys_post = defineEventHandler(async (event) => {
   try {
     const motoboy = await readBody(event);
-    const result = await sql()`
-      INSERT INTO motoboys (id, name, phone)
-      VALUES (${motoboy.id}, ${motoboy.name}, ${motoboy.phone || null})
-      RETURNING *
-    `;
+    const result = await sql`
+          INSERT INTO motoboys (id, name, phone)
+          VALUES (${motoboy.id}, ${motoboy.name}, ${motoboy.phone || null})
+          RETURNING *
+        `;
     return result[0];
   } catch (error) {
     console.error("Error creating motoboy:", error);
@@ -2442,11 +2442,11 @@ const motoboys_post$1 = /*#__PURE__*/Object.freeze({
 const _id__delete$2 = defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
-    const result = await sql()`
-      DELETE FROM motoboys
-      WHERE id = ${id}
-      RETURNING *
-    `;
+    const result = await sql`
+          DELETE FROM motoboys
+          WHERE id = ${id}
+          RETURNING *
+        `;
     if (result.length === 0) {
       throw createError({
         statusCode: 404,
@@ -2472,14 +2472,14 @@ const _id__put$2 = defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
     const motoboy = await readBody(event);
-    const result = await sql()`
-      UPDATE motoboys
-      SET 
-        name = ${motoboy.name},
-        phone = ${motoboy.phone || null}
-      WHERE id = ${id}
-      RETURNING *
-    `;
+    const result = await sql`
+          UPDATE motoboys
+          SET
+            name = ${motoboy.name},
+            phone = ${motoboy.phone || null}
+          WHERE id = ${id}
+          RETURNING *
+        `;
     if (result.length === 0) {
       throw createError({
         statusCode: 404,
@@ -2524,11 +2524,11 @@ const qrCode_get = defineEventHandler(async (event) => {
         statusMessage: "ID da NFC-e \xE9 obrigat\xF3rio"
       });
     }
-    const result = await sql()`
-      SELECT qr_code FROM nfce
-      WHERE id = ${id}
-      LIMIT 1
-    `;
+    const result = await sql`
+          SELECT qr_code FROM nfce
+          WHERE id = ${id}
+          LIMIT 1
+        `;
     if (!result || result.length === 0) {
       throw createError({
         statusCode: 404,
@@ -2572,12 +2572,12 @@ const _sale_id__get = defineEventHandler(async (event) => {
         statusMessage: "sale_id \xE9 obrigat\xF3rio"
       });
     }
-    const result = await sql()`
-      SELECT * FROM nfce
-      WHERE sale_id = ${saleId}
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
+    const result = await sql`
+          SELECT * FROM nfce
+          WHERE sale_id = ${saleId}
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
     if (!result || result.length === 0) {
       throw createError({
         statusCode: 404,
@@ -3118,42 +3118,42 @@ const emitir_post$1 = /*#__PURE__*/Object.freeze({
 
 const products_get = defineEventHandler(async () => {
   try {
-    const products = await sql()`
-      SELECT * FROM products
-      ORDER BY
-        CASE category
-          WHEN 'salgados' THEN 1
-          WHEN 'bolos' THEN 2
-          WHEN 'brigadeiros' THEN 3
-          WHEN 'bebidas' THEN 4
-          WHEN 'combos' THEN 5
-          WHEN 'diversos' THEN 6
-          ELSE 7
-        END ASC,
-        CASE
-          WHEN category = 'salgados' THEN
-            CASE name
-              WHEN 'Cento - 100 unidades' THEN 1
-              WHEN 'Meio Cento - 50 unidades' THEN 2
-              WHEN 'Copo G - 30 unidades' THEN 3
-              WHEN 'Copo M - 20 unidades' THEN 4
-              WHEN 'Copo P - 10 unidades' THEN 5
-              ELSE 6
-            END
-          WHEN category = 'bolos' THEN
-            CASE name
-              WHEN 'Bolo de Chocolate' THEN 1
-              WHEN 'Bolo de Limão' THEN 2
-              WHEN 'Bolo de Milho' THEN 3
-              WHEN 'Bolo Romeu & Julieta' THEN 4
-              WHEN 'Bolo de Café' THEN 5
-              WHEN 'Bolo Mesclado' THEN 6
+    const products = await sql`
+          SELECT * FROM products
+          ORDER BY
+            CASE category
+              WHEN 'salgados' THEN 1
+              WHEN 'bolos' THEN 2
+              WHEN 'brigadeiros' THEN 3
+              WHEN 'bebidas' THEN 4
+              WHEN 'combos' THEN 5
+              WHEN 'diversos' THEN 6
               ELSE 7
-            END
-          ELSE 0
-        END ASC,
-        name ASC
-    `;
+            END ASC,
+            CASE
+              WHEN category = 'salgados' THEN
+                CASE name
+                  WHEN 'Cento - 100 unidades' THEN 1
+                  WHEN 'Meio Cento - 50 unidades' THEN 2
+                  WHEN 'Copo G - 30 unidades' THEN 3
+                  WHEN 'Copo M - 20 unidades' THEN 4
+                  WHEN 'Copo P - 10 unidades' THEN 5
+                  ELSE 6
+                END
+              WHEN category = 'bolos' THEN
+                CASE name
+                  WHEN 'Bolo de Chocolate' THEN 1
+                  WHEN 'Bolo de Limão' THEN 2
+                  WHEN 'Bolo de Milho' THEN 3
+                  WHEN 'Bolo Romeu & Julieta' THEN 4
+                  WHEN 'Bolo de Café' THEN 5
+                  WHEN 'Bolo Mesclado' THEN 6
+                  ELSE 7
+                END
+              ELSE 0
+            END ASC,
+            name ASC
+        `;
     return products;
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -3173,25 +3173,25 @@ const products_post = defineEventHandler(async (event) => {
   var _a, _b;
   try {
     const product = await readBody(event);
-    const result = await sql()`
-      INSERT INTO products (
-        id, name, description, price, category, category_name,
-        image, available, stock, fiscal
-      )
-      VALUES (
-        ${product.id},
-        ${product.name},
-        ${product.description || null},
-        ${product.price},
-        ${product.category},
-        ${null},
-        ${product.image},
-        ${(_a = product.available) != null ? _a : true},
-        ${(_b = product.stock) != null ? _b : 0},
-        ${product.fiscal ? JSON.stringify(product.fiscal) : null}::jsonb
-      )
-      RETURNING *
-    `;
+    const result = await sql`
+          INSERT INTO products (
+            id, name, description, price, category, category_name,
+            image, available, stock, fiscal
+          )
+          VALUES (
+            ${product.id},
+            ${product.name},
+            ${product.description || null},
+            ${product.price},
+            ${product.category},
+            ${null},
+            ${product.image},
+            ${(_a = product.available) != null ? _a : true},
+            ${(_b = product.stock) != null ? _b : 0},
+            ${product.fiscal ? JSON.stringify(product.fiscal) : null}::jsonb
+          )
+          RETURNING *
+        `;
     return result[0];
   } catch (error) {
     console.error("Error creating product:", error);
@@ -3210,11 +3210,11 @@ const products_post$1 = /*#__PURE__*/Object.freeze({
 const _id__delete = defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
-    const result = await sql()`
-      DELETE FROM products
-      WHERE id = ${id}
-      RETURNING *
-    `;
+    const result = await sql`
+          DELETE FROM products
+          WHERE id = ${id}
+          RETURNING *
+        `;
     if (result.length === 0) {
       throw createError({
         statusCode: 404,
@@ -3317,26 +3317,26 @@ const _id__put$1 = /*#__PURE__*/Object.freeze({
 
 const sales_get = defineEventHandler(async () => {
   try {
-    const sales = await sql()`
-      SELECT 
-        s.*,
-        c.name as customer_name,
-        json_agg(
-          json_build_object(
-            'id', si.id,
-            'product_id', si.product_id,
-            'product_name', si.product_name,
-            'quantity', si.quantity,
-            'price', si.price,
-            'flavors', si.flavors
-          )
-        ) as items
-      FROM sales s
-      LEFT JOIN sale_items si ON s.id = si.sale_id
-      LEFT JOIN customers c ON s.customer_id = c.id
-      GROUP BY s.id, c.name
-      ORDER BY s.created_at DESC
-    `;
+    const sales = await sql`
+        SELECT
+          s.*,
+          c.name as customer_name,
+          json_agg(
+            json_build_object(
+              'id', si.id,
+              'product_id', si.product_id,
+              'product_name', si.product_name,
+              'quantity', si.quantity,
+              'price', si.price,
+              'flavors', si.flavors
+            )
+          ) as items
+        FROM sales s
+        LEFT JOIN sale_items si ON s.id = si.sale_id
+        LEFT JOIN customers c ON s.customer_id = c.id
+        GROUP BY s.id, c.name
+        ORDER BY s.created_at DESC
+      `;
     return sales;
   } catch (error) {
     console.error("Error fetching sales:", error);
@@ -3379,21 +3379,21 @@ const sales_post = defineEventHandler(async (event) => {
       }
     }).join(", ") || "Dinheiro";
     console.log("Creating sale:", { total, freight, paymentMethodSummary, customerId, itemsCount: (_a = saleData.items) == null ? void 0 : _a.length });
-    const saleResult = await sql()`
-      INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id, payments, xml_content, xml_chave, xml_numero)
-      VALUES (
-        ${total}, 
-        ${paymentMethodSummary}, 
-        ${freight}, 
-        ${createdAt},
-        ${customerId},
-        ${JSON.stringify(payments)}::jsonb,
-        ${xmlContent},
-        ${xmlChave},
-        ${xmlNumero}
-      )
-      RETURNING id
-    `;
+    const saleResult = await sql`
+          INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id, payments, xml_content, xml_chave, xml_numero)
+          VALUES (
+            ${total},
+            ${paymentMethodSummary},
+            ${freight},
+            ${createdAt},
+            ${customerId},
+            ${JSON.stringify(payments)}::jsonb,
+            ${xmlContent},
+            ${xmlChave},
+            ${xmlNumero}
+          )
+          RETURNING id
+        `;
     const saleId = saleResult[0].id;
     console.log("Sale created with ID:", saleId);
     if (saleData.items && Array.isArray(saleData.items)) {
@@ -3409,35 +3409,35 @@ const sales_post = defineEventHandler(async (event) => {
           flavors: item.flavors
         });
         const flavorsArray = item.flavors && Array.isArray(item.flavors) ? item.flavors : null;
-        await sql()`
-          INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, flavors)
-          VALUES (
-            ${saleId},
-            ${item.id},
-            ${item.name},
-            ${itemQuantity},
-            ${itemPrice},
-            ${flavorsArray}::text[]
-          )
-        `;
-        await sql()`
-          UPDATE products
-          SET stock = stock - ${itemQuantity},
-              available = (stock - ${itemQuantity}) > 0
-          WHERE id = ${item.id}
-        `;
+        await sql`
+                  INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, flavors)
+                  VALUES (
+                    ${saleId},
+                    ${item.id},
+                    ${item.name},
+                    ${itemQuantity},
+                    ${itemPrice},
+                    ${flavorsArray}::text[]
+                  )
+                `;
+        await sql`
+                  UPDATE products
+                  SET stock = stock - ${itemQuantity},
+                      available = (stock - ${itemQuantity}) > 0
+                  WHERE id = ${item.id}
+                `;
       }
     }
     if (customerId) {
       const pointsEarned = Math.floor(total);
-      await sql()`
-        UPDATE customers
-        SET 
-          points = points + ${pointsEarned},
-          total_spent = total_spent + ${total},
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ${customerId}
-      `;
+      await sql`
+              UPDATE customers
+              SET
+                points = points + ${pointsEarned},
+                total_spent = total_spent + ${total},
+                updated_at = CURRENT_TIMESTAMP
+              WHERE id = ${customerId}
+            `;
       console.log(`Updated customer ${customerId}: +${pointsEarned} points, +${total} total spent`);
     }
     console.log("Sale completed successfully");
@@ -3468,17 +3468,17 @@ const status_put = defineEventHandler(async (event) => {
       });
     }
     try {
-      await sql()`
-        ALTER TABLE sales ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending'
-      `;
+      await sql`
+            ALTER TABLE sales ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending'
+          `;
     } catch (e) {
     }
-    const result = await sql()`
-      UPDATE sales
-      SET status = ${status}
-      WHERE id = ${id}
-      RETURNING *
-    `;
+    const result = await sql`
+          UPDATE sales
+          SET status = ${status}
+          WHERE id = ${id}
+          RETURNING *
+        `;
     if (result.length === 0) {
       throw createError({
         statusCode: 404,
@@ -3503,11 +3503,11 @@ const status_put$1 = /*#__PURE__*/Object.freeze({
 const xml_get = defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
-    const result = await sql()`
-      SELECT xml_content, xml_chave, xml_numero, created_at, total_amount
-      FROM sales
-      WHERE id = ${id}
-    `;
+    const result = await sql`
+          SELECT xml_content, xml_chave, xml_numero, created_at, total_amount
+          FROM sales
+          WHERE id = ${id}
+        `;
     if (result.length === 0) {
       throw createError({
         statusCode: 404,
@@ -3550,7 +3550,7 @@ const testDb_get = defineEventHandler(async () => {
         env: Object.keys(process.env).filter((k) => k.includes("DATABASE") || k.includes("NEON"))
       };
     }
-    const result = await sql()`SELECT 1 as test`;
+    const result = await sql`SELECT 1 as test`;
     return {
       success: true,
       message: "Conex\xE3o com banco de dados funcionando!",

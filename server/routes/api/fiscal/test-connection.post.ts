@@ -3,11 +3,11 @@ import { sql } from '../../../lib/db';
 export default defineEventHandler(async (event) => {
   try {
     // Buscar configuração da empresa
-    const configResult = await sql()`
-      SELECT * FROM company_fiscal_config
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
+        const configResult = await sql`
+          SELECT * FROM company_fiscal_config
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
     
     if (!configResult || configResult.length === 0) {
       throw createError({
@@ -19,12 +19,12 @@ export default defineEventHandler(async (event) => {
     const config = configResult[0];
     
     // Buscar certificado ativo
-    const certResult = await sql()`
-      SELECT * FROM digital_certificates
-      WHERE ativo = true
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
+        const certResult = await sql`
+          SELECT * FROM digital_certificates
+          WHERE ativo = true
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
     
     if (!certResult || certResult.length === 0) {
       throw createError({

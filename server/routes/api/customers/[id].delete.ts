@@ -5,14 +5,14 @@ export default defineEventHandler(async (event) => {
     const id = getRouterParam(event, 'id');
     
     // Remover referência nas vendas
-    await sql()`UPDATE sales SET customer_id = NULL WHERE customer_id = ${id}`;
+        await sql`UPDATE sales SET customer_id = NULL WHERE customer_id = ${id}`;
     
     // Deletar cliente
-    const result = await sql()`
-      DELETE FROM customers
-      WHERE id = ${id}
-      RETURNING *
-    `;
+        const result = await sql`
+          DELETE FROM customers
+          WHERE id = ${id}
+          RETURNING *
+        `;
     
     if (result.length === 0) {
       throw createError({

@@ -5,14 +5,14 @@ export default defineEventHandler(async (event) => {
     const id = getRouterParam(event, 'id');
     
     // Deletar produtos dessa categoria primeiro
-    await sql()`DELETE FROM products WHERE category = ${id}`;
+        await sql`DELETE FROM products WHERE category = ${id}`;
     
     // Deletar a categoria
-    const result = await sql()`
-      DELETE FROM categories
-      WHERE id = ${id}
-      RETURNING *
-    `;
+        const result = await sql`
+          DELETE FROM categories
+          WHERE id = ${id}
+          RETURNING *
+        `;
     
     if (result.length === 0) {
       throw createError({

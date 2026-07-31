@@ -4,11 +4,11 @@ export default defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, 'id');
     
-    const result = await sql()`
-      DELETE FROM cash_transactions
-      WHERE id = ${id}
-      RETURNING *
-    `;
+    const result = await sql`
+          DELETE FROM cash_transactions
+          WHERE id = ${id}
+          RETURNING *
+        `;
     
     if (result.length === 0) {
       throw createError({

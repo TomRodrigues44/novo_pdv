@@ -5,19 +5,19 @@ export default defineEventHandler(async (event) => {
     const id = getRouterParam(event, 'id');
     const customer = await readBody(event);
     
-    const result = await sql()`
-      UPDATE customers
-      SET 
-        name = ${customer.name},
-        phone = ${customer.phone || null},
-        address = ${customer.address || null},
-        email = ${customer.email || null},
-        points = ${customer.points || 0},
-        total_spent = ${customer.total_spent || 0},
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${id}
-      RETURNING *
-    `;
+    const result = await sql`
+          UPDATE customers
+          SET
+            name = ${customer.name},
+            phone = ${customer.phone || null},
+            address = ${customer.address || null},
+            email = ${customer.email || null},
+            points = ${customer.points || 0},
+            total_spent = ${customer.total_spent || 0},
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = ${id}
+          RETURNING *
+        `;
     
     if (result.length === 0) {
       throw createError({

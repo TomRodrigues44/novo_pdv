@@ -12,7 +12,7 @@ export default defineEventHandler(async () => {
       };
     }
 
-    const result = await sql()`SELECT 1 as test`;
+    const result = await sql`SELECT 1 as test`;
     
     return {
       success: true,

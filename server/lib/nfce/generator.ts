@@ -49,10 +49,10 @@ export interface CompanyConfig {
  */
 export async function generateNfceNumero(): Promise<number> {
   try {
-    const result = await sql()`
-      SELECT COALESCE(MAX(numero), 0) + 1 as next_numero
-      FROM nfce
-    `;
+    const result = await sql`
+          SELECT COALESCE(MAX(numero), 0) + 1 as next_numero
+          FROM nfce
+        `;
     return result[0]?.next_numero || 1;
   } catch (error) {
     console.error('Error generating NFC-e number:', error);

@@ -27,11 +27,11 @@ export default defineEventHandler(async (event) => {
     // Gerar ID único
     const id = `cert-${Date.now()}`;
     
-    const result = await sql()`
-      INSERT INTO digital_certificates (id, nome, arquivo, senha, data_validade)
-      VALUES (${id}, ${nome}, ${buffer}, ${senha}, ${dataValidade})
-      RETURNING id, nome, data_validade
-    `;
+    const result = await sql`
+          INSERT INTO digital_certificates (id, nome, arquivo, senha, data_validade)
+          VALUES (${id}, ${nome}, ${buffer}, ${senha}, ${dataValidade})
+          RETURNING id, nome, data_validade
+        `;
     
     return result[0];
   } catch (error) {

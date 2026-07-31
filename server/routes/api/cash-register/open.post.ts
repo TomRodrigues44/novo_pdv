@@ -5,11 +5,11 @@ export default defineEventHandler(async (event) => {
     const { openingAmount, notes } = await readBody(event);
     
     // Verificar se já existe caixa aberto
-    const existing = await sql()`
-      SELECT * FROM cash_registers
-      WHERE status = 'open'
-      LIMIT 1
-    `;
+        const existing = await sql`
+          SELECT * FROM cash_registers
+          WHERE status = 'open'
+          LIMIT 1
+        `;
     
     if (existing.length > 0) {
       throw createError({
@@ -20,10 +20,10 @@ export default defineEventHandler(async (event) => {
     
     const id = `cash-${Date.now()}`;
     
-    await sql()`
-      INSERT INTO cash_registers (id, opening_amount, status, notes)
-      VALUES (${id}, ${openingAmount}, 'open', ${notes || null})
-    `;
+    await sql`
+          INSERT INTO cash_registers (id, opening_amount, status, notes)
+          VALUES (${id}, ${openingAmount}, 'open', ${notes || null})
+        `;
     
     return { success: true, id };
   } catch (error) {

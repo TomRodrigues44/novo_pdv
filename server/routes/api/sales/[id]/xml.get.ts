@@ -4,11 +4,11 @@ export default defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, 'id');
     
-    const result = await sql()`
-      SELECT xml_content, xml_chave, xml_numero, created_at, total_amount
-      FROM sales
-      WHERE id = ${id}
-    `;
+    const result = await sql`
+          SELECT xml_content, xml_chave, xml_numero, created_at, total_amount
+          FROM sales
+          WHERE id = ${id}
+        `;
     
     if (result.length === 0) {
       throw createError({

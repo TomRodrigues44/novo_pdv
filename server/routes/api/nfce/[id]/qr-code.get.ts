@@ -12,11 +12,11 @@ export default defineEventHandler(async (event) => {
       });
     }
     
-    const result = await sql()`
-      SELECT qr_code FROM nfce
-      WHERE id = ${id}
-      LIMIT 1
-    `;
+    const result = await sql`
+          SELECT qr_code FROM nfce
+          WHERE id = ${id}
+          LIMIT 1
+        `;
     
     if (!result || result.length === 0) {
       throw createError({
