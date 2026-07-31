@@ -934,7 +934,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1d5ca-UySc9agkm4cc+bmlQijt02QxMDc\"",
+    "mtime": "2026-07-31T14:46:58.989Z",
+    "size": 120266,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"69480-m9vHtxrd7uPM6wZFjn/xrtBvCtY\"",
+    "mtime": "2026-07-31T14:46:58.989Z",
+    "size": 431232,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -2882,6 +2897,18 @@ const emitir_post = defineEventHandler(async (event) => {
     const body = await readBody(event);
     const { sale_id, valor_total, itens, cliente, frete, forma_pagamento } = body;
     const saleIdNumber = typeof sale_id === "string" ? parseInt(sale_id.replace(/\D/g, ""), 10) : Number(sale_id);
+    const saleResult = await sql`
+          SELECT id, total_amount, created_at FROM sales
+          WHERE id = ${saleIdNumber}
+          LIMIT 1
+        `;
+    if (!saleResult || saleResult.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Venda n\xE3o encontrada. Verifique o sale_id."
+      });
+    }
+    const saleDbId = saleResult[0].id;
     if (!saleIdNumber || !valor_total || !itens || !Array.isArray(itens)) {
       throw createError({
         statusCode: 400,
@@ -2982,38 +3009,38 @@ const emitir_post = defineEventHandler(async (event) => {
           });
         }
         const insert = await sql`
-                  INSERT INTO nfce (
-                    sale_id,
-                    chave_acesso,
-                    numero,
-                    serie,
-                    data_emissao,
-                    data_autorizacao,
-                    protocolo,
-                    status,
-                    qr_code,
-                    xml_envio,
-                    xml_retorno,
-                    url_consulta,
-                    ambiente,
-                    mensagem_status
-                  ) VALUES (
-                    ${String(saleIdNumber)},
-                    ${sefazResult.chave_acesso || ""},
-                    ${sefazResult.numero || 0},
-                    ${serieNfce},
-                    ${now},
-                    ${now},
-                    ${sefazResult.protocolo || ""},
-                    'autorizada',
-                    ${sefazResult.qr_code || ""},
-                    ${xmlEnvio},
-                    ${sefazResult.xml_retorno || ""},
-                    ${sefazResult.url_consulta || ""},
-                    ${config.ambiente},
-                    ${sefazResult.mensagem || ""}
-                  ) RETURNING id
-                `;
+                          INSERT INTO nfce (
+                            sale_id,
+                            chave_acesso,
+                            numero,
+                            serie,
+                            data_emissao,
+                            data_autorizacao,
+                            protocolo,
+                            status,
+                            qr_code,
+                            xml_envio,
+                            xml_retorno,
+                            url_consulta,
+                            ambiente,
+                            mensagem_status
+                          ) VALUES (
+                            ${String(saleIdNumber)},
+                            ${sefazResult.chave_acesso || ""},
+                            ${sefazResult.numero || 0},
+                            ${serieNfce},
+                            ${now},
+                            ${now},
+                            ${sefazResult.protocolo || ""},
+                            'autorizada',
+                            ${sefazResult.qr_code || ""},
+                            ${xmlEnvio},
+                            ${sefazResult.xml_retorno || ""},
+                            ${sefazResult.url_consulta || ""},
+                            ${config.ambiente},
+                            ${sefazResult.mensagem || ""}
+                          ) RETURNING id
+                                          `;
         sefazResponse = sefazResult;
         insertResult = insert;
         break;
@@ -3038,14 +3065,14 @@ const emitir_post = defineEventHandler(async (event) => {
       });
     }
     await sql`
-                    UPDATE sales
-                    SET
-                      xml_chave = ${sefazResponse.chave_acesso || ""},
-                      xml_numero = ${sefazResponse.numero || 0},
-                      xml_status = 'autorizada',
-                      xml_content = ${sefazResponse.xml_retorno || ""}
-                    WHERE id = ${saleIdNumber}
-                  `;
+                              UPDATE sales
+                              SET
+                                xml_chave = ${sefazResponse.chave_acesso || ""},
+                                xml_numero = ${sefazResponse.numero || 0},
+                                xml_status = 'autorizada',
+                                xml_content = ${sefazResponse.xml_retorno || ""}
+                              WHERE id = ${saleDbId}
+                            `;
     if (config.id) {
       await sql`
                       UPDATE company_fiscal_config

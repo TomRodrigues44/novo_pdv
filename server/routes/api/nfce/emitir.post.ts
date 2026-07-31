@@ -304,9 +304,25 @@ export default defineEventHandler(async (event) => {
     const { sale_id, valor_total, itens, cliente, frete, forma_pagamento } = body;
     
     // Converter sale_id para número (remover prefixo "sale-" se presente)
-    const saleIdNumber = typeof sale_id === 'string'
-      ? parseInt(sale_id.replace(/\D/g, ''), 10)
-      : Number(sale_id);
+        const saleIdNumber = typeof sale_id === 'string'
+          ? parseInt(sale_id.replace(/\D/g, ''), 10)
+          : Number(sale_id);
+        
+        // Buscar a venda pelo sale_id original para obter o ID correto do banco
+        const saleResult = await sql`
+          SELECT id, total_amount, created_at FROM sales
+          WHERE id = ${saleIdNumber}
+          LIMIT 1
+        `;
+        
+        if (!saleResult || saleResult.length === 0) {
+          throw createError({
+            statusCode: 404,
+            statusMessage: 'Venda não encontrada. Verifique o sale_id.',
+          });
+        }
+        
+        const saleDbId = saleResult[0].id;
     
     if (!saleIdNumber || !valor_total || !itens || !Array.isArray(itens)) {
       throw createError({
@@ -393,8 +409,8 @@ export default defineEventHandler(async (event) => {
         `;
         
         const ultimoNumero = lastNfceResult[0]?.ultimo_numero || 0;
-        const proximoNumero = Math.max(ultimoNumero + 1, (config.ultima_nfce || 0) + 1);
-        const serieNfce = config.serie_nfce || 15;
+                const proximoNumero = Math.max(ultimoNumero + 1, (config.ultima_nfce || 0) + 1);
+                const serieNfce = config.serie_nfce || 15;
                 
         const nfceData = {
           sale_id: saleIdNumber,
@@ -443,39 +459,39 @@ export default defineEventHandler(async (event) => {
                       }
               
         // Salvar NFC-e no banco de dados
-                const insert = await sql`
-                  INSERT INTO nfce (
-                    sale_id,
-                    chave_acesso,
-                    numero,
-                    serie,
-                    data_emissao,
-                    data_autorizacao,
-                    protocolo,
-                    status,
-                    qr_code,
-                    xml_envio,
-                    xml_retorno,
-                    url_consulta,
-                    ambiente,
-                    mensagem_status
-                  ) VALUES (
-                    ${String(saleIdNumber)},
-                    ${sefazResult.chave_acesso || ''},
-                    ${sefazResult.numero || 0},
-                    ${serieNfce},
-                    ${now},
-                    ${now},
-                    ${sefazResult.protocolo || ''},
-                    'autorizada',
-                    ${sefazResult.qr_code || ''},
-                    ${xmlEnvio},
-                    ${sefazResult.xml_retorno || ''},
-                    ${sefazResult.url_consulta || ''},
-                    ${config.ambiente},
-                    ${sefazResult.mensagem || ''}
-                  ) RETURNING id
-                `;
+                        const insert = await sql`
+                          INSERT INTO nfce (
+                            sale_id,
+                            chave_acesso,
+                            numero,
+                            serie,
+                            data_emissao,
+                            data_autorizacao,
+                            protocolo,
+                            status,
+                            qr_code,
+                            xml_envio,
+                            xml_retorno,
+                            url_consulta,
+                            ambiente,
+                            mensagem_status
+                          ) VALUES (
+                            ${String(saleIdNumber)},
+                            ${sefazResult.chave_acesso || ''},
+                            ${sefazResult.numero || 0},
+                            ${serieNfce},
+                            ${now},
+                            ${now},
+                            ${sefazResult.protocolo || ''},
+                            'autorizada',
+                            ${sefazResult.qr_code || ''},
+                            ${xmlEnvio},
+                            ${sefazResult.xml_retorno || ''},
+                            ${sefazResult.url_consulta || ''},
+                            ${config.ambiente},
+                            ${sefazResult.mensagem || ''}
+                          ) RETURNING id
+                                          `;
         
         // Se chegou aqui, tudo foi bem-sucedido
         sefazResponse = sefazResult;
@@ -511,15 +527,15 @@ export default defineEventHandler(async (event) => {
           }
           
           // Atualizar a venda com os dados fiscais
-                  await sql`
-                    UPDATE sales
-                    SET
-                      xml_chave = ${sefazResponse.chave_acesso || ''},
-                      xml_numero = ${sefazResponse.numero || 0},
-                      xml_status = 'autorizada',
-                      xml_content = ${sefazResponse.xml_retorno || ''}
-                    WHERE id = ${saleIdNumber}
-                  `;
+                            await sql`
+                              UPDATE sales
+                              SET
+                                xml_chave = ${sefazResponse.chave_acesso || ''},
+                                xml_numero = ${sefazResponse.numero || 0},
+                                xml_status = 'autorizada',
+                                xml_content = ${sefazResponse.xml_retorno || ''}
+                              WHERE id = ${saleDbId}
+                            `;
                   
                   // Atualizar a configuração fiscal com o novo número de NFC-e (se tiver ID)
                   if (config.id) {
