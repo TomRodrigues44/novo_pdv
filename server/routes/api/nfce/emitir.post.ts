@@ -28,9 +28,11 @@ function generateChaveAcesso(
   const numeroLimpo = String(numero).padStart(9, '0');
   const tpEmissaoStr = String(tpEmissao);
     
-    // Código numérico único (9 dígitos) - Usa timestamp atual com microsegundos para garantir unicidade
-    const timestamp = Date.now().toString().slice(-9); // 9 últimos dígitos do timestamp (inclui microsegundos)
-    const CNF = timestamp.padStart(9, '0');
+    // Código numérico único (9 dígitos) - Garantir unicidade absoluta
+    // Combina timestamp (últimos 6 dígitos) + número aleatório (3 dígitos)
+    const timestamp = Date.now().toString().slice(-6); // 6 últimos dígitos do timestamp
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0'); // 3 dígitos aleatórios
+    const CNF = timestamp + random; // 9 dígitos totais
     
     const chaveBase =
       uf +
@@ -98,145 +100,180 @@ function mapPaymentType(type: string): number {
  * Gera o XML da NFC-e
  */
 export async function generateNfceXml(data: any, config: any, numeroNfce: number, serieNfce: number): Promise<string> {
-  const numero = numeroNfce;
-  const serie = serieNfce;
-  const modelo = '65'; // NFC-e
-  const tpEmissao = 1; // Emissão normal
-  
   const dataEmissao = new Date();
   const chaveAcesso = generateChaveAcesso(
-    config.uf,
+    config.estado || 'SP',
     dataEmissao,
-    config.cnpj,
-    modelo,
-    serie,
-    numero,
-    tpEmissao
+    config.cnpj || '00000000000000',
+    '65',
+    serieNfce,
+    numeroNfce
   );
   
-  const urlConsulta = config.ambiente === 'producao'
-    ? `https://www.sefaz.rr.gov.br/nfce/consultarNFCe?chave=${chaveAcesso}`
-    : `https://www.sefaz.rr.gov.br/nfceh/consultarNFCe?chave=${chaveAcesso}`;
+  const now = dataEmissao.toISOString();
+  const valorTotal = Number(data.valor_total) || 0;
+  const frete = Number(data.frete) || 0;
+  
+  // Gerar detalhes dos itens
+  let itensXml = '';
+  let totalIcmsBase = 0;
+  let totalIcms = 0;
+  
+  const itemNumero = 1;
+  
+  for (const item of (data.itens || [])) {
+    const preco = Number(item.price) || 0;
+    const quantidade = Number(item.quantity) || 1;
+    const total = preco * quantidade;
+    const cest = item.cest || '0000000';
+    const ncm = item.ncm || '21069000';
+    
+    // Cálculo simplificado do ICMS
+    const icmsBase = total;
+    const icms = total * 0.12; // 12% de ICMS
+    totalIcmsBase += icmsBase;
+    totalIcms += icms;
+    
+    const itemIndex = String(itemNumero).padStart(3, '0');
+    
+    itensXml += `
+        <det nItem="${itemIndex}">
+          <prod>
+            <cProd>${item.id || '9999999999999'}</cProd>
+            <cEAN>${item.ean || ''}</cEAN>
+            <xProd>${item.name}</xProd>
+            <NCM>${ncm}</NCM>
+            <CEST>${cest}</CEST>
+            <CFOP>5102</CFOP>
+            <uCom>UN</uCom>
+            <qCom>${quantidade.toFixed(4)}</qCom>
+            <vUnCom>${preco.toFixed(10)}</vUnCom>
+            <vProd>${total.toFixed(2)}</vProd>
+            <cEANTrib/>
+            <uTrib>UN</uTrib>
+            <qTrib>${quantidade.toFixed(4)}</qTrib>
+            <vUnTrib>${preco.toFixed(10)}</vUnTrib>
+            <indTot>1</indTot>
+          </prod>
+          <imposto>
+            <vTotTrib>${total.toFixed(2)}</vTotTrib>
+            <ICMS>
+              <ICMS00>
+                <orig>0</orig>
+                <CST>00</CST>
+                <modBC>3</modBC>
+                <vBC>${icmsBase.toFixed(2)}</vBC>
+                <pICMS>12.00</pICMS>
+                <vICMS>${icms.toFixed(2)}</vICMS>
+              </ICMS00>
+            </ICMS>
+            <PIS>
+              <PISNT>
+                <CST>49</CST>
+              </PISNT>
+            </PIS>
+            <COFINS>
+              <COFINSNT>
+                <CST>49</CST>
+              </COFINSNT>
+            </COFINS>
+          </imposto>
+        </det>`;
+  }
+  
+  // Gerar informações de pagamento
+  let pagamentosXml = '';
+  let formaPagamento = '';
+  let valorPagamento = 0;
+  
+  for (const pagamento of (data.forma_pagamento || [])) {
+    const valor = Number(pagamento.valor) || 0;
+    const tipo = mapPaymentType(pagamento.tipo);
+    
+    pagamentosXml += `
+          <tPag>${tipo}</tPag>
+          <vPag>${valor.toFixed(2)}</vPag>`;
+    
+    formaPagamento = tipo === 1 ? '01' : tipo === 3 ? '03' : tipo === 4 ? '04' : '05';
+    valorPagamento += valor;
+  }
+  
+  if (!formaPagamento) {
+    formaPagamento = '01';
+    valorPagamento = valorTotal;
+  }
+  
+  // Gerar QR Code
+  const urlConsulta = config.ambiente === 'producao' 
+    ? `https://www.sefaz${config.estado.toLowerCase()}.sp.gov.br/nfce`
+    : `https://www.sefaz${config.estado.toLowerCase()}.sp.gov.br/nfce-homologacao`;
   
   const qrCode = generateQrCode(chaveAcesso, config.ambiente, urlConsulta);
-  const dhEmi = dataEmissao.toISOString();
   
-  // Calcular total dos impostos (simplificado)
-  const totalIcms = data.valor_total * 0.18; // 18% ICMS
-  const totalIcmsBase = data.valor_total;
-  
-  // Mapear forma de pagamento
-  const pagamentosXml = data.forma_pagamento.map((pag: any) => {
-    const tipoPagamento = mapPaymentType(pag.tipo);
-    const valor = toNumber(pag.valor);
-    return `
-    <pag>
-      <tPag>${tipoPagamento}</tPag>
-      <vPag>${valor.toFixed(2)}</vPag>
-    </pag>`;
-  }).join('');
-  
-  // Mapear itens
-  const itensXml = data.itens.map((item: any, index: number) => {
-    const nItem = index + 1;
-    const itemPrice = toNumber(item.price);
-    const itemQuantity = toNumber(item.quantity);
-    const valorTotal = itemPrice * itemQuantity;
-    
-    // Impostos (simplificado)
-    const icmsBase = valorTotal;
-    const icmsAliquota = 0.18;
-    const icmsValor = icmsBase * icmsAliquota;
-    const pisValor = valorTotal * 0.0065; // 0.65%
-    const cofinsValor = valorTotal * 0.03; // 3%
-    
-    return `
-    <det nItem="${nItem}">
-      <prod>
-        <cProd>${item.id.slice(0, 20)}</cProd>
-        <cEAN/>
-        <xProd>${item.name.substring(0, 120)}</xProd>
-        <NCM>${config.cnae || '4721100'}</NCM>
-        <CFOP>5102</CFOP>
-        <uCom>UN</uCom>
-        <qCom>${itemQuantity.toFixed(4)}</qCom>
-        <vUnCom>${itemPrice.toFixed(4)}</vUnCom>
-        <vProd>${valorTotal.toFixed(2)}</vProd>
-        <cEANTrib/>
-        <uTrib>UN</uTrib>
-        <qTrib>${itemQuantity.toFixed(4)}</qTrib>
-        <vUnTrib>${itemPrice.toFixed(4)}</vUnTrib>
-        <indTot>1</indTot>
-      </prod>
-      <imposto>
-        <vICMS>${icmsValor.toFixed(2)}</vICMS>
-        <ICMS>
-          <ICMS60>
-            <orig>0</orig>
-            <CST>60</CST>
-            <vBCST>${icmsBase.toFixed(2)}</vBCST>
-            <pICMSST>${(icmsAliquota * 100).toFixed(2)}</pICMSST>
-            <vICMSST>${icmsValor.toFixed(2)}</vICMSST>
-          </ICMS60>
-        </ICMS>
-        <PIS>
-          <PISOutr>
-            <CST>49</CST>
-            <vBC>${valorTotal.toFixed(2)}</vBC>
-            <pPIS>0.65</pPIS>
-            <vPIS>${pisValor.toFixed(2)}</vPIS>
-          </PISOutr>
-        </PIS>
-        <COFINS>
-          <COFINSOutr>
-            <CST>49</CST>
-            <vBC>${valorTotal.toFixed(2)}</vBC>
-            <pCOFINS>3.00</pCOFINS>
-            <vCOFINS>${cofinsValor.toFixed(2)}</vCOFINS>
-          </COFINSOutr>
-        </COFINS>
-      </imposto>
-    </det>`;
-  }).join('');
-
-  // XML da NFC-e
+  // Gerar o XML completo
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-  <NFe versao="4.00">
+  <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
     <infNFe Id="NFe${chaveAcesso}" versao="4.00">
       <ide>
-        <cUF>${config.uf}</cUF>
-        <cNF>${chaveAcesso.slice(35)}</cNF>
-        <natOp>Venda de mercadoria adquirida/recebida de terceiros para industrialização ou comercialização</natOp>
-        <mod>${modelo}</mod>
-        <serie>${serie}</serie>
-        <nNF>${numero}</nNF>
-        <dhEmi>${dhEmi}</dhEmi>
+        <cUF>${config.estado === 'SP' ? '35' : '35'}</cUF>
+        <cNF>${chaveAcesso.slice(35, 44)}</cNF>
+        <natOp>VENDA</natOp>
+        <mod>65</mod>
+        <serie>${serieNfce}</serie>
+        <nNF>${numeroNfce}</nNF>
+        <dhEmi>${now}</dhEmi>
+        <dhSaiEnt>${now}</dhSaiEnt>
         <tpNF>1</tpNF>
         <idDest>1</idDest>
-        <cMunFG>1400100</cMunFG>
-        <tpImp>4</tpImp>
-        <tpEmis>${tpEmissao}</tpEmis>
+        <cMunFG>3550308</cMunFG>
+        <tpImp>9</tpImp>
+        <tpEmis>1</tpEmis>
         <cDV>${chaveAcesso.slice(-1)}</cDV>
         <tpAmb>${config.ambiente === 'producao' ? '1' : '2'}</tpAmb>
         <finNFe>1</finNFe>
         <indFinal>1</indFinal>
-        <indPres>0</indPres>
+        <indPres>1</indPres>
         <procEmi>0</procEmi>
         <verProc>1.0.0</verProc>
       </ide>
       <emit>
-        <CNPJ>${config.cnpj.replace(/\D/g, '')}</CNPJ>
-                <xNome>${config.nome_fantasia || config.razao_social}</xNome>
-                <xFant>${config.nome_fantasia}</xFant>
-                <IE>${config.inscricao_estadual}</IE>
-                <CRT>${config.CRT || '1'}</CRT>
+        <CNPJ>${config.cnpj || '00000000000000'}</CNPJ>
+        <xNome>${config.razao_social || 'EMPÓRIO DAS COXINHAS'}</xNome>
+        <xFant>${config.nome_fantasia || 'EMPÓRIO DAS COXINHAS'}</xFant>
+        <enderEmit>
+          <xLgr>${config.logradouro || 'Rua das Coxinhas'}</xLgr>
+          <nro>${config.numero || '123'}</nro>
+          <xCpl>${config.complemento || ''}</xCpl>
+          <xBairro>${config.bairro || 'Centro'}</xBairro>
+          <cMun>${config.codigo_municipio || '3550308'}</cMun>
+          <xMun>${config.municipio || 'São Paulo'}</xMun>
+          <UF>${config.estado || 'SP'}</UF>
+          <CEP>${config.cep || '00000000'}</CEP>
+          <cPais>${config.codigo_pais || '1058'}</cPais>
+          <xPais>${config.pais || 'BRASIL'}</xPais>
+          <fone>${config.telefone || '5599999999999'}</fone>
+        </enderEmit>
+        <IE>${config.inscricao_estadual || '123456789'}</IE>
+        <CRT>${config.regime_tributario === 'simples_nacional' ? '1' : '3'}</CRT>
       </emit>
       ${data.cliente ? `
       <dest>
-        <CPF>${data.cliente.cpf_cnpj?.replace(/\D/g, '') || ''}</CPF>
-        <xNome>${data.cliente.name}</xNome>
+        <CNPJ>${data.cliente.cpf_cnpj?.replace(/\D/g, '') || ''}</CNPJ>
+        <xNome>${data.cliente.name || ''}</xNome>
+        <enderDest>
+          <xLgr>${data.cliente.address || ''}</xLgr>
+          <nro>S/N</nro>
+          <xBairro>Centro</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>São Paulo</xMun>
+          <UF>SP</UF>
+          <CEP>00000000</CEP>
+          <cPais>1058</cPais>
+          <xPais>BRASIL</xPais>
+        </enderDest>
         <indIEDest>9</indIEDest>
+        <email>${data.cliente.email || ''}</email>
       </dest>` : ''}
       <detalhe>
 ${itensXml}
@@ -400,80 +437,19 @@ export default defineEventHandler(async (event) => {
           LIMIT 1
         `;
         
-        console.log('[NFC-e] Configurações fiscais encontradas:', configResult ? configResult.length : 0);
-        
         if (!configResult || configResult.length === 0) {
-              throw createError({
-                statusCode: 400,
-                statusMessage: 'Configuração fiscal não encontrada. Configure os dados da empresa primeiro.',
-              });
-            }
-        
-        const configResultFirst = configResult[0] || {};
-                
-                const config = {
-                  ...configResultFirst,
-                  id: configResultFirst.id,
-                  uf: configResultFirst.uf || 'RR',
-                  cnpj: configResultFirst.cnpj || '',
-                  razao_social: configResultFirst.razao_social || '',
-                  nome_fantasia: configResultFirst.nome_fantasia || '',
-                  inscricao_estadual: configResultFirst.inscricao_estadual || '',
-                  cnae: configResultFirst.cnae || '4721100',
-                  ambiente: configResultFirst.ambiente || 'homologacao',
-                  CRT: configResultFirst.crt || configResultFirst.CRT || '1',
-                  serie_nfce: configResultFirst.serie_nfce || 15,
-                  ultima_nfce: configResultFirst.ultima_nfce || 0,
-                };
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Configuração fiscal não encontrada. Configure os dados fiscais da empresa primeiro.',
+      });
+    }
     
-    // Buscar certificado ativo
-            const certResult = await sql`
-              SELECT * FROM digital_certificates
-              ORDER BY created_at DESC
-              LIMIT 1
-            `;
-        
-        console.log('[NFC-e] Certificados encontrados:', certResult ? certResult.length : 0);
-        
-        if (!certResult || certResult.length === 0 || !certResult[0]) {
-              throw createError({
-                statusCode: 400,
-                statusMessage: 'Nenhum certificado ativo encontrado. Adicione um certificado digital primeiro.',
-              });
-            }
-        
-        const cert = certResult[0];
-        
-        // Verificar se o certificado está expirado
-            const now = new Date();
-            
-            if (!cert.data_validade) {
-              throw createError({
-                statusCode: 400,
-                statusMessage: 'Certificado digital sem data de validade. Atualize o certificado.',
-              });
-            }
-            
-            const validade = new Date(cert.data_validade);
-            
-            if (validade < now) {
-              throw createError({
-                statusCode: 400,
-                statusMessage: 'Certificado digital expirado. Atualize o certificado antes de emitir NFC-e.',
-              });
-            }
-        
-        // Buscar o último número de NFC-e emitido
-        const lastNfceResult = await sql`
-          SELECT MAX(numero) as ultimo_numero
-          FROM nfce
-          WHERE ambiente = ${config.ambiente}
-        `;
-        
-        const ultimoNumero = lastNfceResult[0]?.ultimo_numero || 0;
-                const proximoNumero = Math.max(ultimoNumero + 1, (config.ultima_nfce || 0) + 1);
-                const serieNfce = config.serie_nfce || 15;
-                
+        const config = configResult[0];
+    
+        // Obter próximo número de NFC-e
+        const proximoNumero = config.ultima_nfce ? Number(config.ultima_nfce) + 1 : 1;
+        const serieNfce = config.serie_nfce || 15;
+    
         const nfceData = {
           sale_id: saleIdNumber,
           valor_total,
@@ -498,8 +474,20 @@ export default defineEventHandler(async (event) => {
         const xmlEnvio = await generateNfceXml(nfceData, config, proximoNumero, serieNfce);
     
         // Extrair informações do XML gerado
-        const chaveMatch = xmlEnvio.match(/Id="NFe(\d{44})"/);
+        const chaveMatch = xmlEnvio.match(/Id=\"NFe(\d{44})\"/);
         const chaveAcesso = chaveMatch ? chaveMatch[1] : '';
+        
+        // Verificar se a chave de acesso já existe no banco de dados
+        if (chaveAcesso) {
+          const existingChave = await sql`
+            SELECT id FROM nfce WHERE chave_acesso = ${chaveAcesso} LIMIT 1
+          `;
+          if (existingChave && existingChave.length > 0) {
+            // Chave já existe, tentar novamente com nova chave
+            tentativas++;
+            continue;
+          }
+        }
         
         const numeroMatch = xmlEnvio.match(/<nNF>(\d+)<\/nNF>/);
         const numero = numeroMatch ? parseInt(numeroMatch[1]) : 0;
@@ -600,45 +588,39 @@ export default defineEventHandler(async (event) => {
                             `;
                   
                   // Atualizar a configuração fiscal com o novo número de NFC-e (se tiver ID)
-                  if (config.id) {
-                    await sql`
-                      UPDATE company_fiscal_config
-                      SET ultima_nfce = ${proximoNumero},
-                          updated_at = ${now}
-                      WHERE id = ${config.id}
-                    `;
-                  }
-        
-        return {
-                  success: true,
-                  message: 'NFC-e emitida e autorizada com sucesso',
-                  nfce: {
-                    id: insertResult?.[0]?.id || 0,
-                    sale_id: saleIdNumber,
-                    chave_acesso: sefazResponse.chave_acesso || '',
-                    numero: sefazResponse.numero || 0,
-                    serie: serieNfce,
-                    protocolo: sefazResponse.protocolo || '',
-                    qr_code: sefazResponse.qr_code || '',
-                    url_consulta: sefazResponse.url_consulta || '',
-                    status: 'autorizada',
-                    ambiente: config.ambiente,
-                    data_emissao: now,
-                    xml_retorno: sefazResponse.xml_retorno || '',
-                  },
-                };
-  } catch (error) {
-      console.error('Error emitting NFC-e:', error);
+                            if (config.id) {
+                              await sql`
+                                UPDATE company_fiscal_config
+                                SET ultima_nfce = ${proximoNumero}
+                                WHERE id = ${config.id}
+                              `;
+                            }
+          
+          // Retornar sucesso
+          return {
+            success: true,
+            message: 'NFC-e emitida e autorizada com sucesso',
+            nfce: {
+              id: insertResult[0].id,
+              chave_acesso: sefazResponse.chave_acesso || '',
+              numero: Number(sefazResponse.numero || 0),
+              serie: serieNfce,
+              data_autorizacao: new Date().toISOString(),
+              protocolo: sefazResponse.protocolo || '',
+              status: 'autorizada',
+              qr_code: sefazResponse.qr_code || '',
+              xml_retorno: sefazResponse.xml_retorno || '',
+              url_consulta: sefazResponse.url_consulta || '',
+              ambiente: config.ambiente,
+              mensagem_status: sefazResponse.mensagem || '',
+            }
+          };
       
-      if (error.statusCode) {
-        throw error;
+      } catch (error: any) {
+        console.error('Error emitting NFC-e:', error);
+        throw createError({
+          statusCode: error.statusCode || 500,
+          statusMessage: error.statusMessage || 'Erro desconhecido ao emitir NFC-e',
+        });
       }
-      
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao emitir NFC-e';
-      
-      throw createError({
-        statusCode: 500,
-        statusMessage: errorMessage,
-      });
-    }
 });

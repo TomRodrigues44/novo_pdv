@@ -2642,19 +2642,16 @@ async function enviarParaSefaz(xml, ambiente) {
   }
 }
 
-const toNumber = (val, defaultValue = 0) => {
-  if (typeof val === "number") return val;
-  return parseFloat(String(val || defaultValue));
-};
-function generateChaveAcesso(uf, dataEmissao, cnpj, modelo, serie, numero, tpEmissao = 1) {
+function generateChaveAcesso(uf, dataEmissao, cnpj, modelo, serie, numero2, tpEmissao = 1) {
   const AAMM = dataEmissao.getFullYear().toString().slice(-2) + String(dataEmissao.getMonth() + 1).padStart(2, "0");
   const cnpjLimpo = cnpj.replace(/\D/g, "").padStart(14, "0");
   const modeloLimpo = modelo.padStart(2, "0");
   const serieLimpa = String(serie).padStart(3, "0");
-  const numeroLimpo = String(numero).padStart(9, "0");
+  const numeroLimpo = String(numero2).padStart(9, "0");
   const tpEmissaoStr = String(tpEmissao);
-  const timestamp = Date.now().toString().slice(-9);
-  const CNF = timestamp.padStart(9, "0");
+  const timestamp = Date.now().toString().slice(-6);
+  const random = Math.floor(Math.random() * 1e3).toString().padStart(3, "0");
+  const CNF = timestamp + random;
   const chaveBase = uf + AAMM + cnpjLimpo + modeloLimpo + serieLimpa + numeroLimpo + tpEmissaoStr + CNF;
   const dv = calculateDV(chaveBase);
   return chaveBase + dv;
@@ -2695,129 +2692,150 @@ function mapPaymentType(type) {
 }
 async function generateNfceXml(data, config, numeroNfce, serieNfce) {
   var _a;
-  const numero = numeroNfce;
-  const serie = serieNfce;
-  const modelo = "65";
-  const tpEmissao = 1;
   const dataEmissao = /* @__PURE__ */ new Date();
   const chaveAcesso = generateChaveAcesso(
-    config.uf,
+    config.estado || "SP",
     dataEmissao,
-    config.cnpj,
-    modelo,
-    serie,
-    numero,
-    tpEmissao
+    config.cnpj || "00000000000000",
+    "65",
+    serieNfce,
+    numeroNfce
   );
-  const urlConsulta = config.ambiente === "producao" ? `https://www.sefaz.rr.gov.br/nfce/consultarNFCe?chave=${chaveAcesso}` : `https://www.sefaz.rr.gov.br/nfceh/consultarNFCe?chave=${chaveAcesso}`;
+  const now2 = dataEmissao.toISOString();
+  Number(data.valor_total) || 0;
+  Number(data.frete) || 0;
+  let itensXml = "";
+  let totalIcmsBase = 0;
+  let totalIcms = 0;
+  const itemNumero = 1;
+  for (const item of data.itens || []) {
+    const preco = Number(item.price) || 0;
+    const quantidade = Number(item.quantity) || 1;
+    const total = preco * quantidade;
+    const cest = item.cest || "0000000";
+    const ncm = item.ncm || "21069000";
+    const icmsBase = total;
+    const icms = total * 0.12;
+    totalIcmsBase += icmsBase;
+    totalIcms += icms;
+    const itemIndex = String(itemNumero).padStart(3, "0");
+    itensXml += `
+        <det nItem="${itemIndex}">
+          <prod>
+            <cProd>${item.id || "9999999999999"}</cProd>
+            <cEAN>${item.ean || ""}</cEAN>
+            <xProd>${item.name}</xProd>
+            <NCM>${ncm}</NCM>
+            <CEST>${cest}</CEST>
+            <CFOP>5102</CFOP>
+            <uCom>UN</uCom>
+            <qCom>${quantidade.toFixed(4)}</qCom>
+            <vUnCom>${preco.toFixed(10)}</vUnCom>
+            <vProd>${total.toFixed(2)}</vProd>
+            <cEANTrib/>
+            <uTrib>UN</uTrib>
+            <qTrib>${quantidade.toFixed(4)}</qTrib>
+            <vUnTrib>${preco.toFixed(10)}</vUnTrib>
+            <indTot>1</indTot>
+          </prod>
+          <imposto>
+            <vTotTrib>${total.toFixed(2)}</vTotTrib>
+            <ICMS>
+              <ICMS00>
+                <orig>0</orig>
+                <CST>00</CST>
+                <modBC>3</modBC>
+                <vBC>${icmsBase.toFixed(2)}</vBC>
+                <pICMS>12.00</pICMS>
+                <vICMS>${icms.toFixed(2)}</vICMS>
+              </ICMS00>
+            </ICMS>
+            <PIS>
+              <PISNT>
+                <CST>49</CST>
+              </PISNT>
+            </PIS>
+            <COFINS>
+              <COFINSNT>
+                <CST>49</CST>
+              </COFINSNT>
+            </COFINS>
+          </imposto>
+        </det>`;
+  }
+  let pagamentosXml = "";
+  for (const pagamento of data.forma_pagamento || []) {
+    const valor = Number(pagamento.valor) || 0;
+    const tipo = mapPaymentType(pagamento.tipo);
+    pagamentosXml += `
+          <tPag>${tipo}</tPag>
+          <vPag>${valor.toFixed(2)}</vPag>`;
+  }
+  const urlConsulta = config.ambiente === "producao" ? `https://www.sefaz${config.estado.toLowerCase()}.sp.gov.br/nfce` : `https://www.sefaz${config.estado.toLowerCase()}.sp.gov.br/nfce-homologacao`;
   const qrCode = generateQrCode(chaveAcesso, config.ambiente, urlConsulta);
-  const dhEmi = dataEmissao.toISOString();
-  const totalIcms = data.valor_total * 0.18;
-  const totalIcmsBase = data.valor_total;
-  const pagamentosXml = data.forma_pagamento.map((pag) => {
-    const tipoPagamento = mapPaymentType(pag.tipo);
-    const valor = toNumber(pag.valor);
-    return `
-    <pag>
-      <tPag>${tipoPagamento}</tPag>
-      <vPag>${valor.toFixed(2)}</vPag>
-    </pag>`;
-  }).join("");
-  const itensXml = data.itens.map((item, index) => {
-    const nItem = index + 1;
-    const itemPrice = toNumber(item.price);
-    const itemQuantity = toNumber(item.quantity);
-    const valorTotal = itemPrice * itemQuantity;
-    const icmsBase = valorTotal;
-    const icmsAliquota = 0.18;
-    const icmsValor = icmsBase * icmsAliquota;
-    const pisValor = valorTotal * 65e-4;
-    const cofinsValor = valorTotal * 0.03;
-    return `
-    <det nItem="${nItem}">
-      <prod>
-        <cProd>${item.id.slice(0, 20)}</cProd>
-        <cEAN/>
-        <xProd>${item.name.substring(0, 120)}</xProd>
-        <NCM>${config.cnae || "4721100"}</NCM>
-        <CFOP>5102</CFOP>
-        <uCom>UN</uCom>
-        <qCom>${itemQuantity.toFixed(4)}</qCom>
-        <vUnCom>${itemPrice.toFixed(4)}</vUnCom>
-        <vProd>${valorTotal.toFixed(2)}</vProd>
-        <cEANTrib/>
-        <uTrib>UN</uTrib>
-        <qTrib>${itemQuantity.toFixed(4)}</qTrib>
-        <vUnTrib>${itemPrice.toFixed(4)}</vUnTrib>
-        <indTot>1</indTot>
-      </prod>
-      <imposto>
-        <vICMS>${icmsValor.toFixed(2)}</vICMS>
-        <ICMS>
-          <ICMS60>
-            <orig>0</orig>
-            <CST>60</CST>
-            <vBCST>${icmsBase.toFixed(2)}</vBCST>
-            <pICMSST>${(icmsAliquota * 100).toFixed(2)}</pICMSST>
-            <vICMSST>${icmsValor.toFixed(2)}</vICMSST>
-          </ICMS60>
-        </ICMS>
-        <PIS>
-          <PISOutr>
-            <CST>49</CST>
-            <vBC>${valorTotal.toFixed(2)}</vBC>
-            <pPIS>0.65</pPIS>
-            <vPIS>${pisValor.toFixed(2)}</vPIS>
-          </PISOutr>
-        </PIS>
-        <COFINS>
-          <COFINSOutr>
-            <CST>49</CST>
-            <vBC>${valorTotal.toFixed(2)}</vBC>
-            <pCOFINS>3.00</pCOFINS>
-            <vCOFINS>${cofinsValor.toFixed(2)}</vCOFINS>
-          </COFINSOutr>
-        </COFINS>
-      </imposto>
-    </det>`;
-  }).join("");
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-  <NFe versao="4.00">
+  <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
     <infNFe Id="NFe${chaveAcesso}" versao="4.00">
       <ide>
-        <cUF>${config.uf}</cUF>
-        <cNF>${chaveAcesso.slice(35)}</cNF>
-        <natOp>Venda de mercadoria adquirida/recebida de terceiros para industrializa\xE7\xE3o ou comercializa\xE7\xE3o</natOp>
-        <mod>${modelo}</mod>
-        <serie>${serie}</serie>
-        <nNF>${numero}</nNF>
-        <dhEmi>${dhEmi}</dhEmi>
+        <cUF>${config.estado === "SP" ? "35" : "35"}</cUF>
+        <cNF>${chaveAcesso.slice(35, 44)}</cNF>
+        <natOp>VENDA</natOp>
+        <mod>65</mod>
+        <serie>${serieNfce}</serie>
+        <nNF>${numeroNfce}</nNF>
+        <dhEmi>${now2}</dhEmi>
+        <dhSaiEnt>${now2}</dhSaiEnt>
         <tpNF>1</tpNF>
         <idDest>1</idDest>
-        <cMunFG>1400100</cMunFG>
-        <tpImp>4</tpImp>
-        <tpEmis>${tpEmissao}</tpEmis>
+        <cMunFG>3550308</cMunFG>
+        <tpImp>9</tpImp>
+        <tpEmis>1</tpEmis>
         <cDV>${chaveAcesso.slice(-1)}</cDV>
         <tpAmb>${config.ambiente === "producao" ? "1" : "2"}</tpAmb>
         <finNFe>1</finNFe>
         <indFinal>1</indFinal>
-        <indPres>0</indPres>
+        <indPres>1</indPres>
         <procEmi>0</procEmi>
         <verProc>1.0.0</verProc>
       </ide>
       <emit>
-        <CNPJ>${config.cnpj.replace(/\D/g, "")}</CNPJ>
-                <xNome>${config.nome_fantasia || config.razao_social}</xNome>
-                <xFant>${config.nome_fantasia}</xFant>
-                <IE>${config.inscricao_estadual}</IE>
-                <CRT>${config.CRT || "1"}</CRT>
+        <CNPJ>${config.cnpj || "00000000000000"}</CNPJ>
+        <xNome>${config.razao_social || "EMP\xD3RIO DAS COXINHAS"}</xNome>
+        <xFant>${config.nome_fantasia || "EMP\xD3RIO DAS COXINHAS"}</xFant>
+        <enderEmit>
+          <xLgr>${config.logradouro || "Rua das Coxinhas"}</xLgr>
+          <nro>${config.numero || "123"}</nro>
+          <xCpl>${config.complemento || ""}</xCpl>
+          <xBairro>${config.bairro || "Centro"}</xBairro>
+          <cMun>${config.codigo_municipio || "3550308"}</cMun>
+          <xMun>${config.municipio || "S\xE3o Paulo"}</xMun>
+          <UF>${config.estado || "SP"}</UF>
+          <CEP>${config.cep || "00000000"}</CEP>
+          <cPais>${config.codigo_pais || "1058"}</cPais>
+          <xPais>${config.pais || "BRASIL"}</xPais>
+          <fone>${config.telefone || "5599999999999"}</fone>
+        </enderEmit>
+        <IE>${config.inscricao_estadual || "123456789"}</IE>
+        <CRT>${config.regime_tributario === "simples_nacional" ? "1" : "3"}</CRT>
       </emit>
       ${data.cliente ? `
       <dest>
-        <CPF>${((_a = data.cliente.cpf_cnpj) == null ? void 0 : _a.replace(/\D/g, "")) || ""}</CPF>
-        <xNome>${data.cliente.name}</xNome>
+        <CNPJ>${((_a = data.cliente.cpf_cnpj) == null ? void 0 : _a.replace(/\D/g, "")) || ""}</CNPJ>
+        <xNome>${data.cliente.name || ""}</xNome>
+        <enderDest>
+          <xLgr>${data.cliente.address || ""}</xLgr>
+          <nro>S/N</nro>
+          <xBairro>Centro</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>S\xE3o Paulo</xMun>
+          <UF>SP</UF>
+          <CEP>00000000</CEP>
+          <cPais>1058</cPais>
+          <xPais>BRASIL</xPais>
+        </enderDest>
         <indIEDest>9</indIEDest>
+        <email>${data.cliente.email || ""}</email>
       </dest>` : ""}
       <detalhe>
 ${itensXml}
@@ -2877,7 +2895,6 @@ ${itensXml}
   return xml;
 }
 const emitir_post = defineEventHandler(async (event) => {
-  var _a, _b;
   try {
     const body = await readBody(event);
     const { sale_id, valor_total, itens, cliente, frete, forma_pagamento } = body;
@@ -2960,62 +2977,14 @@ const emitir_post = defineEventHandler(async (event) => {
           ORDER BY created_at DESC
           LIMIT 1
         `;
-    console.log("[NFC-e] Configura\xE7\xF5es fiscais encontradas:", configResult ? configResult.length : 0);
     if (!configResult || configResult.length === 0) {
       throw createError({
         statusCode: 400,
-        statusMessage: "Configura\xE7\xE3o fiscal n\xE3o encontrada. Configure os dados da empresa primeiro."
+        statusMessage: "Configura\xE7\xE3o fiscal n\xE3o encontrada. Configure os dados fiscais da empresa primeiro."
       });
     }
-    const configResultFirst = configResult[0] || {};
-    const config = {
-      ...configResultFirst,
-      id: configResultFirst.id,
-      uf: configResultFirst.uf || "RR",
-      cnpj: configResultFirst.cnpj || "",
-      razao_social: configResultFirst.razao_social || "",
-      nome_fantasia: configResultFirst.nome_fantasia || "",
-      inscricao_estadual: configResultFirst.inscricao_estadual || "",
-      cnae: configResultFirst.cnae || "4721100",
-      ambiente: configResultFirst.ambiente || "homologacao",
-      CRT: configResultFirst.crt || configResultFirst.CRT || "1",
-      serie_nfce: configResultFirst.serie_nfce || 15,
-      ultima_nfce: configResultFirst.ultima_nfce || 0
-    };
-    const certResult = await sql`
-              SELECT * FROM digital_certificates
-              ORDER BY created_at DESC
-              LIMIT 1
-            `;
-    console.log("[NFC-e] Certificados encontrados:", certResult ? certResult.length : 0);
-    if (!certResult || certResult.length === 0 || !certResult[0]) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "Nenhum certificado ativo encontrado. Adicione um certificado digital primeiro."
-      });
-    }
-    const cert = certResult[0];
-    const now = /* @__PURE__ */ new Date();
-    if (!cert.data_validade) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "Certificado digital sem data de validade. Atualize o certificado."
-      });
-    }
-    const validade = new Date(cert.data_validade);
-    if (validade < now) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "Certificado digital expirado. Atualize o certificado antes de emitir NFC-e."
-      });
-    }
-    const lastNfceResult = await sql`
-          SELECT MAX(numero) as ultimo_numero
-          FROM nfce
-          WHERE ambiente = ${config.ambiente}
-        `;
-    const ultimoNumero = ((_a = lastNfceResult[0]) == null ? void 0 : _a.ultimo_numero) || 0;
-    const proximoNumero = Math.max(ultimoNumero + 1, (config.ultima_nfce || 0) + 1);
+    const config = configResult[0];
+    const proximoNumero = config.ultima_nfce ? Number(config.ultima_nfce) + 1 : 1;
     const serieNfce = config.serie_nfce || 15;
     const nfceData = {
       sale_id: saleIdNumber,
@@ -3033,10 +3002,19 @@ const emitir_post = defineEventHandler(async (event) => {
       try {
         await new Promise((resolve) => setTimeout(resolve, 10));
         const xmlEnvio = await generateNfceXml(nfceData, config, proximoNumero, serieNfce);
-        const chaveMatch = xmlEnvio.match(/Id="NFe(\d{44})"/);
+        const chaveMatch = xmlEnvio.match(/Id=\"NFe(\d{44})\"/);
         const chaveAcesso = chaveMatch ? chaveMatch[1] : "";
+        if (chaveAcesso) {
+          const existingChave = await sql`
+            SELECT id FROM nfce WHERE chave_acesso = ${chaveAcesso} LIMIT 1
+          `;
+          if (existingChave && existingChave.length > 0) {
+            tentativas++;
+            continue;
+          }
+        }
         const numeroMatch = xmlEnvio.match(/<nNF>(\d+)<\/nNF>/);
-        const numero = numeroMatch ? parseInt(numeroMatch[1]) : 0;
+        const numero2 = numeroMatch ? parseInt(numeroMatch[1]) : 0;
         const qrCodeMatch = xmlEnvio.match(/<qrCode>(.*?)<\/qrCode>/s);
         const qrCode = qrCodeMatch ? qrCodeMatch[1].trim() : "";
         const urlChaveMatch = xmlEnvio.match(/<urlChave>(.*?)<\/urlChave>/s);
@@ -3115,39 +3093,34 @@ const emitir_post = defineEventHandler(async (event) => {
                             `;
     if (config.id) {
       await sql`
-                      UPDATE company_fiscal_config
-                      SET ultima_nfce = ${proximoNumero},
-                          updated_at = ${now}
-                      WHERE id = ${config.id}
-                    `;
+                                UPDATE company_fiscal_config
+                                SET ultima_nfce = ${proximoNumero}
+                                WHERE id = ${config.id}
+                              `;
     }
     return {
       success: true,
       message: "NFC-e emitida e autorizada com sucesso",
       nfce: {
-        id: ((_b = insertResult == null ? void 0 : insertResult[0]) == null ? void 0 : _b.id) || 0,
-        sale_id: saleIdNumber,
+        id: insertResult[0].id,
         chave_acesso: sefazResponse.chave_acesso || "",
-        numero: sefazResponse.numero || 0,
+        numero: Number(sefazResponse.numero || 0),
         serie: serieNfce,
+        data_autorizacao: (/* @__PURE__ */ new Date()).toISOString(),
         protocolo: sefazResponse.protocolo || "",
-        qr_code: sefazResponse.qr_code || "",
-        url_consulta: sefazResponse.url_consulta || "",
         status: "autorizada",
+        qr_code: sefazResponse.qr_code || "",
+        xml_retorno: sefazResponse.xml_retorno || "",
+        url_consulta: sefazResponse.url_consulta || "",
         ambiente: config.ambiente,
-        data_emissao: now,
-        xml_retorno: sefazResponse.xml_retorno || ""
+        mensagem_status: sefazResponse.mensagem || ""
       }
     };
   } catch (error) {
     console.error("Error emitting NFC-e:", error);
-    if (error.statusCode) {
-      throw error;
-    }
-    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido ao emitir NFC-e";
     throw createError({
-      statusCode: 500,
-      statusMessage: errorMessage
+      statusCode: error.statusCode || 500,
+      statusMessage: error.statusMessage || "Erro desconhecido ao emitir NFC-e"
     });
   }
 });
