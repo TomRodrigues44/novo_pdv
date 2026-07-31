@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Receipt, FileText, Printer, CheckCircle, Truck, Store, Phone, MapPin } from "lucide-react";
+import { Receipt, FileText, Printer, CheckCircle, Truck, Store, Phone, MapPin, Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { CartItem } from "@/types/product";
 
@@ -20,6 +20,7 @@ interface DocumentDialogProps {
   cartItems: CartItem[];
   payments: any[];
   onGenerateDocument: (type: "quote" | "fiscal") => void;
+  isEmitting?: boolean;
 }
 
 interface ReceiptDialogProps {
@@ -34,7 +35,7 @@ interface ReceiptDialogProps {
   nfceData?: any;
 }
 
-export const DocumentDialog = ({ open, onClose, total, freight, cartItems, payments, onGenerateDocument }: DocumentDialogProps) => {
+export const DocumentDialog = ({ open, onClose, total, freight, cartItems, payments, onGenerateDocument, isEmitting }: DocumentDialogProps) => {
   const totalChange = payments.reduce((sum: number, p: any) => {
     if (p.type === "cash" && p.cashReceived) {
       return sum + (p.cashReceived - p.amount);
@@ -183,49 +184,61 @@ export const DocumentDialog = ({ open, onClose, total, freight, cartItems, payme
             </div>
 
             {/* Coluna Direita - Opções de Documento */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg text-center">Escolha o Tipo de Documento</h3>
-              
-              <div className="space-y-4">
+                        <div className="space-y-4">
+                          <h3 className="font-semibold text-lg text-center">Escolha o Tipo de Documento</h3>
+                          
+                          {isEmitting && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-center gap-3">
+                              <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                              <div className="text-center">
+                                <p className="font-semibold text-blue-900 text-sm">Processando NFC-e</p>
+                                <p className="text-xs text-blue-700">
+                                  Enviando para SEFAZ... Por favor, aguarde.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="space-y-4">
                 {/* Opção Orçamento */}
-                <Card
-                  className="cursor-pointer hover:border-orange-400 hover:shadow-lg transition-all border-2"
-                  onClick={() => onGenerateDocument("quote")}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-orange-100 p-4 rounded-full">
-                        <FileText className="h-8 w-8 text-orange-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-lg text-gray-800">Orçamento</h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Documento não fiscal para controle interno
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Opção Cupom Fiscal */}
-                <Card
-                  className="cursor-pointer hover:border-green-400 hover:shadow-lg transition-all border-2"
-                  onClick={() => onGenerateDocument("fiscal")}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-green-100 p-4 rounded-full">
-                        <Receipt className="h-8 w-8 text-green-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-lg text-gray-800">Cupom Fiscal</h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Documento fiscal enviado ao FISCO
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                                <Card
+                                  className={`cursor-pointer hover:border-orange-400 hover:shadow-lg transition-all border-2 ${isEmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  onClick={() => !isEmitting && onGenerateDocument("quote")}
+                                >
+                                  <CardContent className="p-6">
+                                    <div className="flex items-center gap-4">
+                                      <div className="bg-orange-100 p-4 rounded-full">
+                                        <FileText className="h-8 w-8 text-orange-600" />
+                                      </div>
+                                      <div className="flex-1">
+                                        <h4 className="font-bold text-lg text-gray-800">Orçamento</h4>
+                                        <p className="text-sm text-gray-600 mt-1">
+                                          Documento não fiscal para controle interno
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                
+                                {/* Opção Cupom Fiscal */}
+                                <Card
+                                  className={`cursor-pointer hover:border-green-400 hover:shadow-lg transition-all border-2 ${isEmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  onClick={() => !isEmitting && onGenerateDocument("fiscal")}
+                                >
+                                  <CardContent className="p-6">
+                                    <div className="flex items-center gap-4">
+                                      <div className="bg-green-100 p-4 rounded-full">
+                                        <Receipt className="h-8 w-8 text-green-600" />
+                                      </div>
+                                      <div className="flex-1">
+                                        <h4 className="font-bold text-lg text-gray-800">Cupom Fiscal</h4>
+                                        <p className="text-sm text-gray-600 mt-1">
+                                          Documento fiscal enviado ao FISCO
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
