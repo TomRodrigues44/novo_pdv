@@ -246,23 +246,41 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
           });
   
           if (response.ok) {
-                      const data = await response.json();
-                      setNfceData(data.nfce);
-                      toast.success('NFC-e emitida e autorizada com sucesso!');
-                      setIsReceiptDialogOpen(true);
-                    } else {
-                      let errorMessage = 'Erro ao emitir NFC-e';
-                      try {
-                        const error = await response.json();
-                        errorMessage = error.statusMessage || error.message || errorMessage;
-                      } catch (e) {
-                        errorMessage = `Erro ao emitir NFC-e (Status: ${response.status})`;
-                      }
-                      console.error('NFC-e emission error:', errorMessage);
-                      toast.error(errorMessage);
-                      // Mesmo com erro, abrir o dialog para orçamento
-                      setIsReceiptDialogOpen(true);
-                    }
+                                const data = await response.json();
+                                
+                                // Verificar se é uma NFC-e que já foi emitida anteriormente
+                                                      if (data.message && data.message.includes('já emitida anteriormente')) {
+                                                        toast.info('NFC-e já foi emitida anteriormente. Utilizando os dados existentes.');
+                                                        setNfceData(data.nfce);
+                                                        setIsReceiptDialogOpen(true);
+                                                        setEmittingNfce(false);
+                                                      } else {
+                                                        setNfceData(data.nfce);
+                                                        toast.success('NFC-e emitida e autorizada com sucesso!');
+                                                        setIsReceiptDialogOpen(true);
+                                                        setEmittingNfce(false);
+                                                      }
+                              } else {
+                                let errorMessage = 'Erro ao emitir NFC-e';
+                                try {
+                                  const error = await response.json();
+                                  errorMessage = error.statusMessage || error.message || errorMessage;
+                                } catch (e) {
+                                  errorMessage = `Erro ao emitir NFC-e (Status: ${response.status})`;
+                                }
+                                
+                                // Tratamento específico para erro de conflito
+                                                                if (response.status === 409 || errorMessage.includes('processamento')) {
+                                                                  toast.warning('Já existe uma NFC-e em processamento. Aguarde alguns instantes e tente novamente.');
+                                                                  setEmittingNfce(false);
+                                                                  return; // Não abrir o dialog
+                                                                }
+                                                                
+                                                                console.error('NFC-e emission error:', errorMessage);
+                                                                toast.error(errorMessage);
+                                                                // Mesmo com erro, abrir o dialog para orçamento
+                                                                setIsReceiptDialogOpen(true);
+                              }
         } catch (error) {
           console.error('Error emitting NFC-e:', error);
           toast.error('Erro ao emitir NFC-e');

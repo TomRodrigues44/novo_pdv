@@ -2883,10 +2883,10 @@ const emitir_post = defineEventHandler(async (event) => {
     const { sale_id, valor_total, itens, cliente, frete, forma_pagamento } = body;
     const saleIdNumber = typeof sale_id === "string" ? parseInt(sale_id.replace(/\D/g, ""), 10) : Number(sale_id);
     const saleResult = await sql`
-              SELECT id, total_amount, created_at FROM sales
-              WHERE id = ${saleIdNumber}
-              LIMIT 1
-            `;
+                          SELECT id, total_amount, created_at FROM sales
+                          WHERE id = ${saleIdNumber}
+                          LIMIT 1
+                        `;
     if (!saleResult || saleResult.length === 0) {
       throw createError({
         statusCode: 404,
@@ -2894,6 +2894,61 @@ const emitir_post = defineEventHandler(async (event) => {
       });
     }
     const saleDbId = saleResult[0].id;
+    const existingNfce = await sql`
+                                      SELECT
+                                        id,
+                                        chave_acesso,
+                                        numero,
+                                        serie,
+                                        data_autorizacao,
+                                        protocolo,
+                                        status,
+                                        qr_code,
+                                        xml_retorno,
+                                        url_consulta,
+                                        ambiente,
+                                        mensagem_status
+                                      FROM nfce
+                                      WHERE sale_id = ${String(saleDbId)}
+                                        AND status IN ('autorizada', 'cancelada')
+                                      ORDER BY created_at DESC
+                                      LIMIT 1
+                                    `;
+    if (existingNfce && existingNfce.length > 0) {
+      const nfceData2 = existingNfce[0];
+      return {
+        success: true,
+        message: "NFC-e j\xE1 emitida anteriormente",
+        nfce: {
+          id: nfceData2.id,
+          chave_acesso: nfceData2.chave_acesso,
+          numero: Number(nfceData2.numero),
+          serie: nfceData2.serie,
+          data_autorizacao: nfceData2.data_autorizacao,
+          protocolo: nfceData2.protocolo,
+          status: nfceData2.status,
+          qr_code: nfceData2.qr_code,
+          xml_retorno: nfceData2.xml_retorno,
+          url_consulta: nfceData2.url_consulta,
+          ambiente: nfceData2.ambiente,
+          mensagem_status: nfceData2.mensagem_status
+        }
+      };
+    }
+    const pendingNfce = await sql`
+                                      SELECT id, chave_acesso, created_at FROM nfce
+                                      WHERE sale_id = ${String(saleDbId)}
+                                        AND status = 'pendente'
+                                        AND created_at > NOW() - INTERVAL '5 minutes'
+                                      ORDER BY created_at DESC
+                                      LIMIT 1
+                                    `;
+    if (pendingNfce && pendingNfce.length > 0) {
+      throw createError({
+        statusCode: 409,
+        statusMessage: "J\xE1 existe uma NFC-e em processamento para esta venda. Aguarde alguns instantes antes de tentar novamente."
+      });
+    }
     if (!saleDbId || !valor_total || !itens || !Array.isArray(itens)) {
       throw createError({
         statusCode: 400,

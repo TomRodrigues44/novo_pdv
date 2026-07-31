@@ -309,20 +309,82 @@ export default defineEventHandler(async (event) => {
               : Number(sale_id);
             
             // Buscar a venda para verificar se existe
-            const saleResult = await sql`
-              SELECT id, total_amount, created_at FROM sales
-              WHERE id = ${saleIdNumber}
-              LIMIT 1
-            `;
-            
-            if (!saleResult || saleResult.length === 0) {
-              throw createError({
-                statusCode: 404,
-                statusMessage: 'Venda não encontrada. Verifique o sale_id.',
-              });
-            }
-            
-            const saleDbId = saleResult[0].id;
+                        const saleResult = await sql`
+                          SELECT id, total_amount, created_at FROM sales
+                          WHERE id = ${saleIdNumber}
+                          LIMIT 1
+                        `;
+                        
+                        if (!saleResult || saleResult.length === 0) {
+                          throw createError({
+                            statusCode: 404,
+                            statusMessage: 'Venda não encontrada. Verifique o sale_id.',
+                          });
+                        }
+                        
+                        const saleDbId = saleResult[0].id;
+                        
+                        // Verificar se já existe uma NFC-e autorizada para essa venda
+                                    const existingNfce = await sql`
+                                      SELECT
+                                        id,
+                                        chave_acesso,
+                                        numero,
+                                        serie,
+                                        data_autorizacao,
+                                        protocolo,
+                                        status,
+                                        qr_code,
+                                        xml_retorno,
+                                        url_consulta,
+                                        ambiente,
+                                        mensagem_status
+                                      FROM nfce
+                                      WHERE sale_id = ${String(saleDbId)}
+                                        AND status IN ('autorizada', 'cancelada')
+                                      ORDER BY created_at DESC
+                                      LIMIT 1
+                                    `;
+                                    
+                                    // Se já existe uma NFC-e, retornar os dados existentes
+                                    if (existingNfce && existingNfce.length > 0) {
+                                      const nfceData = existingNfce[0];
+                                      return {
+                                        success: true,
+                                        message: 'NFC-e já emitida anteriormente',
+                                        nfce: {
+                                          id: nfceData.id,
+                                          chave_acesso: nfceData.chave_acesso,
+                                          numero: Number(nfceData.numero),
+                                          serie: nfceData.serie,
+                                          data_autorizacao: nfceData.data_autorizacao,
+                                          protocolo: nfceData.protocolo,
+                                          status: nfceData.status,
+                                          qr_code: nfceData.qr_code,
+                                          xml_retorno: nfceData.xml_retorno,
+                                          url_consulta: nfceData.url_consulta,
+                                          ambiente: nfceData.ambiente,
+                                          mensagem_status: nfceData.mensagem_status,
+                                        }
+                                      };
+                                    }
+                                    
+                                    // Verificar se existe uma NFC-e pendente para essa venda (evitar emissões duplicadas)
+                                    const pendingNfce = await sql`
+                                      SELECT id, chave_acesso, created_at FROM nfce
+                                      WHERE sale_id = ${String(saleDbId)}
+                                        AND status = 'pendente'
+                                        AND created_at > NOW() - INTERVAL '5 minutes'
+                                      ORDER BY created_at DESC
+                                      LIMIT 1
+                                    `;
+                                    
+                                    if (pendingNfce && pendingNfce.length > 0) {
+                                      throw createError({
+                                        statusCode: 409,
+                                        statusMessage: 'Já existe uma NFC-e em processamento para esta venda. Aguarde alguns instantes antes de tentar novamente.',
+                                      });
+                                    }
         
         if (!saleDbId || !valor_total || !itens || !Array.isArray(itens)) {
       throw createError({
