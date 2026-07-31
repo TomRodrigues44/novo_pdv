@@ -1,4 +1,4 @@
-import { sql } from '../../lib/db';
+import { sql } from '../../utils/db';
 
 export default defineEventHandler(async () => {
   try {// Buscar caixa aberto

@@ -1,4 +1,4 @@
-import { sql } from '../../../lib/db';
+import { sql } from '../../../utils/db';
 import { enviarParaSefaz } from '../../../lib/nfce/sefaz';
 
 // Helper para converter valor para número
