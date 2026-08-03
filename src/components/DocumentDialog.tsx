@@ -1,660 +1,196 @@
-import { useState, useEffect } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Receipt, FileText, Printer, CheckCircle, Truck, Store, Phone, MapPin, Loader2 } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
-import { CartItem } from "@/types/product";
+import { useEffect, useState, useRef } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { useReactToPrint } from 'react-to-print';
+import { format } from 'date-fns';
+import { QRCode } from 'react-qrcode-logo';
 
-interface DocumentDialogProps {
-  open: boolean;
-  onClose: () => void;
-  total: number;
-  freight: number;
-  cartItems: CartItem[];
-  payments: any[];
-  onGenerateDocument: (type: "quote" | "fiscal") => void;
-  isEmitting?: boolean;
+interface NfceData {
+  id: number;
+  chave_acesso: string;
+  numero: number;
+  serie: number;
+  data_autorizacao: string;
+  protocolo: string;
+  status: 'autorizada' | 'cancelada' | 'rejeitada' | 'pendente';
+  qr_code: string;
+  xml_retorno: string;
+  url_consulta: string;
+  ambiente: string;
+  mensagem_status: string;
 }
 
-interface ReceiptDialogProps {
-  open: boolean;
-  onClose: () => void;
-  total: number;
-  freight: number;
-  cartItems: CartItem[];
-  payments: any[];
-  documentType: "quote" | "fiscal";
-  saleId?: string;
-  nfceData?: any;
+interface SaleData {
+  id: number;
+  customer_name?: string;
+  total_amount: number;
+  items: {
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+  }[];
+  payments: {
+    tipo: string;
+    valor: number;
+  }[];
+  created_at: string;
 }
 
-export const DocumentDialog = ({ open, onClose, total, freight, cartItems, payments, onGenerateDocument, isEmitting }: DocumentDialogProps) => {
-  const totalChange = payments.reduce((sum: number, p: any) => {
-    if (p.type === "cash" && p.cashReceived) {
-      return sum + (p.cashReceived - p.amount);
-    }
-    return sum;
-  }, 0);
+interface CompanyConfig {
+  razao_social: string;
+  nome_fantasia: string;
+  cnpj: string;
+  logradouro: string;
+  numero: string;
+  bairro: string;
+  municipio: string;
+  uf: string;
+  cep: string;
+  telefone: string;
+  inscricao_estadual: string;
+}
 
-  const subtotal = total - freight;
+const paymentTypeMap: Record<string, string> = {
+  cash: 'Dinheiro',
+  credit: 'Cartão de Crédito',
+  debit: 'Cartão de Débito',
+  pix: 'PIX',
+  other: 'Outros',
+};
 
-  const getPaymentTypeName = (type: string) => {
-    switch (type) {
-      case "debit": return "Cartão de Débito";
-      case "credit": return "Cartão de Crédito";
-      case "pix": return "Pix";
-      case "cash": return "Dinheiro";
-      default: return type;
+export function DocumentDialog({ open, onOpenChange, nfce, sale, isBudget = false }: { open: boolean, onOpenChange: (open: boolean) => void, nfce: NfceData | null, sale: SaleData | null, isBudget?: boolean }) {
+  const [companyConfig, setCompanyConfig] = useState<CompanyConfig | null>(null);
+  const printRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      fetch('/api/fiscal/company-config')
+        .then(res => res.json())
+        .then(data => setCompanyConfig(data))
+        .catch(err => console.error("Failed to fetch company config:", err));
     }
+  }, [open]);
+
+  const handlePrint = useReactToPrint({
+    content: () => printRef.current,
+    documentTitle: `NFC-e-${nfce?.numero || sale?.id}`,
+  });
+
+  const formatCnpj = (cnpj: string) => {
+    if (!cnpj) return '';
+    return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
   };
 
-  const now = new Date();
+  const formatPhone = (phone: string) => {
+    if (!phone) return '';
+    if (phone.length === 11) {
+      return phone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+    }
+    if (phone.length === 10) {
+      return phone.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
+    }
+    return phone;
+  }
+
+  const isNfceAuthorized = nfce && nfce.status === 'autorizada';
+  const title = isBudget ? 'Orçamento' : (isNfceAuthorized ? 'NFC-e Autorizada' : 'Comprovante de Venda');
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[95vh] p-0 overflow-hidden flex flex-col">
-        <DialogHeader className="px-6 py-4 border-b bg-green-50">
-          <DialogTitle className="text-2xl flex items-center gap-2">
-            <CheckCircle className="h-6 w-6 text-green-600" />
-            Pagamento Confirmado!
-          </DialogTitle>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm md:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Coluna Esquerda - Cupom Térmico */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg text-center">Pré-visualização do Cupom</h3>
-              
-              {/* Cupom Térmico */}
-              <Card className="bg-white border-2 border-gray-300">
-                <CardContent className="p-6">
-                  {/* Container do cupom com largura fixa para simular impressora térmica */}
-                  <div className="max-w-[280px] mx-auto font-mono text-xs leading-tight">
-                    {/* Cabeçalho */}
-                    <div className="text-center mb-4">
-                      <div className="text-lg font-bold">EMPÓRIO DAS COXINHAS</div>
-                      <div className="text-xs mt-1">Salgados, Bolos e Doces</div>
-                      <div className="flex items-center justify-center gap-1 mt-1 text-[10px]">
-                        <MapPin className="h-3 w-3" />
-                        <span>Rua das Coxinhas, 123</span>
-                      </div>
-                      <div className="flex items-center justify-center gap-1 text-[10px]">
-                        <Phone className="h-3 w-3" />
-                        <span>(95) 99999-9999</span>
-                      </div>
-                    </div>
-
-                    <Separator className="my-3" />
-
-                    {/* Data e Hora */}
-                    <div className="text-center mb-3">
-                      <div className="text-[10px]">
-                        {now.toLocaleDateString('pt-BR')} {now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                      <div className="text-[10px]">CUPOM NÃO FISCAL</div>
-                    </div>
-
-                    <Separator className="my-3" />
-
-                    {/* Itens */}
-                    <div className="space-y-2 mb-3">
-                      {cartItems.map((item, index) => {
-                        const price = typeof item.price === 'number' ? item.price : parseFloat(String(item.price));
-                        return (
-                          <div key={index} className="border-b border-dotted border-gray-300 pb-1">
-                            <div className="flex justify-between">
-                              <span className="font-semibold">{item.quantity}x {item.name}</span>
-                              <span>R$ {(price * item.quantity).toFixed(2)}</span>
-                            </div>
-                            {(item as any).flavors && (item as any).flavors.length > 0 && (
-                              <div className="text-[10px] text-gray-600 mt-0.5">
-                                Sabores: {(item as any).flavors.join(", ")}
-                              </div>
-                            )}
-                            <div className="text-[10px] text-gray-500">
-                              R$ {price.toFixed(2)} un.
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <Separator className="my-3" />
-
-                    {/* Totais */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <span>Subtotal:</span>
-                        <span>R$ {subtotal.toFixed(2)}</span>
-                      </div>
-                      {freight > 0 && (
-                        <div className="flex justify-between text-blue-600">
-                          <span className="flex items-center gap-1">
-                            <Truck className="h-3 w-3" />
-                            Frete:
-                          </span>
-                          <span>R$ {freight.toFixed(2)}</span>
-                        </div>
-                      )}
-                      <Separator className="my-2" />
-                      <div className="flex justify-between font-bold text-sm">
-                        <span>TOTAL:</span>
-                        <span>R$ {total.toFixed(2)}</span>
-                      </div>
-                    </div>
-
-                    <Separator className="my-3" />
-
-                    {/* Pagamentos */}
-                    <div className="space-y-1 mb-3">
-                      {payments.map((payment) => (
-                        <div key={payment.id} className="flex justify-between">
-                          <span>{getPaymentTypeName(payment.type)}</span>
-                          <span>R$ {payment.amount.toFixed(2)}</span>
-                        </div>
-                      ))}
-                      {totalChange > 0 && (
-                        <div className="flex justify-between font-bold text-green-600">
-                          <span>Troco:</span>
-                          <span>R$ {totalChange.toFixed(2)}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <Separator className="my-3" />
-
-                    {/* Rodapé */}
-                    <div className="text-center text-[10px] text-gray-600 space-y-1">
-                      <div>*** OBRIGADO PELA PREFERÊNCIA ***</div>
-                      <div>Volte sempre!</div>
-                      <div className="mt-2">Empório das Coxinhas</div>
-                      <div>CNPJ: 00.000.000/0001-00</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Coluna Direita - Opções de Documento */}
-                        <div className="space-y-4">
-                          <h3 className="font-semibold text-lg text-center">Escolha o Tipo de Documento</h3>
-                          
-                          {isEmitting && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-center gap-3">
-                              <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
-                              <div className="text-center">
-                                <p className="font-semibold text-blue-900 text-sm">Processando NFC-e</p>
-                                <p className="text-xs text-blue-700">
-                                  Enviando para SEFAZ... Por favor, aguarde.
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                          
-                          <div className="space-y-4">
-                {/* Opção Orçamento */}
-                                <Card
-                                  className={`cursor-pointer hover:border-orange-400 hover:shadow-lg transition-all border-2 ${isEmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                  onClick={() => !isEmitting && onGenerateDocument("quote")}
-                                >
-                                  <CardContent className="p-6">
-                                    <div className="flex items-center gap-4">
-                                      <div className="bg-orange-100 p-4 rounded-full">
-                                        <FileText className="h-8 w-8 text-orange-600" />
-                                      </div>
-                                      <div className="flex-1">
-                                        <h4 className="font-bold text-lg text-gray-800">Orçamento</h4>
-                                        <p className="text-sm text-gray-600 mt-1">
-                                          Documento não fiscal para controle interno
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                
-                                {/* Opção Cupom Fiscal */}
-                                <Card
-                                  className={`cursor-pointer hover:border-green-400 hover:shadow-lg transition-all border-2 ${isEmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                  onClick={() => !isEmitting && onGenerateDocument("fiscal")}
-                                >
-                                  <CardContent className="p-6">
-                                    <div className="flex items-center gap-4">
-                                      <div className="bg-green-100 p-4 rounded-full">
-                                        <Receipt className="h-8 w-8 text-green-600" />
-                                      </div>
-                                      <div className="flex-1">
-                                        <h4 className="font-bold text-lg text-gray-800">Cupom Fiscal</h4>
-                                        <p className="text-sm text-gray-600 mt-1">
-                                          Documento fiscal enviado ao FISCO
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-2">
-                  <Printer className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-blue-900 text-sm">Impressão</p>
-                    <p className="text-xs text-blue-700 mt-1">
-                      Após escolher o tipo de documento, o cupom será gerado e estará pronto para impressão em impressora térmica não fiscal.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div ref={printRef} className="p-4 font-mono text-xs bg-white text-black">
+          {/* Header */}
+          <div className="text-center mb-2">
+            <h2 className="font-bold text-sm">{companyConfig?.nome_fantasia || 'Carregando...'}</h2>
+            {isBudget && <p className="font-bold">** SEM VALOR FISCAL **</p>}
+            {nfce && !isBudget && <p className="font-bold">DANFE NFC-e - Cupom Fiscal Eletrônico</p>}
+            <p>{`${companyConfig?.logradouro || ''}, ${companyConfig?.numero || ''}`}</p>
+            <p>{`${companyConfig?.bairro || ''} - ${companyConfig?.municipio || ''}/${companyConfig?.uf || ''}`}</p>
+            <p>{formatPhone(companyConfig?.telefone || '')}</p>
+            <p>CNPJ: {formatCnpj(companyConfig?.cnpj || '')}</p>
+            <p>IE: {companyConfig?.inscricao_estadual || ''}</p>
           </div>
-        </div>
 
-        <DialogFooter className="px-6 py-4 border-t bg-gray-50">
-          <Button variant="outline" onClick={onClose}>
-            Fechar
-          </Button>
+          <hr className="border-dashed border-black my-2" />
+
+          {/* Sale Info */}
+          <div className="mb-2">
+            <p>NFC-e Nº: {nfce?.numero || 'N/A'} Série: {nfce?.serie || 'N/A'}</p>
+            <p>Emissão: {format(new Date(nfce?.data_autorizacao || sale?.created_at || new Date()), 'dd/MM/yyyy HH:mm:ss')}</p>
+          </div>
+
+          <hr className="border-dashed border-black my-2" />
+
+          {/* Items */}
+          <div className="mb-2">
+            <div className="grid grid-cols-12 gap-1 font-bold">
+              <div className="col-span-6">DESC</div>
+              <div className="col-span-2 text-right">QTD</div>
+              <div className="col-span-2 text-right">V.UN</div>
+              <div className="col-span-2 text-right">V.TOT</div>
+            </div>
+            {sale?.items.map((item, index) => (
+              <div key={index} className="grid grid-cols-12 gap-1">
+                <div className="col-span-6">{item.name}</div>
+                <div className="col-span-2 text-right">{item.quantity}</div>
+                <div className="col-span-2 text-right">{item.price.toFixed(2)}</div>
+                <div className="col-span-2 text-right">{(item.quantity * item.price).toFixed(2)}</div>
+              </div>
+            ))}
+          </div>
+
+          <hr className="border-dashed border-black my-2" />
+
+          {/* Totals */}
+          <div className="flex justify-between font-bold">
+            <span>TOTAL:</span>
+            <span>R$ {sale?.total_amount.toFixed(2)}</span>
+          </div>
+
+          <div className="mt-1">
+            {sale?.payments.map((p, i) => (
+              <div key={i} className="flex justify-between">
+                <span>{paymentTypeMap[p.tipo] || 'Outro'}</span>
+                <span>R$ {p.valor.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+
+          <hr className="border-dashed border-black my-2" />
+
+          {/* Footer */}
+          <div className="text-center mb-2">
+            <p className="font-bold">*** OBRIGADO PELA PREFERÊNCIA ***</p>
+            <p>Volte sempre!</p>
+          </div>
+
+          {isNfceAuthorized && (
+            <>
+              <hr className="border-dashed border-black my-2" />
+              <div className="text-center text-[10px] break-all">
+                <p className="font-bold">Consulte pela Chave de Acesso em:</p>
+                <p>{nfce.url_consulta}</p>
+                <p className="mt-1 font-bold">Chave de Acesso:</p>
+                <p>{nfce.chave_acesso.replace(/(.{4})/g, '$1 ').trim()}</p>
+              </div>
+              <div className="flex justify-center my-2">
+                {nfce.qr_code && <QRCode value={nfce.qr_code} size={120} />}
+              </div>
+              <div className="text-center">
+                <p>Protocolo: {nfce.protocolo}</p>
+                <p>Ambiente: {nfce.ambiente === 'producao' ? 'Produção' : 'Homologação'}</p>
+              </div>
+            </>
+          )}
+        </div>
+        <DialogFooter>
+          <Button onClick={handlePrint}>Imprimir</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-};
-
-export const ReceiptDialog = ({ open, onClose, total, freight, cartItems, payments, documentType, saleId, nfceData }: ReceiptDialogProps) => {
-  const totalChange = payments.reduce((sum: number, p: any) => {
-    if (p.type === "cash" && p.cashReceived) {
-      return sum + (p.cashReceived - p.amount);
-    }
-    return sum;
-  }, 0);
-
-  const subtotal = total - freight;
-
-  const getPaymentTypeName = (type: string) => {
-    switch (type) {
-      case "debit": return "Cartão de Débito";
-      case "credit": return "Cartão de Crédito";
-      case "pix": return "Pix";
-      case "cash": return "Dinheiro";
-      default: return type;
-    }
-  };
-
-  const now = new Date();
-  const isFiscal = documentType === "fiscal";
-  const documentTitle = isFiscal ? "NFC-e AUTORIZADA" : "ORÇAMENTO";
-  
-  const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
-
-  // Buscar QR Code quando for NFC-e
-  useEffect(() => {
-    const fetchQrCode = async () => {
-      if (isFiscal && nfceData?.id) {
-        try {
-          const response = await fetch(`/api/nfce/${nfceData.id}/qr-code`);
-          if (response.ok) {
-            const data = await response.json();
-            setQrCodeImage(data.image);
-          }
-        } catch (error) {
-          console.error('Error fetching QR code:', error);
-        }
-      }
-    };
-
-    fetchQrCode();
-  }, [isFiscal, nfceData?.id]);
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[95vh] p-0 overflow-hidden flex flex-col">
-        <DialogHeader className="px-6 py-4 border-b bg-orange-50">
-          <DialogTitle className="text-2xl flex items-center gap-2">
-            <CheckCircle className="h-6 w-6 text-green-600" />
-            {documentTitle} Gerado!
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="space-y-4">
-            <h3 className="font-semibold text-lg text-center">Cupom Não Fiscal</h3>
-            
-            {/* Cupom Térmico */}
-            <Card className="bg-white border-2 border-gray-300 printable-receipt">
-              <CardContent className="p-6">
-                {/* Container do cupom com largura fixa para simular impressora térmica */}
-                <div className="max-w-[280px] mx-auto font-mono text-xs leading-tight">
-                  {/* Cabeçalho */}
-                                      <div className="text-center mb-4">
-                                        <div className="text-lg font-bold">EMPÓRIO DAS COXINHAS</div>
-                                        <div className="text-xs mt-1">Salgados, Bolos e Doces</div>
-                                        <div className="flex items-center justify-center gap-1 mt-1 text-[10px]">
-                                          <MapPin className="h-3 w-3" />
-                                          <span>Rua das Coxinhas, 123</span>
-                                        </div>
-                                        <div className="flex items-center justify-center gap-1 text-[10px]">
-                                          <Phone className="h-3 w-3" />
-                                          <span>(95) 99999-9999</span>
-                                        </div>
-                                      </div>
-                  
-                                      <Separator className="my-3" />
-                  
-                                      {/* Data e Hora */}
-                                      <div className="text-center mb-3">
-                                        <div className="text-[10px]">
-                                          {now.toLocaleDateString('pt-BR')} {now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                        </div>
-                                        <div className="text-[10px] font-bold">{documentTitle}</div>
-                                        {isFiscal && nfceData && (
-                                          <div className="text-[10px] font-semibold text-green-600 mt-1">
-                                            #{nfceData.numero}
-                                          </div>
-                                        )}
-                                      </div>
-
-                  <Separator className="my-3" />
-
-                  {/* Itens */}
-                  <div className="space-y-2 mb-3">
-                    {cartItems.map((item, index) => {
-                      const price = typeof item.price === 'number' ? item.price : parseFloat(String(item.price));
-                      return (
-                        <div key={index} className="border-b border-dotted border-gray-300 pb-1">
-                          <div className="flex justify-between">
-                            <span className="font-semibold">{item.quantity}x {item.name}</span>
-                            <span>R$ {(price * item.quantity).toFixed(2)}</span>
-                          </div>
-                          {(item as any).flavors && (item as any).flavors.length > 0 && (
-                            <div className="text-[10px] text-gray-600 mt-0.5">
-                              Sabores: {(item as any).flavors.join(", ")}
-                            </div>
-                          )}
-                          <div className="text-[10px] text-gray-500">
-                            R$ {price.toFixed(2)} un.
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <Separator className="my-3" />
-
-                  {/* Totais */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                      <span>Subtotal:</span>
-                      <span>R$ {subtotal.toFixed(2)}</span>
-                    </div>
-                    {freight > 0 && (
-                      <div className="flex justify-between text-blue-600">
-                        <span className="flex items-center gap-1">
-                          <Truck className="h-3 w-3" />
-                          Frete:
-                        </span>
-                        <span>R$ {freight.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <Separator className="my-2" />
-                    <div className="flex justify-between font-bold text-sm">
-                      <span>TOTAL:</span>
-                      <span>R$ {total.toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  <Separator className="my-3" />
-
-                  {/* Pagamentos */}
-                  <div className="space-y-1 mb-3">
-                    {payments.map((payment) => (
-                      <div key={payment.id} className="flex justify-between">
-                        <span>{getPaymentTypeName(payment.type)}</span>
-                        <span>R$ {payment.amount.toFixed(2)}</span>
-                      </div>
-                    ))}
-                    {totalChange > 0 && (
-                      <div className="flex justify-between font-bold text-green-600">
-                        <span>Troco:</span>
-                        <span>R$ {totalChange.toFixed(2)}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <Separator className="my-3" />
-                  
-                                    {/* Rodapé */}
-                                    <div className="text-center text-[10px] text-gray-600 space-y-1">
-                                      <div>*** OBRIGADO PELA PREFERÊNCIA ***</div>
-                                      <div>Volte sempre!</div>
-                                      <div className="mt-2">Empório das Coxinhas</div>
-                                      <div>CNPJ: 00.000.000/0001-00</div>
-                                      
-                                      {isFiscal && nfceData && (
-                                        <>
-                                          <Separator className="my-3 border-dashed" />
-                                          <div className="nfce-info bg-green-50 p-2 rounded">
-                                            <div className="text-[10px] font-bold text-green-800 mb-1">
-                                              NFC-e AUTORIZADA
-                                            </div>
-                                            <div className="text-[9px] text-gray-600 mb-1">
-                                              Protocolo: {nfceData.protocolo}
-                                            </div>
-                                            <div className="text-[9px] text-gray-600 mb-2 break-all">
-                                                                        Chave: {nfceData.chave_acesso}
-                                                                      </div>
-                                                                      {/* QR Code Real */}
-                                                                      <div className="qr-code-placeholder bg-white border-2 border-dashed border-gray-300 rounded flex items-center justify-center p-2">
-                                                                        {qrCodeImage ? (
-                                                                          <img
-                                                                            src={qrCodeImage}
-                                                                            alt="QR Code NFC-e"
-                                                                            className="w-[150px] h-[150px]"
-                                                                          />
-                                                                        ) : (
-                                                                          <div className="text-center">
-                                                                            <div className="text-6xl mb-1">📱</div>
-                                                                            <div className="text-[8px] text-gray-500">
-                                                                              Gerando QR Code...
-                                                                            </div>
-                                                                          </div>
-                                                                        )}
-                                                                      </div>
-                                                                      <div className="text-[8px] text-blue-600 mt-2 break-all">
-                                                                        {nfceData.url_consulta}
-                                                                      </div>
-                                          </div>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            </div>
-                          </div>
-                  
-                          <DialogFooter className="px-6 py-4 border-t bg-gray-50 gap-2">
-                                    <Button variant="outline" onClick={onClose}>
-                                      Fechar
-                                    </Button>
-                                    <Button onClick={handlePrint} className="flex-1">
-                                      <Printer className="h-4 w-4 mr-2" />
-                                      Imprimir Cupom
-                                    </Button>
-                                  </DialogFooter>
-        
-                {isFiscal && nfceData && (
-                  <style>{`
-                    @media print {
-                      body * {
-                        visibility: hidden;
-                      }
-                      .printable-receipt, .printable-receipt * {
-                        visibility: visible;
-                      }
-                      .printable-receipt {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 80mm;
-                        font-family: Courier New, monospace;
-                        font-size: 12px;
-                        padding: 5mm;
-                        background: white;
-                        color: black;
-                        line-height: 1.4;
-                      }
-                      .printable-receipt .nfce-info {
-                        display: block !important;
-                        margin: 10px 0;
-                        padding: 8px;
-                        border: 2px solid #000;
-                        text-align: center;
-                      }
-                      .printable-receipt .qr-code-placeholder {
-                        display: block !important;
-                        width: 150px;
-                        height: 150px;
-                        margin: 10px auto;
-                        border: 2px dashed #000;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 10px;
-                        text-align: center;
-                      }
-                      .printable-receipt h2,
-                      .printable-receipt h3 {
-                        font-size: 16px;
-                        text-align: center;
-                        margin-bottom: 5px;
-                        font-weight: bold;
-                      }
-                      .printable-receipt p {
-                        margin: 2px 0;
-                      }
-                      .printable-receipt .border-b-2,
-                      .printable-receipt .border-t {
-                        border-bottom: 2px dashed black;
-                        border-top: 2px dashed black;
-                      }
-                      .printable-receipt .flex {
-                        display: flex;
-                        justify-content: space-between;
-                      }
-                      .printable-receipt .font-bold {
-                        font-weight: bold;
-                      }
-                      .printable-receipt .text-center {
-                        text-align: center;
-                      }
-                      .printable-receipt .text-sm {
-                        font-size: 10px;
-                      }
-                      .printable-receipt .text-xs {
-                        font-size: 9px;
-                      }
-                      .printable-receipt .text-gray-500,
-                      .printable-receipt .text-gray-600,
-                      .printable-receipt .text-red-600,
-                      .printable-receipt .text-red-700,
-                      .printable-receipt .text-green-600,
-                      .printable-receipt .text-green-700,
-                      .printable-receipt .text-amber-600,
-                      .printable-receipt .text-amber-700,
-                      .printable-receipt .text-blue-600,
-                      .printable-receipt .text-blue-700,
-                      .printable-receipt .text-orange-600,
-                      .printable-receipt .text-orange-700,
-                      .printable-receipt .dialog-header,
-                      .printable-receipt .dialog-footer,
-                      .printable-receipt button {
-                        display: none;
-                      }
-                    }
-                  `}</style>
-                )}
-
-        <style>{`
-          @media print {
-            body * {
-              visibility: hidden;
-            }
-            .printable-receipt, .printable-receipt * {
-              visibility: visible;
-            }
-            .printable-receipt {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 80mm;
-              font-family: Courier New, monospace;
-              font-size: 12px;
-              padding: 5mm;
-              background: white;
-              color: black;
-              line-height: 1.4;
-            }
-            .printable-receipt h2,
-            .printable-receipt h3 {
-              font-size: 16px;
-              text-align: center;
-              margin-bottom: 5px;
-              font-weight: bold;
-            }
-            .printable-receipt p {
-              margin: 2px 0;
-            }
-            .printable-receipt .border-b-2,
-            .printable-receipt .border-t {
-              border-bottom: 2px dashed black;
-              border-top: 2px dashed black;
-            }
-            .printable-receipt .flex {
-              display: flex;
-              justify-content: space-between;
-            }
-            .printable-receipt .font-bold {
-              font-weight: bold;
-            }
-            .printable-receipt .text-center {
-              text-align: center;
-            }
-            .printable-receipt .text-sm {
-              font-size: 10px;
-            }
-            .printable-receipt .text-xs {
-              font-size: 9px;
-            }
-            .printable-receipt .text-gray-500,
-            .printable-receipt .text-gray-600,
-            .printable-receipt .text-red-600,
-            .printable-receipt .text-red-700,
-            .printable-receipt .text-green-600,
-            .printable-receipt .text-green-700,
-            .printable-receipt .text-amber-600,
-            .printable-receipt .text-amber-700,
-            .printable-receipt .text-blue-600,
-            .printable-receipt .text-blue-700,
-            .printable-receipt .text-orange-600,
-            .printable-receipt .text-orange-700,
-            .printable-receipt .dialog-header,
-            .printable-receipt .dialog-footer,
-            .printable-receipt button {
-              display: none;
-            }
-          }
-        `}</style>
-      </DialogContent>
-    </Dialog>
-  );
-};
+}
