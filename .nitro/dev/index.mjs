@@ -937,16 +937,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1d209-7zU4W8NPaaWmTGe3OfFTYNCiwCI\"",
-    "mtime": "2026-08-03T20:15:24.599Z",
-    "size": 119305,
+    "etag": "\"1d1ce-qpS89+f5meMMBTkq2XMHlS/R21A\"",
+    "mtime": "2026-08-03T20:35:38.474Z",
+    "size": 119246,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"680d6-/Y0uDTMUHTxwvaYvvp42AyQ56J4\"",
-    "mtime": "2026-08-03T20:15:24.599Z",
-    "size": 426198,
+    "etag": "\"68099-EMFaPgiT+3OjesXc50bRABSTj48\"",
+    "mtime": "2026-08-03T20:35:38.475Z",
+    "size": 426137,
     "path": "index.mjs.map"
   }
 };
@@ -1391,80 +1391,77 @@ const sql = neon(process.env.DATABASE_URL);
 
 const cashRegister_get = defineEventHandler(async () => {
   try {
-    const openRegister = await sql`
-          SELECT * FROM cash_registers
-          WHERE status = 'open'
-          ORDER BY opened_at DESC
-          LIMIT 1
-        `;
-    let currentRegister = null;
+    const openRegisterResult = await sql`
+      SELECT * FROM cash_registers
+      WHERE status = 'open'
+      ORDER BY opened_at DESC
+      LIMIT 1
+    `;
+    if (openRegisterResult.length === 0) {
+      const history2 = await sql`
+        SELECT * FROM cash_registers
+        WHERE status = 'closed'
+        ORDER BY closed_at DESC
+        LIMIT 10
+      `;
+      return { current: null, history: history2 };
+    }
+    const currentRegister = openRegisterResult[0];
+    const salesAndPayments = await sql`
+      SELECT 
+        s.id,
+        s.total_amount,
+        sp.payment_type,
+        sp.amount
+      FROM sales s
+      LEFT JOIN sale_payments sp ON s.id = sp.sale_id
+      WHERE s.created_at >= ${currentRegister.opened_at}
+    `;
     let salesTotal = 0;
-    let salesByPayment = {
+    const salesByPayment = {
       cash: 0,
       debit: 0,
       credit: 0,
       pix: 0
     };
-    if (openRegister.length > 0) {
-      currentRegister = openRegister[0];
-      const sales = await sql`
-              SELECT * FROM sales
-              WHERE created_at >= ${currentRegister.opened_at}
-            `;
-      sales.forEach((sale) => {
-        const total = parseFloat(sale.total_amount);
-        salesTotal += total;
-        if (sale.payments && Array.isArray(sale.payments)) {
-          sale.payments.forEach((payment) => {
-            const amount = parseFloat(payment.amount);
-            const change = parseFloat(payment.change || 0);
-            const netAmount = amount - change;
-            if (salesByPayment[payment.type] !== void 0) {
-              salesByPayment[payment.type] += netAmount;
-            }
-          });
-        } else {
-          const method = sale.payment_method.toLowerCase();
-          if (method.includes("dinheiro") || method.includes("cash")) {
-            salesByPayment.cash += total;
-          } else if (method.includes("d\xE9bito") || method.includes("debit")) {
-            salesByPayment.debit += total;
-          } else if (method.includes("cr\xE9dito") || method.includes("credit")) {
-            salesByPayment.credit += total;
-          } else if (method.includes("pix")) {
-            salesByPayment.pix += total;
-          } else {
-            salesByPayment.cash += total;
-          }
+    const processedSales = /* @__PURE__ */ new Set();
+    salesAndPayments.forEach((row) => {
+      if (!processedSales.has(row.id)) {
+        salesTotal += parseFloat(row.total_amount);
+        processedSales.add(row.id);
+      }
+      if (row.payment_type && row.amount) {
+        const type = row.payment_type.toLowerCase();
+        if (salesByPayment[type] !== void 0) {
+          salesByPayment[type] += parseFloat(row.amount);
         }
-      });
-      const transactionsResult = await sql`
-              SELECT * FROM cash_transactions
-              WHERE cash_register_id = ${currentRegister.id}
-              ORDER BY created_at DESC
-            `;
-      currentRegister = {
+      }
+    });
+    const transactionsResult = await sql`
+      SELECT * FROM cash_transactions
+      WHERE cash_register_id = ${currentRegister.id}
+      ORDER BY created_at DESC
+    `;
+    const history = await sql`
+      SELECT * FROM cash_registers
+      WHERE status = 'closed'
+      ORDER BY closed_at DESC
+      LIMIT 10
+    `;
+    return {
+      current: {
         ...currentRegister,
         salesTotal,
         salesByPayment,
         transactions: transactionsResult
-      };
-    }
-    const history = await sql`
-          SELECT * FROM cash_registers
-          WHERE status = 'closed'
-          ORDER BY closed_at DESC
-          LIMIT 10
-        `;
-    return {
-      current: currentRegister,
+      },
       history
     };
   } catch (error) {
     console.error("Error fetching cash register:", error);
     throw createError({
       statusCode: 500,
-      statusMessage: "Error fetching cash register"
+      statusMessage: error.message || "Error fetching cash register"
     });
   }
 });
