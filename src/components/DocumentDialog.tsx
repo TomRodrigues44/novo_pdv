@@ -31,8 +31,8 @@ interface SaleItem {
 }
 
 interface Payment {
-  tipo: string;
-  valor: number;
+  type: string;
+  amount: number;
 }
 
 interface CompanyConfig {
@@ -210,8 +210,8 @@ export function ReceiptDialog({ open, onClose, total, cartItems, payments, docum
           <div className="mt-1">
             {payments.map((p, i) => (
               <div key={i} className="flex justify-between">
-                <span>{paymentTypeMap[p.tipo] || 'Outro'}</span>
-                <span>R$ {p.valor.toFixed(2)}</span>
+                <span>{paymentTypeMap[p.type] || 'Outro'}</span>
+                <span>R$ {(p.amount || 0).toFixed(2)}</span>
               </div>
             ))}
           </div>
