@@ -937,16 +937,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1d873-/z67ZJTsIE82Kwj1HJhWFJFLJ2Q\"",
-    "mtime": "2026-08-03T15:18:33.708Z",
-    "size": 120947,
+    "etag": "\"1db63-Gu4AlrPUGTrHCP7428pw9wytHB8\"",
+    "mtime": "2026-08-03T15:20:50.906Z",
+    "size": 121699,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"69aa4-RQEddeRayY0FpTWRt7IPHyLpBx8\"",
-    "mtime": "2026-08-03T15:18:33.709Z",
-    "size": 432804,
+    "etag": "\"6a7ef-ZChOLDSP+0lpMFMubS5REJEl0uw\"",
+    "mtime": "2026-08-03T15:20:50.906Z",
+    "size": 436207,
     "path": "index.mjs.map"
   }
 };
@@ -3019,48 +3019,29 @@ const emitir_post = defineEventHandler(async (event) => {
     if (!valor_total || !itens || !Array.isArray(itens)) {
       throw createError({ statusCode: 400, statusMessage: "Dados inv\xE1lidos. Verifique valor_total e itens." });
     }
-    let config;
-    let proximoNumero = 0;
-    let serieNfce = 1;
-    let reservationSuccess = false;
-    const maxRetries = 5;
-    for (let i = 0; i < maxRetries; i++) {
-      console.log(`\u{1F512} Tentativa ${i + 1}/${maxRetries} para obter n\xFAmero da NFC-e...`);
-      const configResult = await sql`
-        SELECT * FROM company_fiscal_config
-        ORDER BY created_at DESC
-        LIMIT 1
-      `;
-      if (!configResult || configResult.length === 0) {
-        throw new Error("Configura\xE7\xE3o fiscal n\xE3o encontrada.");
-      }
-      const currentConfig = configResult[0];
-      const ultimaNfce = toNumber(currentConfig.ultima_nfce, 0);
-      const nextNumero = ultimaNfce + 1;
-      const updateResult = await sql`
-        UPDATE company_fiscal_config
-        SET ultima_nfce = ${nextNumero}
-        WHERE id = ${currentConfig.id} AND ultima_nfce = ${ultimaNfce}
-      `;
-      if (updateResult.count === 1) {
-        config = currentConfig;
-        proximoNumero = nextNumero;
-        serieNfce = toNumber(currentConfig.serie_nfce, 1);
-        reservationSuccess = true;
-        console.log("\u2705 N\xFAmero reservado:", proximoNumero);
-        break;
-      } else {
-        console.warn(`\u26A0\uFE0F Race condition detectada na tentativa ${i + 1}. Tentando novamente...`);
-        await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 100));
-      }
+    console.log("\u{1F512} Reservando n\xFAmero da NFC-e atomicamente...");
+    const configForId = await sql`
+      SELECT id FROM company_fiscal_config ORDER BY created_at DESC LIMIT 1
+    `;
+    if (!configForId || configForId.length === 0) {
+      throw new Error("Configura\xE7\xE3o fiscal n\xE3o encontrada.");
     }
-    if (!reservationSuccess) {
-      throw createError({
-        statusCode: 503,
-        // Service Unavailable
-        statusMessage: "N\xE3o foi poss\xEDvel reservar um n\xFAmero de nota fiscal devido a alta concorr\xEAncia. Por favor, tente novamente em alguns segundos."
-      });
+    const updateResult = await sql`
+      UPDATE company_fiscal_config
+      SET ultima_nfce = COALESCE(ultima_nfce, 0) + 1
+      WHERE id = ${configForId[0].id}
+      RETURNING ultima_nfce, serie_nfce
+    `;
+    if (!updateResult || updateResult.length === 0) {
+      throw new Error("Falha ao atualizar e retornar o n\xFAmero da NFC-e.");
     }
+    const proximoNumero = updateResult[0].ultima_nfce;
+    const serieNfce = toNumber(updateResult[0].serie_nfce, 1);
+    const configResult = await sql`
+        SELECT * FROM company_fiscal_config WHERE id = ${configForId[0].id}
+    `;
+    const config = configResult[0];
+    console.log("\u2705 N\xFAmero reservado:", proximoNumero);
     console.log("\u{1F522} Pr\xF3ximo NFC-e (atomicamente reservado):", proximoNumero, "S\xE9rie:", serieNfce);
     const nfceData = { sale_id: saleIdNumber, valor_total, itens, cliente, frete: frete || 0, forma_pagamento };
     console.log("\u{1F4DD} Gerando XML da NFC-e...");
