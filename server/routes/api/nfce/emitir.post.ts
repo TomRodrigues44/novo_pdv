@@ -1,9 +1,68 @@
 import { sql } from '../../../utils/db';
+import { enviarParaSefaz } from '../../../lib/nfce/sefaz';
 
-// Helper para converter valor para número
-const toNumber = (val: any, defaultValue: number = 0): number => {
-  if (typeof val === 'number') return val;
-  return parseFloat(String(val || defaultValue));
+const UF_CODES: Record<string, string> = {
+  AC: '12', AL: '27', AP: '16', AM: '13', BA: '29', CE: '23', DF: '53', ES: '32',
+  GO: '52', MA: '21', MT: '51', MS: '50', MG: '31', PA: '15', PB: '25', PR: '41',
+  PE: '26', PI: '22', RJ: '33', RN: '24', RS: '43', RO: '11', RR: '14', SC: '42',
+  SP: '35', SE: '28', TO: '17',
+};
+
+const RR_MUNICIPALITY_CODES: Record<string, string> = {
+  'alto alegre': '1400050', amajari: '1400027', 'boa vista': '1400100', bonfim: '1400159',
+  canta: '1400175', caracarai: '1400209', caroebe: '1400233', iracema: '1400282',
+  mucajai: '1400308', normandia: '1400407', pacaraima: '1400456', rorainopolis: '1400472',
+  'sao joao da baliza': '1400506', 'sao luiz': '1400605', uiramuta: '1400704',
+};
+
+const normalizeText = (value: unknown) => String(value ?? '').trim();
+const normalizeKey = (value: unknown) => normalizeText(value)
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase();
+const onlyDigits = (value: unknown) => normalizeText(value).replace(/\D/g, '');
+const escapeXml = (value: unknown) => normalizeText(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&apos;');
+
+const validateFiscalConfig = (config: any) => {
+  const requiredFields: Record<string, string> = {
+    cnpj: 'CNPJ', razao_social: 'Razão Social', inscricao_estadual: 'Inscrição Estadual',
+    crt: 'CRT', cep: 'CEP', logradouro: 'Logradouro', numero: 'Número', bairro: 'Bairro',
+    municipio: 'Município', uf: 'UF', ambiente: 'Ambiente',
+  };
+  const missing = Object.entries(requiredFields)
+    .filter(([field]) => !normalizeText(config[field]))
+    .map(([, label]) => label);
+
+  if (missing.length > 0) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Complete as Configurações Fiscais antes de emitir: ${missing.join(', ')}.`,
+    });
+  }
+
+  const uf = normalizeText(config.uf).toUpperCase();
+  const codigoUf = UF_CODES[uf];
+  const codigoMunicipio = uf === 'RR' ? RR_MUNICIPALITY_CODES[normalizeKey(config.municipio)] : undefined;
+
+  if (!codigoUf || !codigoMunicipio) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'UF ou município inválido para a integração SEFAZ-RR. Revise as Configurações Fiscais.',
+    });
+  }
+  if (onlyDigits(config.cnpj).length !== 14 || onlyDigits(config.cep).length !== 8) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'CNPJ ou CEP inválido nas Configurações Fiscais.',
+    });
+  }
+
+  return { uf, codigoUf, codigoMunicipio };
 };
 
 /**
@@ -98,23 +157,25 @@ function mapPaymentType(type: string): number {
  */
 export async function generateNfceXml(data: any, config: any, numeroNfce: number, serieNfce: number): Promise<string> {
   const dataEmissao = new Date();
-  
-  // ✅ CORREÇÃO: Usar fallbacks para evitar undefined
-  const estado = config.estado || config.uf || config.estado_registro || 'SP';
-  const ambiente = config.ambiente || 'homologacao';
-  const cnpj = config.cnpj || '00000000000000';
-  const nomeFantasia = config.nome_fantasia || 'EMPÓRIO DAS COXINHAS';
-  const razaoSocial = config.razao_social || 'EMPÓRIO DAS COXINHAS';
-  const logradouro = config.logradouro || 'Rua das Coxinhas';
-  const numero = config.numero || '123';
-  const complemento = config.complemento || '';
-  const bairro = config.bairro || 'Centro';
-  const municipio = config.municipio || 'São Paulo';
-  const inscricaoEstadual = config.inscricao_estadual || '123456789';
-  const CRT = config.regime_tributario === 'simples_nacional' ? '1' : '3';
+  const { uf: estado, codigoUf, codigoMunicipio } = validateFiscalConfig(config);
+  const ambiente = normalizeText(config.ambiente);
+  const cnpj = onlyDigits(config.cnpj);
+  const razaoSocial = escapeXml(config.razao_social);
+  const nomeFantasia = escapeXml(config.nome_fantasia || config.razao_social);
+  const logradouro = escapeXml(config.logradouro);
+  const numero = escapeXml(config.numero);
+  const complemento = escapeXml(config.complemento);
+  const bairro = escapeXml(config.bairro);
+  const municipio = escapeXml(config.municipio);
+  const inscricaoEstadual = onlyDigits(config.inscricao_estadual);
+  const inscricaoMunicipal = onlyDigits(config.inscricao_municipal);
+  const cnae = onlyDigits(config.cnae);
+  const cep = onlyDigits(config.cep);
+  const telefone = onlyDigits(config.telefone);
+  const crt = normalizeText(config.crt);
 
   const chaveAcesso = generateChaveAcesso(
-    estado,
+    codigoUf,
     dataEmissao,
     cnpj,
     '65',
@@ -205,11 +266,10 @@ FOP>5102</CFOP>
           <vPag>${valor.toFixed(2)}</vPag>`;
   }
   
-  // ✅ CORREÇÃO: Usar as variáveis locais já tratadas
-  const urlConsulta = ambiente === "producao" 
-    ? `https://www.sefaz${estado.toLowerCase()}.sp.gov.br/nfce`
-    : `https://www.sefaz${estado.toLowerCase()}.sp.gov.br/nfce-homologacao`;
-  
+  const urlConsulta = ambiente === 'producao'
+    ? `https://www.sefaz.rr.gov.br/nfce/consultarNFCe?chave=${chaveAcesso}`
+    : `https://www.sefaz.rr.gov.br/nfceh/consultarNFCe?chave=${chaveAcesso}`;
+
   const qrCode = generateQrCode(chaveAcesso, ambiente, urlConsulta);
   
   // Gerar o XML completo
@@ -218,8 +278,8 @@ FOP>5102</CFOP>
   <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
     <infNFe Id="NFe${chaveAcesso}" versao="4.00">
       <ide>
-        <cUF>${estado === 'SP' ? '35' : '35'}</cUF>
-        <cNF>${chaveAcesso.slice(35, 44)}</cNF>
+        <cUF>${codigoUf}</cUF>
+        <cNF>${chaveAcesso.slice(35, 43)}</cNF>
         <natOp>VENDA</natOp>
         <mod>65</mod>
         <serie>${serieNfce}</serie>
@@ -228,7 +288,7 @@ FOP>5102</CFOP>
         <dhSaiEnt>${now}</dhSaiEnt>
         <tpNF>1</tpNF>
         <idDest>1</idDest>
-        <cMunFG>3550308</cMunFG>
+        <cMunFG>${codigoMunicipio}</cMunFG>
         <tpImp>9</tpImp>
         <tpEmis>1</tpEmis>
         <cDV>${chaveAcesso.slice(-1)}</cDV>
@@ -246,18 +306,20 @@ FOP>5102</CFOP>
         <enderEmit>
           <xLgr>${logradouro}</xLgr>
           <nro>${numero}</nro>
-          <xCpl>${complemento}</xCpl>
+          ${complemento ? `<xCpl>${complemento}</xCpl>` : ''}
           <xBairro>${bairro}</xBairro>
-          <cMun>${config.codigo_municipio || '3550308'}</cMun>
+          <cMun>${codigoMunicipio}</cMun>
           <xMun>${municipio}</xMun>
           <UF>${estado}</UF>
-          <CEP>${config.cep || '00000000'}</CEP>
-          <cPais>${config.codigo_pais || '1058'}</cPais>
-          <xPais>${config.pais || 'BRASIL'}</xPais>
-          <fone>${config.telefone || '5599999999999'}</fone>
+          <CEP>${cep}</CEP>
+          <cPais>1058</cPais>
+          <xPais>BRASIL</xPais>
+          ${telefone ? `<fone>${telefone}</fone>` : ''}
         </enderEmit>
         <IE>${inscricaoEstadual}</IE>
-        <CRT>${CRT}</CRT>
+        ${inscricaoMunicipal ? `<IM>${inscricaoMunicipal}</IM>` : ''}
+        ${cnae ? `<CNAE>${cnae}</CNAE>` : ''}
+        <CRT>${crt}</CRT>
       </emit>
       ${data.cliente ? `
       <dest>

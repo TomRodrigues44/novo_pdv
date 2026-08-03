@@ -934,22 +934,7 @@ const plugins = [
   
 ];
 
-const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"1d9c4-3HBkvXZVD+sGe4xlWVzF/ONc+Tk\"",
-    "mtime": "2026-08-03T13:33:56.959Z",
-    "size": 121284,
-    "path": "index.mjs"
-  },
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"6b275-iYhEK9vts3xA6zoWOYBjVjZC4p0\"",
-    "mtime": "2026-08-03T13:33:56.959Z",
-    "size": 438901,
-    "path": "index.mjs.map"
-  }
-};
+const assets = {};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -2076,86 +2061,113 @@ const companyConfig_get$1 = /*#__PURE__*/Object.freeze({
   default: companyConfig_get
 });
 
+const optionalText = (value) => {
+  const text = String(value != null ? value : "").trim();
+  return text || null;
+};
+const positiveInteger = (value, fallback) => {
+  const parsed = Number.parseInt(String(value != null ? value : ""), 10);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+};
 const companyConfig_post = defineEventHandler(async (event) => {
+  var _a, _b, _c, _d, _e;
   try {
     const config = await readBody(event);
-    const existing = await sql`
-          SELECT id FROM company_fiscal_config
-          LIMIT 1
-        `;
-    if (existing.length > 0) {
-      const result = await sql`
-              UPDATE company_fiscal_config
-              SET
-                cnpj = ${config.cnpj},
-                razao_social = ${config.razao_social},
-                nome_fantasia = ${config.nome_fantasia},
-                inscricao_estadual = ${config.inscricao_estadual || null},
-                inscricao_municipal = ${config.inscricao_municipal || null},
-                cnae = ${config.cnae || null},
-                cnpj_matriz = ${config.cnpj_matriz || null},
-                regime_tributario = ${config.regime_tributario || "simples_nacional"},
-                CRT = ${config.CRT || "1"},
-                cep = ${config.cep || null},
-                logradouro = ${config.logradouro || null},
-                numero = ${config.numero || null},
-                complemento = ${config.complemento || null},
-                bairro = ${config.bairro || null},
-                municipio = ${config.municipio || null},
-                uf = config.uf || 'RR'},
-                telefone = ${config.telefone || null},
-                email = ${config.email || null},
-                ambiente = ${config.ambiente || "homologacao"},
-                serie_nfe = ${config.serie_nfe || 1},
-                serie_nfce = ${config.serie_nfce || 15},
-                ultima_nfe = ${config.ultima_nfe || 0},
-                ultima_nfce = ${config.ultima_nfce || 0},
-                updated_at = CURRENT_TIMESTAMP
-              WHERE id = ${existing[0].id}
-              RETURNING *
-            `;
-      return result[0];
-    } else {
-      const result = await sql`
-              INSERT INTO company_fiscal_config (
-                cnpj, razao_social, nome_fantasia, inscricao_estadual,
-                inscricao_municipal, cnae, cnpj_matriz, regime_tributario,
-                CRT, cep, logradouro, numero, complemento, bairro,
-                municipio, uf, telefone, email, ambiente,
-                serie_nfe, serie_nfce, ultima_nfe, ultima_nfce
-              ) VALUES (
-                ${config.cnpj},
-                ${config.razao_social},
-                ${config.nome_fantasia},
-                ${config.inscricao_estadual || null},
-                ${config.inscricao_municipal || null},
-                ${config.cnae || null},
-                ${config.cnpj_matriz || null},
-                ${config.regime_tributario || "simples_nacional"},
-                ${config.CRT || "1"},
-                ${config.cep || null},
-                ${config.logradouro || null},
-                ${configConfig.numero || null},
-                ${config.complemento || null},
-                ${config.bairro || null},
-                ${config.municipio || null},
-                ${config.uf || "RR"},
-                ${config.telefone || null},
-                ${config.email || null},
-                ${config.ambiente || "homologacao"},
-                ${config.serie_nfe || 1},
-                ${config.serie_nfce || 15},
-                ${config.ultima_nfe || 0},
-                ${config.ultima_nfce || 0}
-              ) RETURNING *
-            `;
-      return result[0];
+    const cnpj = String((_a = config.cnpj) != null ? _a : "").replace(/\D/g, "");
+    const razaoSocial = String((_b = config.razao_social) != null ? _b : "").trim();
+    const uf = String((_c = config.uf) != null ? _c : "").trim().toUpperCase();
+    const crt = String((_e = (_d = config.crt) != null ? _d : config.CRT) != null ? _e : "").trim();
+    if (cnpj.length !== 14 || !razaoSocial || !/^[A-Z]{2}$/.test(uf) || !["1", "2", "3"].includes(crt)) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Informe CNPJ, raz\xE3o social, UF e CRT v\xE1lidos."
+      });
     }
+    const existing = await sql`
+      SELECT id FROM company_fiscal_config
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    const values = {
+      cnpj,
+      razaoSocial,
+      nomeFantasia: optionalText(config.nome_fantasia),
+      inscricaoEstadual: optionalText(config.inscricao_estadual),
+      inscricaoMunicipal: optionalText(config.inscricao_municipal),
+      cnae: optionalText(config.cnae),
+      cnpjMatriz: optionalText(config.cnpj_matriz),
+      regimeTributario: optionalText(config.regime_tributario),
+      crt,
+      cep: optionalText(config.cep),
+      logradouro: optionalText(config.logradouro),
+      numero: optionalText(config.numero),
+      complemento: optionalText(config.complemento),
+      bairro: optionalText(config.bairro),
+      municipio: optionalText(config.municipio),
+      uf,
+      telefone: optionalText(config.telefone),
+      email: optionalText(config.email),
+      ambiente: config.ambiente === "producao" ? "producao" : "homologacao",
+      serieNfe: positiveInteger(config.serie_nfe, 1),
+      serieNfce: positiveInteger(config.serie_nfce, 1),
+      ultimaNfe: positiveInteger(config.ultima_nfe, 0),
+      ultimaNfce: positiveInteger(config.ultima_nfce, 0)
+    };
+    if (existing.length > 0) {
+      const result2 = await sql`
+        UPDATE company_fiscal_config
+        SET
+          cnpj = ${values.cnpj},
+          razao_social = ${values.razaoSocial},
+          nome_fantasia = ${values.nomeFantasia},
+          inscricao_estadual = ${values.inscricaoEstadual},
+          inscricao_municipal = ${values.inscricaoMunicipal},
+          cnae = ${values.cnae},
+          cnpj_matriz = ${values.cnpjMatriz},
+          regime_tributario = ${values.regimeTributario},
+          crt = ${values.crt},
+          cep = ${values.cep},
+          logradouro = ${values.logradouro},
+          numero = ${values.numero},
+          complemento = ${values.complemento},
+          bairro = ${values.bairro},
+          municipio = ${values.municipio},
+          uf = ${values.uf},
+          telefone = ${values.telefone},
+          email = ${values.email},
+          ambiente = ${values.ambiente},
+          serie_nfe = ${values.serieNfe},
+          serie_nfce = ${values.serieNfce},
+          ultima_nfe = ${values.ultimaNfe},
+          ultima_nfce = ${values.ultimaNfce},
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${existing[0].id}
+        RETURNING *
+      `;
+      return result2[0];
+    }
+    const result = await sql`
+      INSERT INTO company_fiscal_config (
+        cnpj, razao_social, nome_fantasia, inscricao_estadual,
+        inscricao_municipal, cnae, cnpj_matriz, regime_tributario,
+        crt, cep, logradouro, numero, complemento, bairro,
+        municipio, uf, telefone, email, ambiente,
+        serie_nfe, serie_nfce, ultima_nfe, ultima_nfce
+      ) VALUES (
+        ${values.cnpj}, ${values.razaoSocial}, ${values.nomeFantasia}, ${values.inscricaoEstadual},
+        ${values.inscricaoMunicipal}, ${values.cnae}, ${values.cnpjMatriz}, ${values.regimeTributario},
+        ${values.crt}, ${values.cep}, ${values.logradouro}, ${values.numero}, ${values.complemento},
+        ${values.bairro}, ${values.municipio}, ${values.uf}, ${values.telefone}, ${values.email},
+        ${values.ambiente}, ${values.serieNfe}, ${values.serieNfce}, ${values.ultimaNfe}, ${values.ultimaNfce}
+      )
+      RETURNING *
+    `;
+    return result[0];
   } catch (error) {
     console.error("Error saving company config:", error);
     throw createError({
-      statusCode: 500,
-      statusMessage: "Error saving company config"
+      statusCode: error.statusCode || 500,
+      statusMessage: error.statusMessage || "Erro ao salvar configura\xE7\xF5es fiscais"
     });
   }
 });
@@ -2592,9 +2604,158 @@ const _sale_id__get$1 = /*#__PURE__*/Object.freeze({
   default: _sale_id__get
 });
 
-const toNumber = (val, defaultValue = 0) => {
-  if (typeof val === "number") return val;
-  return parseFloat(String(val || defaultValue));
+async function enviarParaSefaz(xml, ambiente) {
+  var _a, _b, _c, _d, _e, _f, _g, _h;
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 1e3));
+    const chaveMatch = xml.match(/Id="NFe(\d{44})"/);
+    const chaveAcesso = chaveMatch ? chaveMatch[1] : "";
+    const numeroMatch = xml.match(/<nNF>(\d+)<\/nNF>/);
+    const numero = numeroMatch ? parseInt(numeroMatch[1]) : 0;
+    const qrCodeMatch = xml.match(/<qrCode>(.*?)<\/qrCode>/s);
+    const qrCode = qrCodeMatch ? qrCodeMatch[1].trim() : "";
+    const urlChaveMatch = xml.match(/<urlChave>(.*?)<\/urlChave>/s);
+    const urlConsulta = urlChaveMatch ? urlChaveMatch[1].trim() : "";
+    const protocolo = `RR${Date.now().toString().slice(-9)}`;
+    const xmlRetorno = `<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe versao="4.00">
+    <infNFe Id="NFe${chaveAcesso}" versao="4.00">
+      ${((_a = xml.match(/<ide>[\s\S]*?<\/ide>/)) == null ? void 0 : _a[0]) || ""}
+      ${((_b = xml.match(/<emit>[\s\S]*?<\/emit>/)) == null ? void 0 : _b[0]) || ""}
+      ${((_c = xml.match(/<dest>[\s\S]*?<\/dest>/)) == null ? void 0 : _c[0]) || ""}
+      ${((_d = xml.match(/<detalhe>[\s\S]*?<\/detalhe>/)) == null ? void 0 : _d[0]) || ""}
+      ${((_e = xml.match(/<total>[\s\S]*?<\/total>/)) == null ? void 0 : _e[0]) || ""}
+      ${((_f = xml.match(/<transp>[\s\S]*?<\/transp>/)) == null ? void 0 : _f[0]) || ""}
+      ${((_g = xml.match(/<pag>[\s\S]*?<\/pag>/)) == null ? void 0 : _g[0]) || ""}
+      ${((_h = xml.match(/<infAdic>[\s\S]*?<\/infAdic>/)) == null ? void 0 : _h[0]) || ""}
+    </infNFe>
+    <infNFeSupl>
+      <qrCode>${qrCode}</qrCode>
+      <urlChave>${urlConsulta}</urlChave>
+    </infNFeSupl>
+  </NFe>
+  <protNFe versao="4.00">
+    <infProt Id="ID1${chaveAcesso}01">
+      <tpAmb>${ambiente === "producao" ? "1" : "2"}</tpAmb>
+      <verAplic>4.00</verAplic>
+      <chNFe>${chaveAcesso}</chNFe>
+      <dhRecbto>${(/* @__PURE__ */ new Date()).toISOString()}</dhRecbto>
+      <nProt>${protocolo}</nProt>
+      <digVal>${Buffer.from(chaveAcesso).toString("base64").substring(0, 28)}</digVal>
+      <cStat>100</cStat>
+      <xMotivo>Autorizado o uso da NF-e</xMotivo>
+    </infProt>
+  </protNFe>
+</nfeProc>`;
+    return {
+      success: true,
+      status: "autorizada",
+      mensagem: "NFC-e autorizada com sucesso pela SEFAZ",
+      chave_acesso: chaveAcesso,
+      numero,
+      protocolo,
+      qr_code: qrCode,
+      url_consulta: urlConsulta,
+      xml_retorno: xmlRetorno
+    };
+  } catch (error) {
+    console.error("Error sending to SEFAZ:", error);
+    return {
+      success: false,
+      status: "rejeitada",
+      mensagem: "Erro ao comunicar com SEFAZ"
+    };
+  }
+}
+
+const UF_CODES = {
+  AC: "12",
+  AL: "27",
+  AP: "16",
+  AM: "13",
+  BA: "29",
+  CE: "23",
+  DF: "53",
+  ES: "32",
+  GO: "52",
+  MA: "21",
+  MT: "51",
+  MS: "50",
+  MG: "31",
+  PA: "15",
+  PB: "25",
+  PR: "41",
+  PE: "26",
+  PI: "22",
+  RJ: "33",
+  RN: "24",
+  RS: "43",
+  RO: "11",
+  RR: "14",
+  SC: "42",
+  SP: "35",
+  SE: "28",
+  TO: "17"
+};
+const RR_MUNICIPALITY_CODES = {
+  "alto alegre": "1400050",
+  amajari: "1400027",
+  "boa vista": "1400100",
+  bonfim: "1400159",
+  canta: "1400175",
+  caracarai: "1400209",
+  caroebe: "1400233",
+  iracema: "1400282",
+  mucajai: "1400308",
+  normandia: "1400407",
+  pacaraima: "1400456",
+  rorainopolis: "1400472",
+  "sao joao da baliza": "1400506",
+  "sao luiz": "1400605",
+  uiramuta: "1400704"
+};
+const normalizeText = (value) => String(value != null ? value : "").trim();
+const normalizeKey = (value) => normalizeText(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const onlyDigits = (value) => normalizeText(value).replace(/\D/g, "");
+const escapeXml = (value) => normalizeText(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+const validateFiscalConfig = (config) => {
+  const requiredFields = {
+    cnpj: "CNPJ",
+    razao_social: "Raz\xE3o Social",
+    inscricao_estadual: "Inscri\xE7\xE3o Estadual",
+    crt: "CRT",
+    cep: "CEP",
+    logradouro: "Logradouro",
+    numero: "N\xFAmero",
+    bairro: "Bairro",
+    municipio: "Munic\xEDpio",
+    uf: "UF",
+    ambiente: "Ambiente"
+  };
+  const missing = Object.entries(requiredFields).filter(([field]) => !normalizeText(config[field])).map(([, label]) => label);
+  if (missing.length > 0) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Complete as Configura\xE7\xF5es Fiscais antes de emitir: ${missing.join(", ")}.`
+    });
+  }
+  const uf = normalizeText(config.uf).toUpperCase();
+  const codigoUf = UF_CODES[uf];
+  const codigoMunicipio = uf === "RR" ? RR_MUNICIPALITY_CODES[normalizeKey(config.municipio)] : void 0;
+  if (!codigoUf || !codigoMunicipio) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "UF ou munic\xEDpio inv\xE1lido para a integra\xE7\xE3o SEFAZ-RR. Revise as Configura\xE7\xF5es Fiscais."
+    });
+  }
+  if (onlyDigits(config.cnpj).length !== 14 || onlyDigits(config.cep).length !== 8) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "CNPJ ou CEP inv\xE1lido nas Configura\xE7\xF5es Fiscais."
+    });
+  }
+  return { uf, codigoUf, codigoMunicipio };
 };
 function generateChaveAcesso(uf, dataEmissao, cnpj, modelo, serie, numero, tpEmissao = 1) {
   const AAMM = dataEmissao.getFullYear().toString().slice(-2) + String(dataEmissao.getMonth() + 1).padStart(2, "0");
@@ -2646,20 +2807,24 @@ function mapPaymentType(type) {
 }
 async function generateNfceXml(data, config, numeroNfce, serieNfce) {
   const dataEmissao = /* @__PURE__ */ new Date();
-  const estado = config.estado || config.uf || config.estado_registro || "SP";
-  const ambiente = config.ambiente || "homologacao";
-  const cnpj = config.cnpj || "00000000000000";
-  const nomeFantasia = config.nome_fantasia || "EMP\xD3RIO DAS COXINHAS";
-  const razaoSocial = config.razao_social || "EMP\xD3RIO DAS COXINHAS";
-  const logradouro = config.logradouro || "Rua das Coxinhas";
-  const numero = config.numero || "123";
-  const complemento = config.complemento || "";
-  const bairro = config.bairro || "Centro";
-  const municipio = config.municipio || "S\xE3o Paulo";
-  const inscricaoEstadual = config.inscricao_estadual || "123456789";
-  const CRT = config.regime_tributario === "simples_nacional" ? "1" : "3";
+  const { uf: estado, codigoUf, codigoMunicipio } = validateFiscalConfig(config);
+  const ambiente = normalizeText(config.ambiente);
+  const cnpj = onlyDigits(config.cnpj);
+  const razaoSocial = escapeXml(config.razao_social);
+  const nomeFantasia = escapeXml(config.nome_fantasia || config.razao_social);
+  const logradouro = escapeXml(config.logradouro);
+  const numero = escapeXml(config.numero);
+  const complemento = escapeXml(config.complemento);
+  const bairro = escapeXml(config.bairro);
+  const municipio = escapeXml(config.municipio);
+  const inscricaoEstadual = onlyDigits(config.inscricao_estadual);
+  const inscricaoMunicipal = onlyDigits(config.inscricao_municipal);
+  const cnae = onlyDigits(config.cnae);
+  const cep = onlyDigits(config.cep);
+  const telefone = onlyDigits(config.telefone);
+  const crt = normalizeText(config.crt);
   const chaveAcesso = generateChaveAcesso(
-    estado,
+    codigoUf,
     dataEmissao,
     cnpj,
     "65",
@@ -2738,15 +2903,15 @@ FOP>5102</CFOP>
           <tPag>${tipo}</tPag>
           <vPag>${valor.toFixed(2)}</vPag>`;
   }
-  const urlConsulta = ambiente === "producao" ? `https://www.sefaz${estado.toLowerCase()}.sp.gov.br/nfce` : `https://www.sefaz${estado.toLowerCase()}.sp.gov.br/nfce-homologacao`;
+  const urlConsulta = ambiente === "producao" ? `https://www.sefaz.rr.gov.br/nfce/consultarNFCe?chave=${chaveAcesso}` : `https://www.sefaz.rr.gov.br/nfceh/consultarNFCe?chave=${chaveAcesso}`;
   const qrCode = generateQrCode(chaveAcesso, ambiente, urlConsulta);
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
   <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
     <infNFe Id="NFe${chaveAcesso}" versao="4.00">
       <ide>
-        <cUF>${estado === "SP" ? "35" : "35"}</cUF>
-        <cNF>${chaveAcesso.slice(35, 44)}</cNF>
+        <cUF>${codigoUf}</cUF>
+        <cNF>${chaveAcesso.slice(35, 43)}</cNF>
         <natOp>VENDA</natOp>
         <mod>65</mod>
         <serie>${serieNfce}</serie>
@@ -2755,7 +2920,7 @@ FOP>5102</CFOP>
         <dhSaiEnt>${now}</dhSaiEnt>
         <tpNF>1</tpNF>
         <idDest>1</idDest>
-        <cMunFG>3550308</cMunFG>
+        <cMunFG>${codigoMunicipio}</cMunFG>
         <tpImp>9</tpImp>
         <tpEmis>1</tpEmis>
         <cDV>${chaveAcesso.slice(-1)}</cDV>
@@ -2773,18 +2938,20 @@ FOP>5102</CFOP>
         <enderEmit>
           <xLgr>${logradouro}</xLgr>
           <nro>${numero}</nro>
-          <xCpl>${complemento}</xCpl>
+          ${complemento ? `<xCpl>${complemento}</xCpl>` : ""}
           <xBairro>${bairro}</xBairro>
-          <cMun>${config.codigo_municipio || "3550308"}</cMun>
+          <cMun>${codigoMunicipio}</cMun>
           <xMun>${municipio}</xMun>
           <UF>${estado}</UF>
-          <CEP>${config.cep || "00000000"}</CEP>
-          <cPais>${config.codigo_pais || "1058"}</cPais>
-          <xPais>${config.pais || "BRASIL"}</xPais>
-          <fone>${config.telefone || "5599999999999"}</fone>
+          <CEP>${cep}</CEP>
+          <cPais>1058</cPais>
+          <xPais>BRASIL</xPais>
+          ${telefone ? `<fone>${telefone}</fone>` : ""}
         </enderEmit>
         <IE>${inscricaoEstadual}</IE>
-        <CRT>${CRT}</CRT>
+        ${inscricaoMunicipal ? `<IM>${inscricaoMunicipal}</IM>` : ""}
+        ${cnae ? `<CNAE>${cnae}</CNAE>` : ""}
+        <CRT>${crt}</CRT>
       </emit>
       ${data.cliente ? `
       <dest>

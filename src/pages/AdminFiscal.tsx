@@ -34,7 +34,7 @@ const AdminFiscal = () => {
     cnae: "",
     cnpj_matriz: "",
     regime_tributario: "simples_nacional",
-    CRT: "1",
+    crt: "1",
     cep: "",
     logradouro: "",
     numero: "",
@@ -114,7 +114,7 @@ const AdminFiscal = () => {
             cnae: config.cnae || "",
             cnpj_matriz: config.cnpj_matriz || "",
             regime_tributario: config.regime_tributario || "simples_nacional",
-            CRT: config.CRT || "1",
+            crt: config.crt || "1",
             cep: config.cep || "",
             logradouro: config.logradouro || "",
             numero: config.numero || "",
@@ -380,8 +380,8 @@ const AdminFiscal = () => {
                     <div>
                       <Label>CRT (Código de Regime Tributário)</Label>
                       <select
-                        value={companyConfig.CRT}
-                        onChange={(e) => setCompanyConfig({ ...companyConfig, CRT: e.target.value })}
+                        value={companyConfig.crt}
+                        onChange={(e) => setCompanyConfig({ ...companyConfig, crt: e.target.value })}
                         className="w-full px-3 py-2 border rounded-md"
                       >
                         <option value="1">Simples Nacional</option>
