@@ -937,16 +937,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1d1ce-qpS89+f5meMMBTkq2XMHlS/R21A\"",
-    "mtime": "2026-08-03T20:35:38.474Z",
-    "size": 119246,
+    "etag": "\"1d007-loXTGvRCu2CrZn/a+3ze2vbGbjU\"",
+    "mtime": "2026-08-03T20:36:57.034Z",
+    "size": 118791,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"68099-EMFaPgiT+3OjesXc50bRABSTj48\"",
-    "mtime": "2026-08-03T20:35:38.475Z",
-    "size": 426137,
+    "etag": "\"67882-sUjyZpIXcByU32NoBBi8G5g6oME\"",
+    "mtime": "2026-08-03T20:36:57.038Z",
+    "size": 424066,
     "path": "index.mjs.map"
   }
 };
@@ -3324,6 +3324,7 @@ const sales_get = defineEventHandler(async () => {
         s.customer_id,
         s.freight,
         s.status,
+        s.daily_sale_number,
         s.xml_chave,
         s.xml_numero,
         s.xml_status,
@@ -3357,6 +3358,7 @@ const sales_get$1 = /*#__PURE__*/Object.freeze({
 });
 
 const sales_post = defineEventHandler(async (event) => {
+  var _a;
   try {
     const body = await readBody(event);
     const { items, total, payments, customerId, freight, type } = body;
@@ -3366,12 +3368,20 @@ const sales_post = defineEventHandler(async (event) => {
         statusMessage: "Itens e total s\xE3o obrigat\xF3rios"
       });
     }
+    const lastSaleNumberResult = await sql`
+      SELECT MAX(daily_sale_number) as last_number
+      FROM sales
+      WHERE DATE(created_at) = CURRENT_DATE;
+    `;
+    const lastNumber = (_a = lastSaleNumberResult[0]) == null ? void 0 : _a.last_number;
+    const nextDailyNumber = lastNumber ? lastNumber + 1 : 100;
     const saleResult = await sql`
-      INSERT INTO sales (total_amount, customer_id, freight, status)
-      VALUES (${total}, ${customerId}, ${freight}, ${type})
-      RETURNING id;
+      INSERT INTO sales (total_amount, customer_id, freight, status, daily_sale_number)
+      VALUES (${total}, ${customerId}, ${freight}, ${type}, ${nextDailyNumber})
+      RETURNING id, daily_sale_number;
     `;
     const saleId = saleResult[0].id;
+    const dailySaleNumber = saleResult[0].daily_sale_number;
     if (items.length > 0) {
       for (const item of items) {
         await sql`
@@ -3402,7 +3412,7 @@ const sales_post = defineEventHandler(async (event) => {
         WHERE id = ${item.id};
       `;
     }
-    return { id: saleId, message: "Venda registrada com sucesso" };
+    return { id: saleId, daily_sale_number: dailySaleNumber, message: "Venda registrada com sucesso" };
   } catch (error) {
     console.error("Error creating sale:", error);
     throw createError({

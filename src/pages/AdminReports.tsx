@@ -190,7 +190,7 @@ const AdminReports = () => {
                             {new Date(sale.created_at).toLocaleString("pt-BR")}
                           </td>
                           <td className="p-3 font-medium">
-                            #{String(sale.id).slice(-6)}
+                            #{sale.daily_sale_number || String(sale.id).slice(-6)}
                           </td>
                           <td className="p-3">{sale.items.length} itens</td>
                           <td className="p-3 text-right font-bold text-green-600">
@@ -228,7 +228,7 @@ const AdminReports = () => {
           cartItems={selectedSale.items || []}
           payments={selectedSale.payments || []}
           documentType={selectedSale.xml_status === 'autorizada' ? 'fiscal' : 'quote'}
-          saleId={String(selectedSale.id)}
+          saleId={String(selectedSale.daily_sale_number || selectedSale.id)}
           nfceData={nfceData}
         />
       )}

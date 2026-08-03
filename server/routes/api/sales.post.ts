@@ -12,15 +12,26 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    // 1. Create the sale and get the ID
+    // 1. Calculate the next daily sale number
+    const lastSaleNumberResult = await sql`
+      SELECT MAX(daily_sale_number) as last_number
+      FROM sales
+      WHERE DATE(created_at) = CURRENT_DATE;
+    `;
+    
+    const lastNumber = lastSaleNumberResult[0]?.last_number;
+    const nextDailyNumber = lastNumber ? lastNumber + 1 : 100;
+
+    // 2. Create the sale and get the ID
     const saleResult = await sql`
-      INSERT INTO sales (total_amount, customer_id, freight, status)
-      VALUES (${total}, ${customerId}, ${freight}, ${type})
-      RETURNING id;
+      INSERT INTO sales (total_amount, customer_id, freight, status, daily_sale_number)
+      VALUES (${total}, ${customerId}, ${freight}, ${type}, ${nextDailyNumber})
+      RETURNING id, daily_sale_number;
     `;
     const saleId = saleResult[0].id;
+    const dailySaleNumber = saleResult[0].daily_sale_number;
 
-    // 2. Store sale items one by one
+    // 3. Store sale items
     if (items.length > 0) {
       for (const item of items) {
         await sql`
@@ -37,7 +48,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 3. Store payment methods one by one
+    // 4. Store payment methods
     if (payments && payments.length > 0) {
       for (const p of payments) {
         await sql`
@@ -47,7 +58,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 4. Update stock
+    // 5. Update stock
     for (const item of items) {
       await sql`
         UPDATE products
@@ -56,7 +67,7 @@ export default defineEventHandler(async (event) => {
       `;
     }
 
-    return { id: saleId, message: 'Venda registrada com sucesso' };
+    return { id: saleId, daily_sale_number: dailySaleNumber, message: 'Venda registrada com sucesso' };
 
   } catch (error: any) {
     console.error('Error creating sale:', error);

@@ -10,6 +10,7 @@ export default defineEventHandler(async () => {
         s.customer_id,
         s.freight,
         s.status,
+        s.daily_sale_number,
         s.xml_chave,
         s.xml_numero,
         s.xml_status,

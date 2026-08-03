@@ -81,6 +81,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
   const [emittingNfce, setEmittingNfce] = useState(false);
   const [currentPayments, setCurrentPayments] = useState<any[]>([]);
   const [currentSaleId, setCurrentSaleId] = useState<string | null>(null);
+  const [currentDailySaleNumber, setCurrentDailySaleNumber] = useState<string | null>(null);
   const [currentDocumentType, setCurrentDocumentType] = useState<"quote" | "fiscal">("quote");
   const [nfceData, setNfceData] = useState<any>(null);
   const [isFreightDialogOpen, setIsFreightDialogOpen] = useState(false);
@@ -202,6 +203,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
 
       // Usar o ID real do banco de dados
       setCurrentSaleId(String(result.id));
+      setCurrentDailySaleNumber(String(result.daily_sale_number));
 
       setCurrentPayments(payments);
       setIsPaymentDialogOpen(false);
@@ -326,6 +328,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
     clearCart();
     setCurrentPayments([]);
     setCurrentSaleId(null);
+    setCurrentDailySaleNumber(null);
     setNfceData(null);
     onCustomerChange(null);
   };
@@ -572,7 +575,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
         cartItems={cartItems}
         payments={currentPayments}
         documentType={currentDocumentType}
-        saleId={currentSaleId || undefined}
+        saleId={currentDailySaleNumber || undefined}
         nfceData={nfceData}
       />
     </>
