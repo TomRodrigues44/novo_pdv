@@ -186,14 +186,18 @@ export function ReceiptDialog({ open, onClose, total, cartItems, payments, docum
               <div className="col-span-2 text-right">V.UN</div>
               <div className="col-span-2 text-right">V.TOT</div>
             </div>
-            {cartItems.map((item, index) => (
-              <div key={index} className="grid grid-cols-12 gap-1">
-                <div className="col-span-6">{item.name}</div>
-                <div className="col-span-2 text-right">{item.quantity}</div>
-                <div className="col-span-2 text-right">{item.price.toFixed(2)}</div>
-                <div className="col-span-2 text-right">{(item.quantity * item.price).toFixed(2)}</div>
-              </div>
-            ))}
+            {cartItems.map((item, index) => {
+              const price = Number(item.price) || 0;
+              const quantity = Number(item.quantity) || 0;
+              return (
+                <div key={index} className="grid grid-cols-12 gap-1">
+                  <div className="col-span-6">{item.name}</div>
+                  <div className="col-span-2 text-right">{quantity}</div>
+                  <div className="col-span-2 text-right">{price.toFixed(2)}</div>
+                  <div className="col-span-2 text-right">{(quantity * price).toFixed(2)}</div>
+                </div>
+              );
+            })}
           </div>
 
           <hr className="border-dashed border-black my-2" />
