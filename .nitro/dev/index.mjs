@@ -935,19 +935,19 @@ const plugins = [
 ];
 
 const assets = {
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"6a9c7-0sJNypIV57GVwv825jUHTFqtsOM\"",
-    "mtime": "2026-08-03T18:58:00.182Z",
-    "size": 436679,
-    "path": "index.mjs.map"
-  },
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1dc3e-t43kmdEZeaLGl+1jx89TEVOqk4I\"",
-    "mtime": "2026-08-03T18:58:00.183Z",
-    "size": 121918,
+    "etag": "\"1d209-7zU4W8NPaaWmTGe3OfFTYNCiwCI\"",
+    "mtime": "2026-08-03T20:15:24.599Z",
+    "size": 119305,
     "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"680d6-/Y0uDTMUHTxwvaYvvp42AyQ56J4\"",
+    "mtime": "2026-08-03T20:15:24.599Z",
+    "size": 426198,
+    "path": "index.mjs.map"
   }
 };
 
@@ -3376,23 +3376,27 @@ const sales_post = defineEventHandler(async (event) => {
     `;
     const saleId = saleResult[0].id;
     if (items.length > 0) {
-      const saleItems = items.map((item) => ({
-        sale_id: saleId,
-        product_id: item.id,
-        product_name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        flavors: item.flavors ? JSON.stringify(item.flavors) : null
-      }));
-      await sql`INSERT INTO sale_items ${sql(saleItems, "sale_id", "product_id", "product_name", "quantity", "price", "flavors")}`;
+      for (const item of items) {
+        await sql`
+          INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, flavors)
+          VALUES (
+            ${saleId},
+            ${item.id},
+            ${item.name},
+            ${item.quantity},
+            ${item.price},
+            ${item.flavors ? JSON.stringify(item.flavors) : null}
+          );
+        `;
+      }
     }
     if (payments && payments.length > 0) {
-      const salePayments = payments.map((p) => ({
-        sale_id: saleId,
-        payment_type: p.type,
-        amount: p.amount
-      }));
-      await sql`INSERT INTO sale_payments ${sql(salePayments, "sale_id", "payment_type", "amount")}`;
+      for (const p of payments) {
+        await sql`
+          INSERT INTO sale_payments (sale_id, payment_type, amount)
+          VALUES (${saleId}, ${p.type}, ${p.amount});
+        `;
+      }
     }
     for (const item of items) {
       await sql`

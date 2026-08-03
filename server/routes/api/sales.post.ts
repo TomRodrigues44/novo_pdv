@@ -20,27 +20,31 @@ export default defineEventHandler(async (event) => {
     `;
     const saleId = saleResult[0].id;
 
-    // 2. Store sale items
+    // 2. Store sale items one by one
     if (items.length > 0) {
-      const saleItems = items.map((item: any) => ({
-        sale_id: saleId,
-        product_id: item.id,
-        product_name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        flavors: item.flavors ? JSON.stringify(item.flavors) : null,
-      }));
-      await sql`INSERT INTO sale_items ${sql(saleItems, 'sale_id', 'product_id', 'product_name', 'quantity', 'price', 'flavors')}`;
+      for (const item of items) {
+        await sql`
+          INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, flavors)
+          VALUES (
+            ${saleId},
+            ${item.id},
+            ${item.name},
+            ${item.quantity},
+            ${item.price},
+            ${item.flavors ? JSON.stringify(item.flavors) : null}
+          );
+        `;
+      }
     }
 
-    // 3. Store payment methods
+    // 3. Store payment methods one by one
     if (payments && payments.length > 0) {
-      const salePayments = payments.map((p: any) => ({
-        sale_id: saleId,
-        payment_type: p.type,
-        amount: p.amount,
-      }));
-      await sql`INSERT INTO sale_payments ${sql(salePayments, 'sale_id', 'payment_type', 'amount')}`;
+      for (const p of payments) {
+        await sql`
+          INSERT INTO sale_payments (sale_id, payment_type, amount)
+          VALUES (${saleId}, ${p.type}, ${p.amount});
+        `;
+      }
     }
 
     // 4. Update stock
