@@ -183,28 +183,34 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
   };
 
   const handlePaymentConfirm = async (payments: any[]) => {
-    // Registrar a venda
-    const result = await recordSale({
-      items: cartItems.map((item) => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        flavors: (item as any).flavors,
-      })),
-      total: totalWithFreight,
-      payments: payments,
-      type: "pending",
-      freight: freight,
-      customerId: selectedCustomer?.id || null,
-    });
+    try {
+      // Registrar a venda
+      const result = await recordSale({
+        items: cartItems.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          flavors: (item as any).flavors,
+        })),
+        total: totalWithFreight,
+        payments: payments,
+        type: "pending",
+        freight: freight,
+        customerId: selectedCustomer?.id || null,
+      });
 
-    // Usar o ID real do banco de dados
-    setCurrentSaleId(String(result.id));
+      // Usar o ID real do banco de dados
+      setCurrentSaleId(String(result.id));
 
-    setCurrentPayments(payments);
-    setIsPaymentDialogOpen(false);
-    setIsDocumentDialogOpen(true);
+      setCurrentPayments(payments);
+      setIsPaymentDialogOpen(false);
+      setIsDocumentDialogOpen(true);
+    } catch (error: any) {
+      console.error("Falha ao registrar a venda:", error);
+      toast.error(error.message || "Ocorreu um erro inesperado ao registrar a venda.");
+      setIsPaymentDialogOpen(false);
+    }
   };
 
   const handleGenerateDocument = async (type: "quote" | "fiscal") => {

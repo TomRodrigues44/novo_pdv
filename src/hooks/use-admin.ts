@@ -175,6 +175,9 @@ export const useAdmin = () => {
       invalidateCache();
       
       return result;
+    } else {
+      const errorData = await response.json().catch(() => ({ message: 'Erro ao criar a venda no servidor.' }));
+      throw new Error(errorData.message || errorData.statusMessage || 'Erro ao registrar a venda.');
     }
   }, [fetchData, invalidateCache]);
 
