@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { useReactToPrint } from 'react-to-print';
 import { format } from 'date-fns';
 import { QRCode } from 'react-qrcode-logo';
+import { Loader2, FileText, FileWarning } from 'lucide-react';
+
+// --- TYPE DEFINITIONS ---
 
 interface NfceData {
   id: number;
@@ -20,21 +23,16 @@ interface NfceData {
   mensagem_status: string;
 }
 
-interface SaleData {
-  id: number;
-  customer_name?: string;
-  total_amount: number;
-  items: {
-    id: string;
-    name: string;
-    price: number;
-    quantity: number;
-  }[];
-  payments: {
-    tipo: string;
-    valor: number;
-  }[];
-  created_at: string;
+interface SaleItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+interface Payment {
+  tipo: string;
+  valor: number;
 }
 
 interface CompanyConfig {
@@ -59,7 +57,67 @@ const paymentTypeMap: Record<string, string> = {
   other: 'Outros',
 };
 
-export function DocumentDialog({ open, onOpenChange, nfce, sale, isBudget = false }: { open: boolean, onOpenChange: (open: boolean) => void, nfce: NfceData | null, sale: SaleData | null, isBudget?: boolean }) {
+// --- DIALOG 1: DOCUMENT TYPE CHOICE ---
+
+interface DocumentDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onGenerateDocument: (type: 'quote' | 'fiscal') => void;
+  isEmitting: boolean;
+}
+
+export function DocumentDialog({ open, onClose, onGenerateDocument, isEmitting }: DocumentDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Gerar Documento</DialogTitle>
+        </DialogHeader>
+        <div className="py-4 text-center">
+          <p>Escolha o tipo de documento para esta venda.</p>
+        </div>
+        <DialogFooter className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            onClick={() => onGenerateDocument('quote')}
+            disabled={isEmitting}
+          >
+            <FileWarning className="mr-2 h-4 w-4" />
+            Apenas Orçamento
+          </Button>
+          <Button
+            onClick={() => onGenerateDocument('fiscal')}
+            disabled={isEmitting}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            {isEmitting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileText className="mr-2 h-4 w-4" />
+            )}
+            Gerar Cupom Fiscal
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+// --- DIALOG 2: FINAL RECEIPT/NFC-e VIEW ---
+
+interface ReceiptDialogProps {
+  open: boolean;
+  onClose: () => void;
+  total: number;
+  cartItems: SaleItem[];
+  payments: Payment[];
+  documentType: 'quote' | 'fiscal';
+  saleId?: string;
+  nfceData: NfceData | null;
+}
+
+export function ReceiptDialog({ open, onClose, total, cartItems, payments, documentType, saleId, nfceData }: ReceiptDialogProps) {
   const [companyConfig, setCompanyConfig] = useState<CompanyConfig | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -74,58 +132,53 @@ export function DocumentDialog({ open, onOpenChange, nfce, sale, isBudget = fals
 
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
-    documentTitle: `NFC-e-${nfce?.numero || sale?.id}`,
+    documentTitle: `${documentType === 'fiscal' ? 'NFC-e' : 'Orcamento'}-${nfceData?.numero || saleId}`,
   });
 
-  const formatCnpj = (cnpj: string) => {
-    if (!cnpj) return '';
-    return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-  };
-
-  const formatPhone = (phone: string) => {
-    if (!phone) return '';
-    if (phone.length === 11) {
-      return phone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
-    }
-    if (phone.length === 10) {
-      return phone.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
-    }
+  const formatCnpj = (cnpj: string = '') => cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  const formatPhone = (phone: string = '') => {
+    if (phone.length === 11) return phone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+    if (phone.length === 10) return phone.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
     return phone;
   }
 
-  const isNfceAuthorized = nfce && nfce.status === 'autorizada';
-  const title = isBudget ? 'Orçamento' : (isNfceAuthorized ? 'NFC-e Autorizada' : 'Comprovante de Venda');
+  const isNfceAuthorized = documentType === 'fiscal' && nfceData && nfceData.status === 'autorizada';
+  const isBudget = documentType === 'quote' || !isNfceAuthorized;
+  const title = isBudget ? 'Orçamento / Comprovante' : 'NFC-e Autorizada';
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-sm md:max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <div ref={printRef} className="p-4 font-mono text-xs bg-white text-black">
-          {/* Header */}
           <div className="text-center mb-2">
             <h2 className="font-bold text-sm">{companyConfig?.nome_fantasia || 'Carregando...'}</h2>
             {isBudget && <p className="font-bold">** SEM VALOR FISCAL **</p>}
-            {nfce && !isBudget && <p className="font-bold">DANFE NFC-e - Cupom Fiscal Eletrônico</p>}
+            {isNfceAuthorized && <p className="font-bold">DANFE NFC-e - Cupom Fiscal Eletrônico</p>}
             <p>{`${companyConfig?.logradouro || ''}, ${companyConfig?.numero || ''}`}</p>
             <p>{`${companyConfig?.bairro || ''} - ${companyConfig?.municipio || ''}/${companyConfig?.uf || ''}`}</p>
-            <p>{formatPhone(companyConfig?.telefone || '')}</p>
-            <p>CNPJ: {formatCnpj(companyConfig?.cnpj || '')}</p>
+            <p>{formatPhone(companyConfig?.telefone)}</p>
+            <p>CNPJ: {formatCnpj(companyConfig?.cnpj)}</p>
             <p>IE: {companyConfig?.inscricao_estadual || ''}</p>
           </div>
 
           <hr className="border-dashed border-black my-2" />
 
-          {/* Sale Info */}
           <div className="mb-2">
-            <p>NFC-e Nº: {nfce?.numero || 'N/A'} Série: {nfce?.serie || 'N/A'}</p>
-            <p>Emissão: {format(new Date(nfce?.data_autorizacao || sale?.created_at || new Date()), 'dd/MM/yyyy HH:mm:ss')}</p>
+            {isNfceAuthorized ? (
+              <>
+                <p>NFC-e Nº: {nfceData.numero} Série: {nfceData.serie}</p>
+                <p>Emissão: {format(new Date(nfceData.data_autorizacao), 'dd/MM/yyyy HH:mm:ss')}</p>
+              </>
+            ) : (
+              <p>Data: {format(new Date(), 'dd/MM/yyyy HH:mm:ss')}</p>
+            )}
           </div>
 
           <hr className="border-dashed border-black my-2" />
 
-          {/* Items */}
           <div className="mb-2">
             <div className="grid grid-cols-12 gap-1 font-bold">
               <div className="col-span-6">DESC</div>
@@ -133,7 +186,7 @@ export function DocumentDialog({ open, onOpenChange, nfce, sale, isBudget = fals
               <div className="col-span-2 text-right">V.UN</div>
               <div className="col-span-2 text-right">V.TOT</div>
             </div>
-            {sale?.items.map((item, index) => (
+            {cartItems.map((item, index) => (
               <div key={index} className="grid grid-cols-12 gap-1">
                 <div className="col-span-6">{item.name}</div>
                 <div className="col-span-2 text-right">{item.quantity}</div>
@@ -145,14 +198,13 @@ export function DocumentDialog({ open, onOpenChange, nfce, sale, isBudget = fals
 
           <hr className="border-dashed border-black my-2" />
 
-          {/* Totals */}
           <div className="flex justify-between font-bold">
             <span>TOTAL:</span>
-            <span>R$ {sale?.total_amount.toFixed(2)}</span>
+            <span>R$ {total.toFixed(2)}</span>
           </div>
 
           <div className="mt-1">
-            {sale?.payments.map((p, i) => (
+            {payments.map((p, i) => (
               <div key={i} className="flex justify-between">
                 <span>{paymentTypeMap[p.tipo] || 'Outro'}</span>
                 <span>R$ {p.valor.toFixed(2)}</span>
@@ -162,33 +214,33 @@ export function DocumentDialog({ open, onOpenChange, nfce, sale, isBudget = fals
 
           <hr className="border-dashed border-black my-2" />
 
-          {/* Footer */}
           <div className="text-center mb-2">
             <p className="font-bold">*** OBRIGADO PELA PREFERÊNCIA ***</p>
             <p>Volte sempre!</p>
           </div>
 
-          {isNfceAuthorized && (
+          {isNfceAuthorized && nfceData && (
             <>
               <hr className="border-dashed border-black my-2" />
               <div className="text-center text-[10px] break-all">
                 <p className="font-bold">Consulte pela Chave de Acesso em:</p>
-                <p>{nfce.url_consulta}</p>
+                <p>{nfceData.url_consulta}</p>
                 <p className="mt-1 font-bold">Chave de Acesso:</p>
-                <p>{nfce.chave_acesso.replace(/(.{4})/g, '$1 ').trim()}</p>
+                <p>{nfceData.chave_acesso.replace(/(.{4})/g, '$1 ').trim()}</p>
               </div>
               <div className="flex justify-center my-2">
-                {nfce.qr_code && <QRCode value={nfce.qr_code} size={120} />}
+                {nfceData.qr_code && <QRCode value={nfceData.qr_code} size={120} />}
               </div>
               <div className="text-center">
-                <p>Protocolo: {nfce.protocolo}</p>
-                <p>Ambiente: {nfce.ambiente === 'producao' ? 'Produção' : 'Homologação'}</p>
+                <p>Protocolo: {nfceData.protocolo}</p>
+                <p>Ambiente: {nfceData.ambiente === 'producao' ? 'Produção' : 'Homologação'}</p>
               </div>
             </>
           )}
         </div>
         <DialogFooter>
           <Button onClick={handlePrint}>Imprimir</Button>
+          <Button variant="secondary" onClick={onClose}>Fechar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
