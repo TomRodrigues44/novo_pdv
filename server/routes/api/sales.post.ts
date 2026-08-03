@@ -50,7 +50,31 @@ export default defineEventHandler(async (event) => {
     
     // Criar os itens da venda
     if (saleData.items && Array.isArray(saleData.items)) {
-      for (const item of saleData.items) {
+      const items = saleData.items;
+      
+      const saleItems = items.map((item: any) => ({
+        sale_id: saleId,
+        product_id: item.id,
+        product_name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        flavors: item.flavors,
+      }));
+      
+      await sql`INSERT INTO sale_items ${sql(saleItems, 'sale_id', 'product_id', 'product_name', 'quantity', 'price', 'flavors')}`;
+      
+      // Store payment methods
+      if (payments && payments.length > 0) {
+        const salePayments = payments.map((p: any) => ({
+          sale_id: saleId,
+          payment_type: p.type,
+          amount: p.amount,
+        }));
+        await sql`INSERT INTO sale_payments ${sql(salePayments, 'sale_id', 'payment_type', 'amount')}`;
+      }
+      
+      // Atualizar estoque
+      for (const item of items) {
         const itemPrice = parseFloat(String(item.price || 0));
         const itemQuantity = parseInt(String(item.quantity || 0));
         

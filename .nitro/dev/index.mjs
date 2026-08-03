@@ -937,16 +937,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1d71f-TX0LdwD955mpXIfFq6acD4JwTQE\"",
-    "mtime": "2026-08-03T15:35:50.750Z",
-    "size": 120607,
+    "etag": "\"1d95a-HZwNycPZQIo+QVgdTr4oOSM/xM0\"",
+    "mtime": "2026-08-03T15:55:58.060Z",
+    "size": 121178,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"69aa8-nzg1+VFsOmqp3dY1BoAlstKuk3c\"",
-    "mtime": "2026-08-03T15:35:50.750Z",
-    "size": 432808,
+    "etag": "\"69dcd-f3H6XJe4g2MzyNgt9xVS4l+Ckao\"",
+    "mtime": "2026-08-03T15:55:58.060Z",
+    "size": 433613,
     "path": "index.mjs.map"
   }
 };
@@ -3404,7 +3404,25 @@ const sales_post = defineEventHandler(async (event) => {
     const saleId = saleResult[0].id;
     console.log("Sale created with ID:", saleId);
     if (saleData.items && Array.isArray(saleData.items)) {
-      for (const item of saleData.items) {
+      const items = saleData.items;
+      const saleItems = items.map((item) => ({
+        sale_id: saleId,
+        product_id: item.id,
+        product_name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        flavors: item.flavors
+      }));
+      await sql`INSERT INTO sale_items ${sql(saleItems, "sale_id", "product_id", "product_name", "quantity", "price", "flavors")}`;
+      if (payments && payments.length > 0) {
+        const salePayments = payments.map((p) => ({
+          sale_id: saleId,
+          payment_type: p.type,
+          amount: p.amount
+        }));
+        await sql`INSERT INTO sale_payments ${sql(salePayments, "sale_id", "payment_type", "amount")}`;
+      }
+      for (const item of items) {
         const itemPrice = parseFloat(String(item.price || 0));
         const itemQuantity = parseInt(String(item.quantity || 0));
         console.log("Adding sale item:", {
