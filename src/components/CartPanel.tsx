@@ -7,7 +7,7 @@ import { DocumentDialog, ReceiptDialog } from "./DocumentDialog";
 import { CustomerSelector } from "./CustomerSelector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@//components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -214,6 +214,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
     if (type === "fiscal") {
       // Emitir NFC-e
       setEmittingNfce(true);
+      
       try {
         // Extrair apenas o número do ID (remover prefixo "sale-")
         const saleIdNumber = typeof currentSaleId === 'string'
@@ -246,43 +247,65 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
           }),
         });
   
-        if (response.ok) {
+        // TRATAMENTO DE ERRO DEFENSIVO COMPLETO
+        if (response?.ok) {
           const data = await response.json();
           
           // Verificar se é uma NFC-e que já foi emitida anteriormente
-          if (data.message && data.message.includes('já emitida anteriormente')) {
+          if (data?.message?.includes('já emitida anteriormente')) {
             toast.info('NFC-e já foi emitida anteriormente. Utilizando os dados existentes.');
-            setNfceData(data.nfce);
+            setNfceData(data?.nfce ?? null);
             setIsReceiptDialogOpen(true);
             setEmittingNfce(false);
-          } else {
-            setNfceData(data.nfce);
-            toast.success('NFC-e emitida e autorizada com sucesso!');
-            setIsReceiptDialogOpen(true);
-            setEmittingNfce(false);
-          }
-        } else {
-          let errorMessage = 'Erro ao emitir NFC-e (Status: ' + response.status + ')';
-          
-          // Tentar extrair uma mensagem mais detalhada
-          try {
-            const errorData = await response.json();
-            if (errorData) {
-              errorMessage = errorData.message || errorData.statusMessage || errorMessage;
-            }
-          } catch (e) {
-            // Se falhar o parse JSON, manter a mensagem padrão
+            return;
           }
           
-          console.error('NFC-e emission error:', errorMessage);
-          toast.error(errorMessage);
+          setNfceData(data?.nfce ?? null);
+          toast.success('NFC-e emitida e autorizada com sucesso!');
           setIsReceiptDialogOpen(true);
           setEmittingNfce(false);
+          return;
         }
+        
+        // SE RESPONSE NÃO FOR OK - TRATAR ERRO HTTP
+        const responseStatus = response?.status ?? 'desconhecido';
+        const responseStatusText = String(responseStatus);
+        let errorMessage = `Erro ao emitir NFC-e (Status: ${responseStatusText})`;
+        
+        // Tentar extrair mensagem do corpo da resposta JSON
+        try {
+          if (response && typeof response.json === 'function') {
+            const errorData = await response.json();
+            errorMessage = errorData?.message ?? 
+                         errorData?.statusMessage ?? 
+                         errorMessage;
+          }
+        } catch (jsonError) {
+          // Erro ao fazer parse do JSON - manter a mensagem já definida
+          console.error('Erro ao fazer parse da resposta JSON:', jsonError);
+        }
+
+        console.error('NFC-e emission error:', errorMessage);
+        toast.error(errorMessage);
+        
+        // Abrir dialog de recibo mesmo com erro (fallback para orçamento)
+        setIsReceiptDialogOpen(true);
+        setEmittingNfce(false);
+        
       } catch (error) {
-        console.error('Error emitting NFC-e:', error);
-        toast.error('Erro ao emitir NFC-e');
-        // Mesmo com erro, abrir o dialog para orçamento
+        // TRATAMENTO DE ERRO DE CATCH
+        console.error('Error emitting NFC-e (catch block):', error);
+        
+        // Verificar se há uma mensagem específica no erro
+        const errorMessage = error?.message || 
+                         error?.statusMessage || 
+                         error?.response?.data?.message ||
+                         'Erro desconhecido ao emitir NFC-e';
+        
+        console.error('NFC-e emission error (final):', errorMessage);
+        toast.error(errorMessage);
+        
+        // Abrir dialog de recibo com fallback para orçamento
         setIsReceiptDialogOpen(true);
         setEmittingNfce(false);
       }
@@ -432,7 +455,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
                       </div>
                       <Button onClick={handleAddFreight} className="w-full bg-blue-600">
                         <Plus className="mr-2 h-4 w-4" />
-                        Adicionar Frete
+                        Adicionar Freite
                       </Button>
                     </div>
                   </DialogContent>
