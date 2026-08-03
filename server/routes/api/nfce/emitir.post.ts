@@ -60,34 +60,57 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: 'Dados inválidos. Verifique valor_total e itens.' });
     }
 
-    // --- ATOMIC TRANSACTION FOR INVOICE NUMBER ---
-    const { config, proximoNumero, serieNfce } = await sql.transaction(async (tx) => {
-      console.log('🔒 Iniciando transação para obter número da NFC-e...');
-      const configResult = await tx`
+    // --- OPTIMISTIC LOCKING FOR INVOICE NUMBER ---
+    let config: any;
+    let proximoNumero: number = 0;
+    let serieNfce: number = 1;
+    let reservationSuccess = false;
+    const maxRetries = 5;
+
+    for (let i = 0; i < maxRetries; i++) {
+      console.log(`🔒 Tentativa ${i + 1}/${maxRetries} para obter número da NFC-e...`);
+      const configResult = await sql`
         SELECT * FROM company_fiscal_config
         ORDER BY created_at DESC
         LIMIT 1
-        FOR UPDATE
       `;
-      
+
       if (!configResult || configResult.length === 0) {
         throw new Error('Configuração fiscal não encontrada.');
       }
-      
-      const config = configResult[0];
-      const proximoNumero = toNumber(config.ultima_nfce, 0) + 1;
-      const serieNfce = toNumber(config.serie_nfce, 1);
 
-      await tx`
+      const currentConfig = configResult[0];
+      const ultimaNfce = toNumber(currentConfig.ultima_nfce, 0);
+      const nextNumero = ultimaNfce + 1;
+
+      const updateResult = await sql`
         UPDATE company_fiscal_config
-        SET ultima_nfce = ${proximoNumero}
-        WHERE id = ${config.id}
+        SET ultima_nfce = ${nextNumero}
+        WHERE id = ${currentConfig.id} AND ultima_nfce = ${ultimaNfce}
       `;
-      console.log('✅ Número reservado:', proximoNumero);
-      
-      return { config, proximoNumero, serieNfce };
-    });
-    // --- END OF TRANSACTION ---
+
+      if (updateResult.count === 1) {
+        // Success! We got the lock.
+        config = currentConfig;
+        proximoNumero = nextNumero;
+        serieNfce = toNumber(currentConfig.serie_nfce, 1);
+        reservationSuccess = true;
+        console.log('✅ Número reservado:', proximoNumero);
+        break;
+      } else {
+        // Race condition detected, wait a bit and retry
+        console.warn(`⚠️ Race condition detectada na tentativa ${i + 1}. Tentando novamente...`);
+        await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 100));
+      }
+    }
+
+    if (!reservationSuccess) {
+      throw createError({
+        statusCode: 503, // Service Unavailable
+        statusMessage: 'Não foi possível reservar um número de nota fiscal devido a alta concorrência. Por favor, tente novamente em alguns segundos.',
+      });
+    }
+    // --- END OF OPTIMISTIC LOCKING ---
 
     console.log('🔢 Próximo NFC-e (atomicamente reservado):', proximoNumero, 'Série:', serieNfce);
     
@@ -159,12 +182,10 @@ export default defineEventHandler(async (event) => {
       
   } catch (error: any) {
     console.error('❌❌❌ ERRO CRÍTICO ao emitir NFC-e:', error);
-    // If the error came from our transaction, it might not be an H3 error
     const isH3Error = !!error.statusCode;
     if (isH3Error) {
       throw error;
     }
-    // Otherwise, wrap it
     throw createError({
       statusCode: 500,
       statusMessage: error.message || 'Erro desconhecido ao emitir NFC-e',
