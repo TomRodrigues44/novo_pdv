@@ -937,16 +937,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1d95a-HZwNycPZQIo+QVgdTr4oOSM/xM0\"",
-    "mtime": "2026-08-03T15:55:58.060Z",
-    "size": 121178,
+    "etag": "\"1dc18-rd0ZTsLUiRf+5tZRlhjrQVamKYM\"",
+    "mtime": "2026-08-03T15:57:27.638Z",
+    "size": 121880,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"69dcd-f3H6XJe4g2MzyNgt9xVS4l+Ckao\"",
-    "mtime": "2026-08-03T15:55:58.060Z",
-    "size": 433613,
+    "etag": "\"6a92c-V+Lrb9MIq5pXxkX26wBJbxLM/6Y\"",
+    "mtime": "2026-08-03T15:57:27.638Z",
+    "size": 436524,
     "path": "index.mjs.map"
   }
 };
@@ -3411,7 +3411,7 @@ const sales_post = defineEventHandler(async (event) => {
         product_name: item.name,
         quantity: item.quantity,
         price: item.price,
-        flavors: item.flavors
+        flavors: item.flavors ? JSON.stringify(item.flavors) : null
       }));
       await sql`INSERT INTO sale_items ${sql(saleItems, "sale_id", "product_id", "product_name", "quantity", "price", "flavors")}`;
       if (payments && payments.length > 0) {

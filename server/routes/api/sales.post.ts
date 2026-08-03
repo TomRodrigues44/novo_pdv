@@ -52,13 +52,14 @@ export default defineEventHandler(async (event) => {
     if (saleData.items && Array.isArray(saleData.items)) {
       const items = saleData.items;
       
+      // Store sale items com serialização de flavors
       const saleItems = items.map((item: any) => ({
         sale_id: saleId,
         product_id: item.id,
         product_name: item.name,
         quantity: item.quantity,
         price: item.price,
-        flavors: item.flavors,
+        flavors: item.flavors ? JSON.stringify(item.flavors) : null,
       }));
       
       await sql`INSERT INTO sale_items ${sql(saleItems, 'sale_id', 'product_id', 'product_name', 'quantity', 'price', 'flavors')}`;
