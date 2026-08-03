@@ -222,7 +222,7 @@ export function ReceiptDialog({ open, onClose, total, cartItems, payments, docum
             <p className="font-bold">*** OBRIGADO PELA PREFERÊNCIA ***</p>
             <p>Volte sempre!</p>
             {saleId && (
-              <p className="font-bold uppercase mt-2">SENHA: {saleId}</p>
+              <p className="font-bold uppercase mt-2 text-lg">SENHA: {saleId}</p>
             )}
           </div>
 
