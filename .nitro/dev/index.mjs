@@ -935,19 +935,19 @@ const plugins = [
 ];
 
 const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"1dc18-rd0ZTsLUiRf+5tZRlhjrQVamKYM\"",
-    "mtime": "2026-08-03T15:57:27.638Z",
-    "size": 121880,
-    "path": "index.mjs"
-  },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"6a92c-V+Lrb9MIq5pXxkX26wBJbxLM/6Y\"",
-    "mtime": "2026-08-03T15:57:27.638Z",
-    "size": 436524,
+    "etag": "\"6a9c7-0sJNypIV57GVwv825jUHTFqtsOM\"",
+    "mtime": "2026-08-03T18:58:00.182Z",
+    "size": 436679,
     "path": "index.mjs.map"
+  },
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1dc3e-t43kmdEZeaLGl+1jx89TEVOqk4I\"",
+    "mtime": "2026-08-03T18:58:00.183Z",
+    "size": 121918,
+    "path": "index.mjs"
   }
 };
 
@@ -3360,51 +3360,22 @@ const sales_get$1 = /*#__PURE__*/Object.freeze({
 });
 
 const sales_post = defineEventHandler(async (event) => {
-  var _a;
   try {
-    const saleData = await readBody(event);
-    const total = parseFloat(String(saleData.total || 0));
-    const freight = parseFloat(String(saleData.freight || 0));
-    const payments = saleData.payments || [];
-    const createdAt = saleData.date || (/* @__PURE__ */ new Date()).toISOString();
-    const customerId = saleData.customerId || null;
-    const xmlContent = saleData.xmlContent || null;
-    const xmlChave = saleData.xmlChave || null;
-    const xmlNumero = saleData.xmlNumero || null;
-    const paymentMethodSummary = payments.map((p) => {
-      switch (p.type) {
-        case "debit":
-          return "D\xE9bito";
-        case "credit":
-          return "Cr\xE9dito";
-        case "pix":
-          return "Pix";
-        case "cash":
-          return "Dinheiro";
-        default:
-          return p.type;
-      }
-    }).join(", ") || "Dinheiro";
-    console.log("Creating sale:", { total, freight, paymentMethodSummary, customerId, itemsCount: (_a = saleData.items) == null ? void 0 : _a.length });
+    const body = await readBody(event);
+    const { items, total, payments, customerId, freight, type } = body;
+    if (!items || !total) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Itens e total s\xE3o obrigat\xF3rios"
+      });
+    }
     const saleResult = await sql`
-          INSERT INTO sales (total_amount, payment_method, freight, created_at, customer_id, payments, xml_content, xml_chave, xml_numero)
-          VALUES (
-            ${total},
-            ${paymentMethodSummary},
-            ${freight},
-            ${createdAt},
-            ${customerId},
-            ${JSON.stringify(payments)}::jsonb,
-            ${xmlContent},
-            ${xmlChave},
-            ${xmlNumero}
-          )
-          RETURNING id
-        `;
+      INSERT INTO sales (total_amount, customer_id, freight, status)
+      VALUES (${total}, ${customerId}, ${freight}, ${type})
+      RETURNING id;
+    `;
     const saleId = saleResult[0].id;
-    console.log("Sale created with ID:", saleId);
-    if (saleData.items && Array.isArray(saleData.items)) {
-      const items = saleData.items;
+    if (items.length > 0) {
       const saleItems = items.map((item) => ({
         sale_id: saleId,
         product_id: item.id,
@@ -3414,64 +3385,28 @@ const sales_post = defineEventHandler(async (event) => {
         flavors: item.flavors ? JSON.stringify(item.flavors) : null
       }));
       await sql`INSERT INTO sale_items ${sql(saleItems, "sale_id", "product_id", "product_name", "quantity", "price", "flavors")}`;
-      if (payments && payments.length > 0) {
-        const salePayments = payments.map((p) => ({
-          sale_id: saleId,
-          payment_type: p.type,
-          amount: p.amount
-        }));
-        await sql`INSERT INTO sale_payments ${sql(salePayments, "sale_id", "payment_type", "amount")}`;
-      }
-      for (const item of items) {
-        const itemPrice = parseFloat(String(item.price || 0));
-        const itemQuantity = parseInt(String(item.quantity || 0));
-        console.log("Adding sale item:", {
-          saleId,
-          productId: item.id,
-          productName: item.name,
-          quantity: itemQuantity,
-          price: itemPrice,
-          flavors: item.flavors
-        });
-        const flavorsArray = item.flavors && Array.isArray(item.flavors) ? item.flavors : null;
-        await sql`
-                  INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, flavors)
-                  VALUES (
-                    ${saleId},
-                    ${item.id},
-                    ${item.name},
-                    ${itemQuantity},
-                    ${itemPrice},
-                    ${flavorsArray}::text[]
-                  )
-                `;
-        await sql`
-                  UPDATE products
-                  SET stock = stock - ${itemQuantity},
-                      available = (stock - ${itemQuantity}) > 0
-                  WHERE id = ${item.id}
-                `;
-      }
     }
-    if (customerId) {
-      const pointsEarned = Math.floor(total);
+    if (payments && payments.length > 0) {
+      const salePayments = payments.map((p) => ({
+        sale_id: saleId,
+        payment_type: p.type,
+        amount: p.amount
+      }));
+      await sql`INSERT INTO sale_payments ${sql(salePayments, "sale_id", "payment_type", "amount")}`;
+    }
+    for (const item of items) {
       await sql`
-              UPDATE customers
-              SET
-                points = points + ${pointsEarned},
-                total_spent = total_spent + ${total},
-                updated_at = CURRENT_TIMESTAMP
-              WHERE id = ${customerId}
-            `;
-      console.log(`Updated customer ${customerId}: +${pointsEarned} points, +${total} total spent`);
+        UPDATE products
+        SET stock = stock - ${item.quantity}
+        WHERE id = ${item.id};
+      `;
     }
-    console.log("Sale completed successfully");
-    return { success: true, id: saleId };
+    return { id: saleId, message: "Venda registrada com sucesso" };
   } catch (error) {
     console.error("Error creating sale:", error);
     throw createError({
       statusCode: 500,
-      statusMessage: "Error creating sale"
+      statusMessage: error.message || "Error creating sale"
     });
   }
 });
