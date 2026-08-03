@@ -221,6 +221,9 @@ export function ReceiptDialog({ open, onClose, total, cartItems, payments, docum
           <div className="text-center mb-2">
             <p className="font-bold">*** OBRIGADO PELA PREFERÊNCIA ***</p>
             <p>Volte sempre!</p>
+            {saleId && (
+              <p className="font-bold uppercase mt-2">SENHA: {saleId}</p>
+            )}
           </div>
 
           {isNfceAuthorized && nfceData && (
