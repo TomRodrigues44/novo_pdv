@@ -1,30 +1,30 @@
-import { sql } from '../../utils/db';
+import { getDatabaseTarget, sql } from '../../utils/db';
 
 export default defineEventHandler(async () => {
   try {
-    const dbUrl = process.env.DATABASE_URL;
-    
-    if (!dbUrl) {
-      return {
-        success: false,
-        error: 'DATABASE_URL não está definida',
-        env: Object.keys(process.env).filter(k => k.includes('DATABASE') || k.includes('NEON'))
-      };
-    }
+    const target = getDatabaseTarget();
+    const result = await sql`
+      SELECT
+        current_database() AS database,
+        current_user AS user,
+        version() AS version
+    `;
 
-    const result = await sql`SELECT 1 as test`;
-    
     return {
       success: true,
-      message: 'Conexão com banco de dados funcionando!',
-      testResult: result,
-      dbUrlPrefix: dbUrl.substring(0, 20) + '...'
+      message: 'Conexão com PostgreSQL funcionando!',
+      connection: {
+        mode: target.isLocal ? 'local' : 'remote',
+        host: target.host,
+        port: target.port,
+        database: target.database,
+      },
+      server: result[0],
     };
   } catch (error: any) {
     return {
       success: false,
-      error: error.message,
-      stack: error.stack
+      error: error.message || 'Erro ao conectar com PostgreSQL',
     };
   }
 });
