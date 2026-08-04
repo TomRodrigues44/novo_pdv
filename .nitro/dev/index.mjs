@@ -1382,9 +1382,9 @@ async function shutdown() {
 
 const databaseGlobal = globalThis;
 function getConnectionString() {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = process.env.LOCAL_DATABASE_URL || process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error("DATABASE_URL n\xE3o est\xE1 definida");
+    throw new Error("LOCAL_DATABASE_URL ou DATABASE_URL n\xE3o est\xE1 definida");
   }
   return connectionString;
 }

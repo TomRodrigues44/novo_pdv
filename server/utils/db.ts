@@ -13,9 +13,9 @@ type DatabaseGlobal = typeof globalThis & {
 const databaseGlobal = globalThis as DatabaseGlobal;
 
 function getConnectionString() {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = process.env.LOCAL_DATABASE_URL || process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error('DATABASE_URL não está definida');
+    throw new Error('LOCAL_DATABASE_URL ou DATABASE_URL não está definida');
   }
   return connectionString;
 }

@@ -2,21 +2,21 @@
 
 ## Banco principal
 
-A aplicação usa `DATABASE_URL` como conexão operacional. Na instalação do PDV, crie ou edite o arquivo `.env.local` na pasta do projeto:
+A aplicação prioriza `LOCAL_DATABASE_URL` como conexão operacional. Isso evita que uma `DATABASE_URL` remota injetada pelo ambiente substitua acidentalmente o PostgreSQL do PDV. Na instalação local, crie ou edite o arquivo `.env.local` na pasta do projeto:
 
 ```env
-DATABASE_URL=postgresql://pdv_app:SUA_SENHA@127.0.0.1:5432/pdv_local
+LOCAL_DATABASE_URL=postgresql://pdv_app:SUA_SENHA@127.0.0.1:5432/pdv_local
 ```
 
 Substitua somente `SUA_SENHA` pela senha local do usuário `pdv_app`. Não coloque aspas e não compartilhe esse arquivo.
 
-Se a senha contiver caracteres reservados de URL, como `@`, `:`, `/`, `?`, `#` ou `%`, eles precisam ser codificados no valor da URL. Outra opção é definir uma senha forte composta por letras e números para o usuário exclusivo da aplicação.
+Se a senha contiver caracteres reservados de URL, como `@`, `:`, `/`, `?`, `#` ou `%`, eles precisam ser codificados no valor da URL.
 
 O arquivo `.env.local` é ignorado pelo Git e não deve ser enviado junto com backups ou código-fonte.
 
 ## Neon
 
-O Neon não deve permanecer em `DATABASE_URL` na máquina do PDV. A conexão remota será configurada separadamente na etapa de sincronização, usando uma variável própria:
+A `DATABASE_URL` remota não é usada quando `LOCAL_DATABASE_URL` está definida. A conexão do Neon será configurada separadamente na etapa de sincronização, usando uma variável própria:
 
 ```env
 NEON_BACKUP_DATABASE_URL=postgresql://USUARIO:SENHA@HOST/neondb?sslmode=require&channel_binding=require
