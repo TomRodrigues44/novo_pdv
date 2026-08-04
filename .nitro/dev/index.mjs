@@ -934,7 +934,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1d5bc-V+pswBTXVbmrvWVMAce2vL3sXv8\"",
+    "mtime": "2026-08-04T14:11:28.233Z",
+    "size": 120252,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"69241-f4aE7u9bRZJkziacDaSppe3DUe0\"",
+    "mtime": "2026-08-04T14:11:28.233Z",
+    "size": 430657,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1050,9 +1065,11 @@ const _lazy_rsKQJO = () => Promise.resolve().then(function () { return motoboys_
 const _lazy_YqxG9s = () => Promise.resolve().then(function () { return motoboys_post$1; });
 const _lazy_maYdpZ = () => Promise.resolve().then(function () { return _id__delete$3; });
 const _lazy_fHvjOj = () => Promise.resolve().then(function () { return _id__put$3; });
+const _lazy_o3Jy8Y = () => Promise.resolve().then(function () { return nfce_get$1; });
 const _lazy_IbtS6o = () => Promise.resolve().then(function () { return qrCode_get$1; });
 const _lazy_jCpQHj = () => Promise.resolve().then(function () { return _sale_id__get$1; });
 const _lazy_MwmAsd = () => Promise.resolve().then(function () { return emitir_post$1; });
+const _lazy_9g6I2U = () => Promise.resolve().then(function () { return _id__get$1; });
 const _lazy_T_NEx7 = () => Promise.resolve().then(function () { return products_get$1; });
 const _lazy_dTrC0F = () => Promise.resolve().then(function () { return products_post$1; });
 const _lazy_gYdxNd = () => Promise.resolve().then(function () { return _id__delete$1; });
@@ -1093,9 +1110,11 @@ const handlers = [
   { route: '/api/motoboys', handler: _lazy_YqxG9s, lazy: true, middleware: false, method: "post" },
   { route: '/api/motoboys/:id', handler: _lazy_maYdpZ, lazy: true, middleware: false, method: "delete" },
   { route: '/api/motoboys/:id', handler: _lazy_fHvjOj, lazy: true, middleware: false, method: "put" },
+  { route: '/api/nfce', handler: _lazy_o3Jy8Y, lazy: true, middleware: false, method: "get" },
   { route: '/api/nfce/:id/qr-code', handler: _lazy_IbtS6o, lazy: true, middleware: false, method: "get" },
   { route: '/api/nfce/:sale_id', handler: _lazy_jCpQHj, lazy: true, middleware: false, method: "get" },
   { route: '/api/nfce/emitir', handler: _lazy_MwmAsd, lazy: true, middleware: false, method: "post" },
+  { route: '/api/nfce/xml/:id', handler: _lazy_9g6I2U, lazy: true, middleware: false, method: "get" },
   { route: '/api/products', handler: _lazy_T_NEx7, lazy: true, middleware: false, method: "get" },
   { route: '/api/products', handler: _lazy_dTrC0F, lazy: true, middleware: false, method: "post" },
   { route: '/api/products/:id', handler: _lazy_gYdxNd, lazy: true, middleware: false, method: "delete" },
@@ -2500,6 +2519,41 @@ const _id__put$3 = /*#__PURE__*/Object.freeze({
   default: _id__put$2
 });
 
+const nfce_get = defineEventHandler(async () => {
+  try {
+    const notas = await sql`
+      SELECT
+        n.id AS nfce_id,
+        n.sale_id::text AS id,
+        COALESCE(NULLIF(n.xml_retorno, ''), n.xml_envio) AS xml_content,
+        n.chave_acesso AS xml_chave,
+        n.numero AS xml_numero,
+        n.status AS xml_status,
+        COALESCE(n.data_emissao, n.created_at) AS created_at,
+        COALESCE(s.total_amount, 0) AS total_amount,
+        c.name AS customer_name
+      FROM nfce n
+      LEFT JOIN sales s ON s.id::text = n.sale_id::text
+      LEFT JOIN customers c ON c.id = s.customer_id
+      WHERE n.status = 'autorizada'
+        AND COALESCE(NULLIF(n.xml_retorno, ''), NULLIF(n.xml_envio, '')) IS NOT NULL
+      ORDER BY COALESCE(n.data_emissao, n.created_at) DESC
+    `;
+    return notas;
+  } catch (error) {
+    console.error("Error fetching NFC-e XMLs:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Erro ao carregar XMLs fiscais"
+    });
+  }
+});
+
+const nfce_get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: nfce_get
+});
+
 async function generateQrCodeImage(qrCodeString) {
   try {
     const qrDataUrl = await QRCode.toDataURL(qrCodeString, {
@@ -3098,6 +3152,52 @@ const emitir_post = defineEventHandler(async (event) => {
 const emitir_post$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: emitir_post
+});
+
+const _id__get = defineEventHandler(async (event) => {
+  const id = getRouterParam(event, "id");
+  if (!id || !/^\d+$/.test(id)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "ID da NFC-e inv\xE1lido"
+    });
+  }
+  try {
+    const result = await sql`
+      SELECT
+        numero,
+        COALESCE(NULLIF(xml_retorno, ''), xml_envio) AS xml_content
+      FROM nfce
+      WHERE id = ${id}
+        AND status = 'autorizada'
+      LIMIT 1
+    `;
+    if (result.length === 0 || !result[0].xml_content) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "XML da NFC-e n\xE3o encontrado"
+      });
+    }
+    setResponseHeaders(event, {
+      "Content-Type": "application/xml; charset=utf-8",
+      "Content-Disposition": `attachment; filename="nfe-${result[0].numero || id}.xml"`
+    });
+    return result[0].xml_content;
+  } catch (error) {
+    console.error("Error downloading NFC-e XML:", error);
+    if (error.statusCode) {
+      throw error;
+    }
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Erro ao baixar XML fiscal"
+    });
+  }
+});
+
+const _id__get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _id__get
 });
 
 const products_get = defineEventHandler(async () => {

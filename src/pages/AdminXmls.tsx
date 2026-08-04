@@ -8,8 +8,9 @@ import { Download, FileText, Calendar, Search, Filter, Package } from "lucide-re
 import { toast } from "sonner";
 
 interface Sale {
+  nfce_id: number;
   id: string;
-  xml_content: string | null;
+  xml_content: string;
   xml_chave: string | null;
   xml_numero: number | null;
   xml_status: string;
@@ -27,13 +28,12 @@ const AdminXmls = () => {
   const fetchSales = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/sales');
-      if (response.ok) {
-        const data = await response.json();
-        // Filtrar apenas vendas que têm XML
-        const salesWithXml = data.filter((sale: Sale) => sale.xml_content);
-        setSales(salesWithXml);
+      const response = await fetch('/api/nfce');
+      if (!response.ok) {
+        throw new Error('Falha ao carregar XMLs');
       }
+      const data = await response.json();
+      setSales(data);
     } catch (error) {
       console.error('Error fetching sales:', error);
       toast.error('Erro ao carregar XMLs');
@@ -48,7 +48,7 @@ const AdminXmls = () => {
 
   const handleDownloadXml = async (sale: Sale) => {
     try {
-      const response = await fetch(`/api/sales/${sale.id}/xml`);
+      const response = await fetch(`/api/nfce/xml/${sale.nfce_id}`);
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -210,7 +210,7 @@ const AdminXmls = () => {
                   </TableHeader>
                   <TableBody>
                     {filteredSales.map((sale) => (
-                      <TableRow key={sale.id}>
+                      <TableRow key={sale.nfce_id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4 text-gray-400" />

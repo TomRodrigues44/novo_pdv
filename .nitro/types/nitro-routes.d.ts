@@ -66,6 +66,9 @@ declare module "nitropack/types" {
       'delete': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/motoboys/[id].delete').default>>>>
       'put': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/motoboys/[id].put').default>>>>
     }
+    '/api/nfce': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/nfce.get').default>>>>
+    }
     '/api/nfce/:id/qr-code': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/nfce/[id]/qr-code.get').default>>>>
     }
@@ -74,6 +77,9 @@ declare module "nitropack/types" {
     }
     '/api/nfce/emitir': {
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/nfce/emitir.post').default>>>>
+    }
+    '/api/nfce/xml/:id': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/nfce/xml/[id].get').default>>>>
     }
     '/api/products': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/products.get').default>>>>
