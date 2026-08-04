@@ -14,6 +14,7 @@ import AdminCustomers from "./pages/AdminCustomers";
 import AdminMotoboys from "./pages/AdminMotoboys";
 import AdminFiscal from "./pages/AdminFiscal";
 import AdminXmls from "./pages/AdminXmls";
+import AdminContingency from "./pages/AdminContingency";
 import Kitchen from "./pages/Kitchen";
 import CashRegister from "./pages/CashRegister";
 
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/admin/reports" element={<AdminReports />} />
             <Route path="/admin/fiscal" element={<AdminFiscal />} />
             <Route path="/admin/xmls" element={<AdminXmls />} />
+            <Route path="/admin/contingency" element={<AdminContingency />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

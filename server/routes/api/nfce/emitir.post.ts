@@ -1,6 +1,7 @@
 import { sql } from '../../../utils/db';
-import { enviarParaSefaz } from '../../../lib/nfce/sefaz';
+import { enviarParaSefaz, type SefazResponse } from '../../../lib/nfce/sefaz';
 import { generateNfceXml } from '../../../lib/nfce/generator';
+import { saveContingencyNote } from '../../../lib/nfce/contingency';
 
 const toNumber = (value: any, fallback: number) => {
   const n = Number(value);
@@ -102,16 +103,42 @@ export default defineEventHandler(async (event) => {
     console.log('✅ XML gerado, tamanho:', xmlEnvio.length);
 
     console.log('📤 Enviando para SEFAZ...');
-    const sefazResult = await enviarParaSefaz(xmlEnvio, config.ambiente || 'homologacao');
+    let sefazResult: SefazResponse;
+    try {
+      sefazResult = await enviarParaSefaz(xmlEnvio, config.ambiente || 'homologacao');
+    } catch (sendError: any) {
+      sefazResult = {
+        success: false,
+        status: 'erro',
+        mensagem: sendError?.message || 'Falha de conexão com a SEFAZ',
+      };
+    }
     console.log('📤 Resposta SEFAZ:', sefazResult);
             
-    if (!sefazResult || !sefazResult.success) {
+    if (!sefazResult.success) {
+      const failureReason = sefazResult.mensagem || 'Não foi possível comunicar com a SEFAZ';
       console.error('❌ Erro ao autorizar NFC-e na SEFAZ:', sefazResult);
+
+      await saveContingencyNote({
+        saleId: String(saleDbId),
+        xmlContent: xmlEnvio,
+        reason: failureReason,
+        payload: {
+          ambiente: config.ambiente || 'homologacao',
+          numero: proximoNumero,
+          serie: serieNfce,
+          valor_total,
+        },
+      });
+
       await sql`
         INSERT INTO nfce (sale_id, status, xml_envio, mensagem_status, ambiente, numero, serie)
-        VALUES (${String(saleIdNumber)}, 'rejeitada', ${xmlEnvio}, ${sefazResult?.mensagem || 'Erro desconhecido da SEFAZ'}, ${config.ambiente || 'homologacao'}, ${proximoNumero}, ${serieNfce})
+        VALUES (${String(saleIdNumber)}, 'rejeitada', ${xmlEnvio}, ${failureReason}, ${config.ambiente || 'homologacao'}, ${proximoNumero}, ${serieNfce})
       `;
-      throw createError({ statusCode: 502, statusMessage: sefazResult?.mensagem || 'Erro ao autorizar NFC-e na SEFAZ' });
+      await sql`
+        UPDATE sales SET xml_status = 'contingencia' WHERE id = ${saleDbId}
+      `;
+      throw createError({ statusCode: 503, statusMessage: `${failureReason}. NFC-e salva em contingência para reenvio.` });
     }
     
     console.log('✅ NFC-e autorizada! Chave:', sefazResult.chave_acesso, 'Número:', sefazResult.numero);
