@@ -3,32 +3,32 @@ import { Server } from 'node:http';
 import { resolve, dirname, join } from 'node:path';
 import nodeCrypto from 'node:crypto';
 import { parentPort, threadId } from 'node:worker_threads';
-import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestURL, getRequestHeader, getResponseHeader, getRequestHeaders, setResponseHeaders, setResponseStatus, send, removeResponseHeader, appendResponseHeader, setResponseHeader, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, readBody, getQuery as getQuery$1, readFormData } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index.mjs';
-import destr from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/destr@2.0.5/node_modules/destr/dist/index.mjs';
-import { createHooks } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/hookable@5.5.3/node_modules/hookable/dist/index.mjs';
-import { createFetch, Headers as Headers$1 } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/ofetch@1.5.1/node_modules/ofetch/dist/node.mjs';
-import { fetchNodeRequestHandler, callNodeRequestHandler } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/node-mock-http@1.0.4/node_modules/node-mock-http/dist/index.mjs';
-import { parseURL, withoutBase, joinURL, getQuery, withQuery, decodePath, withLeadingSlash, withoutTrailingSlash } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/ufo@1.6.4/node_modules/ufo/dist/index.mjs';
-import { createStorage, prefixStorage } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/unstorage@1.17.5_db0@0.3.4_ioredis@5.11.1/node_modules/unstorage/dist/index.mjs';
-import unstorage_47drivers_47fs from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/unstorage@1.17.5_db0@0.3.4_ioredis@5.11.1/node_modules/unstorage/drivers/fs.mjs';
-import { digest } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/ohash@2.0.11/node_modules/ohash/dist/index.mjs';
-import { klona } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/klona@2.0.6/node_modules/klona/dist/index.mjs';
-import defu, { defuFn } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/defu@6.1.7/node_modules/defu/dist/defu.mjs';
-import { snakeCase } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/scule@1.3.0/node_modules/scule/dist/index.mjs';
-import { toRouteMatcher, createRouter } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/radix3@1.1.2/node_modules/radix3/dist/index.mjs';
+import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestURL, getRequestHeader, getResponseHeader, getRequestHeaders, setResponseHeaders, setResponseStatus, send, removeResponseHeader, appendResponseHeader, setResponseHeader, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, readBody, getQuery as getQuery$1, readFormData } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index.mjs';
+import destr from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/destr@2.0.5/node_modules/destr/dist/index.mjs';
+import { createHooks } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/hookable@5.5.3/node_modules/hookable/dist/index.mjs';
+import { createFetch, Headers as Headers$1 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/ofetch@1.5.1/node_modules/ofetch/dist/node.mjs';
+import { fetchNodeRequestHandler, callNodeRequestHandler } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/node-mock-http@1.0.4/node_modules/node-mock-http/dist/index.mjs';
+import { parseURL, withoutBase, joinURL, getQuery, withQuery, decodePath, withLeadingSlash, withoutTrailingSlash } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/ufo@1.6.4/node_modules/ufo/dist/index.mjs';
+import { createStorage, prefixStorage } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/unstorage@1.17.5_db0@0.3.4_ioredis@5.11.1/node_modules/unstorage/dist/index.mjs';
+import unstorage_47drivers_47fs from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/unstorage@1.17.5_db0@0.3.4_ioredis@5.11.1/node_modules/unstorage/drivers/fs.mjs';
+import { digest } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/ohash@2.0.11/node_modules/ohash/dist/index.mjs';
+import { klona } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/klona@2.0.6/node_modules/klona/dist/index.mjs';
+import defu, { defuFn } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/defu@6.1.7/node_modules/defu/dist/defu.mjs';
+import { snakeCase } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/scule@1.3.0/node_modules/scule/dist/index.mjs';
+import { toRouteMatcher, createRouter } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/radix3@1.1.2/node_modules/radix3/dist/index.mjs';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
-import consola from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/index.mjs';
-import { ErrorParser } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/youch-core@0.3.3/node_modules/youch-core/build/index.js';
-import { Youch } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/youch@4.1.1/node_modules/youch/build/index.js';
-import { SourceMapConsumer } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/source-map@0.7.6/node_modules/source-map/source-map.js';
+import consola from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/index.mjs';
+import { ErrorParser } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/youch-core@0.3.3/node_modules/youch-core/build/index.js';
+import { Youch } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/youch@4.1.1/node_modules/youch/build/index.js';
+import { SourceMapConsumer } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/source-map@0.7.6/node_modules/source-map/source-map.js';
 import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
-import QRCode from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
-import { neon } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs';
-import { v4 } from 'file://C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
+import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
+import QRCode from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
+import { neon } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs';
+import { v4 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
 
-const serverAssets = [{"baseName":"server","dir":"C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/server/assets"}];
+const serverAssets = [{"baseName":"server","dir":"C:/Users/1793579/dyad-apps/novo_pdv/server/assets"}];
 
 const assets$1 = createStorage();
 
@@ -40,11 +40,11 @@ const storage = createStorage({});
 
 storage.mount('/assets', assets$1);
 
-storage.mount('root', unstorage_47drivers_47fs({"driver":"fs","readOnly":true,"base":"C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas"}));
-storage.mount('src', unstorage_47drivers_47fs({"driver":"fs","readOnly":true,"base":"C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/server"}));
-storage.mount('build', unstorage_47drivers_47fs({"driver":"fs","readOnly":false,"base":"C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/.nitro"}));
-storage.mount('cache', unstorage_47drivers_47fs({"driver":"fs","readOnly":false,"base":"C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/.nitro/cache"}));
-storage.mount('data', unstorage_47drivers_47fs({"driver":"fs","base":"C:/Users/1793579/dyad-apps/emp-rio-das-coxinhas/.data/kv"}));
+storage.mount('root', unstorage_47drivers_47fs({"driver":"fs","readOnly":true,"base":"C:/Users/1793579/dyad-apps/novo_pdv"}));
+storage.mount('src', unstorage_47drivers_47fs({"driver":"fs","readOnly":true,"base":"C:/Users/1793579/dyad-apps/novo_pdv/server"}));
+storage.mount('build', unstorage_47drivers_47fs({"driver":"fs","readOnly":false,"base":"C:/Users/1793579/dyad-apps/novo_pdv/.nitro"}));
+storage.mount('cache', unstorage_47drivers_47fs({"driver":"fs","readOnly":false,"base":"C:/Users/1793579/dyad-apps/novo_pdv/.nitro/cache"}));
+storage.mount('data', unstorage_47drivers_47fs({"driver":"fs","base":"C:/Users/1793579/dyad-apps/novo_pdv/.data/kv"}));
 
 function useStorage(base = "") {
   return base ? prefixStorage(storage, base) : storage;
@@ -934,22 +934,7 @@ const plugins = [
   
 ];
 
-const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"1d007-loXTGvRCu2CrZn/a+3ze2vbGbjU\"",
-    "mtime": "2026-08-03T20:36:57.034Z",
-    "size": 118791,
-    "path": "index.mjs"
-  },
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"67882-sUjyZpIXcByU32NoBBi8G5g6oME\"",
-    "mtime": "2026-08-03T20:36:57.038Z",
-    "size": 424066,
-    "path": "index.mjs.map"
-  }
-};
+const assets = {};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -974,7 +959,7 @@ function getAsset (id) {
 
 const METHODS = /* @__PURE__ */ new Set(["HEAD", "GET"]);
 const EncodingMap = { gzip: ".gz", br: ".br" };
-const _ngUQxC = eventHandler((event) => {
+const _l6gOeV = eventHandler((event) => {
   if (event.method && !METHODS.has(event.method)) {
     return;
   }
@@ -1038,89 +1023,89 @@ const _ngUQxC = eventHandler((event) => {
   return readAsset(id);
 });
 
-const _lazy_zyPM9J = () => Promise.resolve().then(function () { return cashRegister_get$1; });
-const _lazy_s4P548 = () => Promise.resolve().then(function () { return close_post$1; });
-const _lazy_rID8to = () => Promise.resolve().then(function () { return open_post$1; });
-const _lazy_4uV9wR = () => Promise.resolve().then(function () { return cashTransactions_get$1; });
-const _lazy_cQiAIV = () => Promise.resolve().then(function () { return cashTransactions_post$1; });
-const _lazy_EvjcMH = () => Promise.resolve().then(function () { return _id__delete$9; });
-const _lazy__iU8wW = () => Promise.resolve().then(function () { return categories_get$1; });
-const _lazy_o1wo52 = () => Promise.resolve().then(function () { return categories_post$3; });
-const _lazy_b2VTWC = () => Promise.resolve().then(function () { return _id__delete$7; });
-const _lazy_eDpqQf = () => Promise.resolve().then(function () { return _id__put$7; });
-const _lazy_thsE84 = () => Promise.resolve().then(function () { return customers_get$1; });
-const _lazy_krY3pv = () => Promise.resolve().then(function () { return customers_post$1; });
-const _lazy_H45_Wb = () => Promise.resolve().then(function () { return _id__delete$5; });
-const _lazy_h4GIBs = () => Promise.resolve().then(function () { return _id__put$5; });
-const _lazy_YtRTDx = () => Promise.resolve().then(function () { return sales_get$3; });
-const _lazy_N2rBSe = () => Promise.resolve().then(function () { return certificates_get$1; });
-const _lazy_0mr2g0 = () => Promise.resolve().then(function () { return certificates_post$1; });
-const _lazy_8HWzgs = () => Promise.resolve().then(function () { return companyConfig_get$1; });
-const _lazy_PpOTdY = () => Promise.resolve().then(function () { return companyConfig_post$1; });
-const _lazy_M8uIuJ = () => Promise.resolve().then(function () { return testConnection_post$1; });
-const _lazy_zELk_7 = () => Promise.resolve().then(function () { return categories_post$1; });
-const _lazy_GwWEhE = () => Promise.resolve().then(function () { return products_post$3; });
-const _lazy_lNzaoz = () => Promise.resolve().then(function () { return sales_post$3; });
-const _lazy_lqSuRD = () => Promise.resolve().then(function () { return motoboys_get$1; });
-const _lazy_zC6TWw = () => Promise.resolve().then(function () { return motoboys_post$1; });
-const _lazy_ykGK35 = () => Promise.resolve().then(function () { return _id__delete$3; });
-const _lazy_RateJQ = () => Promise.resolve().then(function () { return _id__put$3; });
-const _lazy_YLEYS8 = () => Promise.resolve().then(function () { return qrCode_get$1; });
-const _lazy_hjc9Uv = () => Promise.resolve().then(function () { return _sale_id__get$1; });
-const _lazy_8aGe64 = () => Promise.resolve().then(function () { return emitir_post$1; });
-const _lazy_9dG2yK = () => Promise.resolve().then(function () { return products_get$1; });
-const _lazy_C0_k4l = () => Promise.resolve().then(function () { return products_post$1; });
-const _lazy_q5qboF = () => Promise.resolve().then(function () { return _id__delete$1; });
-const _lazy_gmpj8W = () => Promise.resolve().then(function () { return _id__put$1; });
-const _lazy_nl6xh4 = () => Promise.resolve().then(function () { return sales_get$1; });
-const _lazy__VRAiA = () => Promise.resolve().then(function () { return sales_post$1; });
-const _lazy_aXzNxt = () => Promise.resolve().then(function () { return status_put$1; });
-const _lazy_ir38yz = () => Promise.resolve().then(function () { return xml_get$1; });
-const _lazy_C90ob_ = () => Promise.resolve().then(function () { return testDb_get$1; });
-const _lazy_RQnKGR = () => Promise.resolve().then(function () { return upload_post$1; });
+const _lazy_yxPaRJ = () => Promise.resolve().then(function () { return cashRegister_get$1; });
+const _lazy_kdJA4k = () => Promise.resolve().then(function () { return close_post$1; });
+const _lazy_rO_WFu = () => Promise.resolve().then(function () { return open_post$1; });
+const _lazy_BdYJUJ = () => Promise.resolve().then(function () { return cashTransactions_get$1; });
+const _lazy_PEHXk3 = () => Promise.resolve().then(function () { return cashTransactions_post$1; });
+const _lazy_RKtRXd = () => Promise.resolve().then(function () { return _id__delete$9; });
+const _lazy_IW2_BM = () => Promise.resolve().then(function () { return categories_get$1; });
+const _lazy_MNhMfv = () => Promise.resolve().then(function () { return categories_post$3; });
+const _lazy_gfQAUz = () => Promise.resolve().then(function () { return _id__delete$7; });
+const _lazy_cFC5Uh = () => Promise.resolve().then(function () { return _id__put$7; });
+const _lazy_S1l8gD = () => Promise.resolve().then(function () { return customers_get$1; });
+const _lazy_Pnfsz0 = () => Promise.resolve().then(function () { return customers_post$1; });
+const _lazy_jbGOcG = () => Promise.resolve().then(function () { return _id__delete$5; });
+const _lazy_EFm9MF = () => Promise.resolve().then(function () { return _id__put$5; });
+const _lazy_vMNP2g = () => Promise.resolve().then(function () { return sales_get$3; });
+const _lazy_xe7acr = () => Promise.resolve().then(function () { return certificates_get$1; });
+const _lazy_AbKrHi = () => Promise.resolve().then(function () { return certificates_post$1; });
+const _lazy_JuQZAj = () => Promise.resolve().then(function () { return companyConfig_get$1; });
+const _lazy_MgNWqb = () => Promise.resolve().then(function () { return companyConfig_post$1; });
+const _lazy_UUyT9J = () => Promise.resolve().then(function () { return testConnection_post$1; });
+const _lazy_y8kYmo = () => Promise.resolve().then(function () { return categories_post$1; });
+const _lazy_J_6_3Z = () => Promise.resolve().then(function () { return products_post$3; });
+const _lazy_GEhQc0 = () => Promise.resolve().then(function () { return sales_post$3; });
+const _lazy_rsKQJO = () => Promise.resolve().then(function () { return motoboys_get$1; });
+const _lazy_YqxG9s = () => Promise.resolve().then(function () { return motoboys_post$1; });
+const _lazy_maYdpZ = () => Promise.resolve().then(function () { return _id__delete$3; });
+const _lazy_fHvjOj = () => Promise.resolve().then(function () { return _id__put$3; });
+const _lazy_IbtS6o = () => Promise.resolve().then(function () { return qrCode_get$1; });
+const _lazy_jCpQHj = () => Promise.resolve().then(function () { return _sale_id__get$1; });
+const _lazy_MwmAsd = () => Promise.resolve().then(function () { return emitir_post$1; });
+const _lazy_T_NEx7 = () => Promise.resolve().then(function () { return products_get$1; });
+const _lazy_dTrC0F = () => Promise.resolve().then(function () { return products_post$1; });
+const _lazy_gYdxNd = () => Promise.resolve().then(function () { return _id__delete$1; });
+const _lazy_jEPQaM = () => Promise.resolve().then(function () { return _id__put$1; });
+const _lazy_EeL9Xf = () => Promise.resolve().then(function () { return sales_get$1; });
+const _lazy_y4fMmW = () => Promise.resolve().then(function () { return sales_post$1; });
+const _lazy_BeUxG7 = () => Promise.resolve().then(function () { return status_put$1; });
+const _lazy_pZXqj1 = () => Promise.resolve().then(function () { return xml_get$1; });
+const _lazy_JpFH7U = () => Promise.resolve().then(function () { return testDb_get$1; });
+const _lazy_b9ys0L = () => Promise.resolve().then(function () { return upload_post$1; });
 
 const handlers = [
-  { route: '', handler: _ngUQxC, lazy: false, middleware: true, method: undefined },
-  { route: '/api/cash-register', handler: _lazy_zyPM9J, lazy: true, middleware: false, method: "get" },
-  { route: '/api/cash-register/close', handler: _lazy_s4P548, lazy: true, middleware: false, method: "post" },
-  { route: '/api/cash-register/open', handler: _lazy_rID8to, lazy: true, middleware: false, method: "post" },
-  { route: '/api/cash-transactions', handler: _lazy_4uV9wR, lazy: true, middleware: false, method: "get" },
-  { route: '/api/cash-transactions', handler: _lazy_cQiAIV, lazy: true, middleware: false, method: "post" },
-  { route: '/api/cash-transactions/:id', handler: _lazy_EvjcMH, lazy: true, middleware: false, method: "delete" },
-  { route: '/api/categories', handler: _lazy__iU8wW, lazy: true, middleware: false, method: "get" },
-  { route: '/api/categories', handler: _lazy_o1wo52, lazy: true, middleware: false, method: "post" },
-  { route: '/api/categories/:id', handler: _lazy_b2VTWC, lazy: true, middleware: false, method: "delete" },
-  { route: '/api/categories/:id', handler: _lazy_eDpqQf, lazy: true, middleware: false, method: "put" },
-  { route: '/api/customers', handler: _lazy_thsE84, lazy: true, middleware: false, method: "get" },
-  { route: '/api/customers', handler: _lazy_krY3pv, lazy: true, middleware: false, method: "post" },
-  { route: '/api/customers/:id', handler: _lazy_H45_Wb, lazy: true, middleware: false, method: "delete" },
-  { route: '/api/customers/:id', handler: _lazy_h4GIBs, lazy: true, middleware: false, method: "put" },
-  { route: '/api/customers/:id/sales', handler: _lazy_YtRTDx, lazy: true, middleware: false, method: "get" },
-  { route: '/api/fiscal/certificates', handler: _lazy_N2rBSe, lazy: true, middleware: false, method: "get" },
-  { route: '/api/fiscal/certificates', handler: _lazy_0mr2g0, lazy: true, middleware: false, method: "post" },
-  { route: '/api/fiscal/company-config', handler: _lazy_8HWzgs, lazy: true, middleware: false, method: "get" },
-  { route: '/api/fiscal/company-config', handler: _lazy_PpOTdY, lazy: true, middleware: false, method: "post" },
-  { route: '/api/fiscal/test-connection', handler: _lazy_M8uIuJ, lazy: true, middleware: false, method: "post" },
-  { route: '/api/migrate/categories', handler: _lazy_zELk_7, lazy: true, middleware: false, method: "post" },
-  { route: '/api/migrate/products', handler: _lazy_GwWEhE, lazy: true, middleware: false, method: "post" },
-  { route: '/api/migrate/sales', handler: _lazy_lNzaoz, lazy: true, middleware: false, method: "post" },
-  { route: '/api/motoboys', handler: _lazy_lqSuRD, lazy: true, middleware: false, method: "get" },
-  { route: '/api/motoboys', handler: _lazy_zC6TWw, lazy: true, middleware: false, method: "post" },
-  { route: '/api/motoboys/:id', handler: _lazy_ykGK35, lazy: true, middleware: false, method: "delete" },
-  { route: '/api/motoboys/:id', handler: _lazy_RateJQ, lazy: true, middleware: false, method: "put" },
-  { route: '/api/nfce/:id/qr-code', handler: _lazy_YLEYS8, lazy: true, middleware: false, method: "get" },
-  { route: '/api/nfce/:sale_id', handler: _lazy_hjc9Uv, lazy: true, middleware: false, method: "get" },
-  { route: '/api/nfce/emitir', handler: _lazy_8aGe64, lazy: true, middleware: false, method: "post" },
-  { route: '/api/products', handler: _lazy_9dG2yK, lazy: true, middleware: false, method: "get" },
-  { route: '/api/products', handler: _lazy_C0_k4l, lazy: true, middleware: false, method: "post" },
-  { route: '/api/products/:id', handler: _lazy_q5qboF, lazy: true, middleware: false, method: "delete" },
-  { route: '/api/products/:id', handler: _lazy_gmpj8W, lazy: true, middleware: false, method: "put" },
-  { route: '/api/sales', handler: _lazy_nl6xh4, lazy: true, middleware: false, method: "get" },
-  { route: '/api/sales', handler: _lazy__VRAiA, lazy: true, middleware: false, method: "post" },
-  { route: '/api/sales/:id/status', handler: _lazy_aXzNxt, lazy: true, middleware: false, method: "put" },
-  { route: '/api/sales/:id/xml', handler: _lazy_ir38yz, lazy: true, middleware: false, method: "get" },
-  { route: '/api/test-db', handler: _lazy_C90ob_, lazy: true, middleware: false, method: "get" },
-  { route: '/api/upload', handler: _lazy_RQnKGR, lazy: true, middleware: false, method: "post" }
+  { route: '', handler: _l6gOeV, lazy: false, middleware: true, method: undefined },
+  { route: '/api/cash-register', handler: _lazy_yxPaRJ, lazy: true, middleware: false, method: "get" },
+  { route: '/api/cash-register/close', handler: _lazy_kdJA4k, lazy: true, middleware: false, method: "post" },
+  { route: '/api/cash-register/open', handler: _lazy_rO_WFu, lazy: true, middleware: false, method: "post" },
+  { route: '/api/cash-transactions', handler: _lazy_BdYJUJ, lazy: true, middleware: false, method: "get" },
+  { route: '/api/cash-transactions', handler: _lazy_PEHXk3, lazy: true, middleware: false, method: "post" },
+  { route: '/api/cash-transactions/:id', handler: _lazy_RKtRXd, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/categories', handler: _lazy_IW2_BM, lazy: true, middleware: false, method: "get" },
+  { route: '/api/categories', handler: _lazy_MNhMfv, lazy: true, middleware: false, method: "post" },
+  { route: '/api/categories/:id', handler: _lazy_gfQAUz, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/categories/:id', handler: _lazy_cFC5Uh, lazy: true, middleware: false, method: "put" },
+  { route: '/api/customers', handler: _lazy_S1l8gD, lazy: true, middleware: false, method: "get" },
+  { route: '/api/customers', handler: _lazy_Pnfsz0, lazy: true, middleware: false, method: "post" },
+  { route: '/api/customers/:id', handler: _lazy_jbGOcG, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/customers/:id', handler: _lazy_EFm9MF, lazy: true, middleware: false, method: "put" },
+  { route: '/api/customers/:id/sales', handler: _lazy_vMNP2g, lazy: true, middleware: false, method: "get" },
+  { route: '/api/fiscal/certificates', handler: _lazy_xe7acr, lazy: true, middleware: false, method: "get" },
+  { route: '/api/fiscal/certificates', handler: _lazy_AbKrHi, lazy: true, middleware: false, method: "post" },
+  { route: '/api/fiscal/company-config', handler: _lazy_JuQZAj, lazy: true, middleware: false, method: "get" },
+  { route: '/api/fiscal/company-config', handler: _lazy_MgNWqb, lazy: true, middleware: false, method: "post" },
+  { route: '/api/fiscal/test-connection', handler: _lazy_UUyT9J, lazy: true, middleware: false, method: "post" },
+  { route: '/api/migrate/categories', handler: _lazy_y8kYmo, lazy: true, middleware: false, method: "post" },
+  { route: '/api/migrate/products', handler: _lazy_J_6_3Z, lazy: true, middleware: false, method: "post" },
+  { route: '/api/migrate/sales', handler: _lazy_GEhQc0, lazy: true, middleware: false, method: "post" },
+  { route: '/api/motoboys', handler: _lazy_rsKQJO, lazy: true, middleware: false, method: "get" },
+  { route: '/api/motoboys', handler: _lazy_YqxG9s, lazy: true, middleware: false, method: "post" },
+  { route: '/api/motoboys/:id', handler: _lazy_maYdpZ, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/motoboys/:id', handler: _lazy_fHvjOj, lazy: true, middleware: false, method: "put" },
+  { route: '/api/nfce/:id/qr-code', handler: _lazy_IbtS6o, lazy: true, middleware: false, method: "get" },
+  { route: '/api/nfce/:sale_id', handler: _lazy_jCpQHj, lazy: true, middleware: false, method: "get" },
+  { route: '/api/nfce/emitir', handler: _lazy_MwmAsd, lazy: true, middleware: false, method: "post" },
+  { route: '/api/products', handler: _lazy_T_NEx7, lazy: true, middleware: false, method: "get" },
+  { route: '/api/products', handler: _lazy_dTrC0F, lazy: true, middleware: false, method: "post" },
+  { route: '/api/products/:id', handler: _lazy_gYdxNd, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/products/:id', handler: _lazy_jEPQaM, lazy: true, middleware: false, method: "put" },
+  { route: '/api/sales', handler: _lazy_EeL9Xf, lazy: true, middleware: false, method: "get" },
+  { route: '/api/sales', handler: _lazy_y4fMmW, lazy: true, middleware: false, method: "post" },
+  { route: '/api/sales/:id/status', handler: _lazy_BeUxG7, lazy: true, middleware: false, method: "put" },
+  { route: '/api/sales/:id/xml', handler: _lazy_pZXqj1, lazy: true, middleware: false, method: "get" },
+  { route: '/api/test-db', handler: _lazy_JpFH7U, lazy: true, middleware: false, method: "get" },
+  { route: '/api/upload', handler: _lazy_b9ys0L, lazy: true, middleware: false, method: "post" }
 ];
 
 function createNitroApp() {
