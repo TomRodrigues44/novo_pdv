@@ -25,7 +25,7 @@ import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
 import QRCode from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
-import { neon } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/@neondatabase+serverless@1.1.0/node_modules/@neondatabase/serverless/index.mjs';
+import { Pool } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pg@8.22.0/node_modules/pg/esm/index.mjs';
 import { v4 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
 
 const serverAssets = [{"baseName":"server","dir":"C:/Users/1793579/dyad-apps/novo_pdv/server/assets"}];
@@ -934,22 +934,7 @@ const plugins = [
   
 ];
 
-const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"1d5bc-V+pswBTXVbmrvWVMAce2vL3sXv8\"",
-    "mtime": "2026-08-04T14:11:28.233Z",
-    "size": 120252,
-    "path": "index.mjs"
-  },
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"69241-f4aE7u9bRZJkziacDaSppe3DUe0\"",
-    "mtime": "2026-08-04T14:11:28.233Z",
-    "size": 430657,
-    "path": "index.mjs.map"
-  }
-};
+const assets = {};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1048,6 +1033,8 @@ const _lazy_IW2_BM = () => Promise.resolve().then(function () { return categorie
 const _lazy_MNhMfv = () => Promise.resolve().then(function () { return categories_post$3; });
 const _lazy_gfQAUz = () => Promise.resolve().then(function () { return _id__delete$7; });
 const _lazy_cFC5Uh = () => Promise.resolve().then(function () { return _id__put$7; });
+const _lazy_Iv96YT = () => Promise.resolve().then(function () { return contingency_get$1; });
+const _lazy_4CVdlH = () => Promise.resolve().then(function () { return retry_post$1; });
 const _lazy_S1l8gD = () => Promise.resolve().then(function () { return customers_get$1; });
 const _lazy_Pnfsz0 = () => Promise.resolve().then(function () { return customers_post$1; });
 const _lazy_jbGOcG = () => Promise.resolve().then(function () { return _id__delete$5; });
@@ -1093,6 +1080,8 @@ const handlers = [
   { route: '/api/categories', handler: _lazy_MNhMfv, lazy: true, middleware: false, method: "post" },
   { route: '/api/categories/:id', handler: _lazy_gfQAUz, lazy: true, middleware: false, method: "delete" },
   { route: '/api/categories/:id', handler: _lazy_cFC5Uh, lazy: true, middleware: false, method: "put" },
+  { route: '/api/contingency', handler: _lazy_Iv96YT, lazy: true, middleware: false, method: "get" },
+  { route: '/api/contingency/:id/retry', handler: _lazy_4CVdlH, lazy: true, middleware: false, method: "post" },
   { route: '/api/customers', handler: _lazy_S1l8gD, lazy: true, middleware: false, method: "get" },
   { route: '/api/customers', handler: _lazy_Pnfsz0, lazy: true, middleware: false, method: "post" },
   { route: '/api/customers/:id', handler: _lazy_jbGOcG, lazy: true, middleware: false, method: "delete" },
@@ -1391,7 +1380,57 @@ async function shutdown() {
   parentPort?.postMessage({ event: "exit" });
 }
 
-const sql = neon(process.env.DATABASE_URL);
+const databaseGlobal = globalThis;
+function getConnectionString() {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL n\xE3o est\xE1 definida");
+  }
+  return connectionString;
+}
+function getPool() {
+  if (!databaseGlobal.__pdvPostgresPool) {
+    const connectionString = getConnectionString();
+    databaseGlobal.__pdvPostgresPool = new Pool({
+      connectionString,
+      max: 10,
+      connectionTimeoutMillis: 5e3,
+      idleTimeoutMillis: 3e4,
+      enableChannelBinding: connectionString.includes("channel_binding=require")
+    });
+    databaseGlobal.__pdvPostgresPool.on("error", (error) => {
+      console.error("Erro inesperado no pool PostgreSQL:", error);
+    });
+  }
+  return databaseGlobal.__pdvPostgresPool;
+}
+const executeQuery = async (text, values = []) => {
+  const result = await getPool().query(text, values);
+  return result.rows;
+};
+const sqlTag = ((strings, ...values) => {
+  if (!strings) {
+    return sql;
+  }
+  let text = strings[0];
+  for (let index = 0; index < values.length; index += 1) {
+    text += `$${index + 1}${strings[index + 1]}`;
+  }
+  return executeQuery(text, values);
+});
+sqlTag.query = executeQuery;
+const sql = sqlTag;
+function getDatabaseTarget() {
+  const url = new URL(getConnectionString());
+  const host = url.hostname;
+  return {
+    host,
+    port: url.port || "5432",
+    database: url.pathname.replace(/^\//, ""),
+    user: decodeURIComponent(url.username),
+    isLocal: host === "localhost" || host === "127.0.0.1" || host === "::1"
+  };
+}
 
 const cashRegister_get = defineEventHandler(async () => {
   try {
@@ -1828,6 +1867,285 @@ const _id__put$6 = defineEventHandler(async (event) => {
 const _id__put$7 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: _id__put$6
+});
+
+async function ensureContingencySchema() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS contingency_notes (
+      id BIGSERIAL PRIMARY KEY,
+      sale_id TEXT NOT NULL,
+      xml_content TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      status VARCHAR(20) NOT NULL DEFAULT 'pending',
+      attempts INTEGER NOT NULL DEFAULT 0,
+      payload JSONB,
+      last_attempt_at TIMESTAMP,
+      resolved_at TIMESTAMP,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  await sql`ALTER TABLE contingency_notes ADD COLUMN IF NOT EXISTS sale_id TEXT`;
+  await sql`ALTER TABLE contingency_notes ADD COLUMN IF NOT EXISTS xml_content TEXT`;
+  await sql`ALTER TABLE contingency_notes ADD COLUMN IF NOT EXISTS reason TEXT`;
+  await sql`ALTER TABLE contingency_notes ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'`;
+  await sql`ALTER TABLE contingency_notes ADD COLUMN IF NOT EXISTS attempts INTEGER DEFAULT 0`;
+  await sql`ALTER TABLE contingency_notes ADD COLUMN IF NOT EXISTS payload JSONB`;
+  await sql`ALTER TABLE contingency_notes ADD COLUMN IF NOT EXISTS last_attempt_at TIMESTAMP`;
+  await sql`ALTER TABLE contingency_notes ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP`;
+  await sql`ALTER TABLE contingency_notes ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`;
+  await sql`ALTER TABLE contingency_notes ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`;
+}
+async function saveContingencyNote(input) {
+  await ensureContingencySchema();
+  const existing = await sql`
+    SELECT id
+    FROM contingency_notes
+    WHERE sale_id::text = ${input.saleId}
+      AND COALESCE(status, 'pending') IN ('pending', 'processing')
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+  if (existing.length > 0) {
+    await sql`
+      UPDATE contingency_notes
+      SET xml_content = ${input.xmlContent},
+          reason = ${input.reason},
+          payload = ${JSON.stringify(input.payload)}::jsonb,
+          status = 'pending',
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${existing[0].id}
+    `;
+    return existing[0].id;
+  }
+  const inserted = await sql`
+    INSERT INTO contingency_notes (
+      sale_id, xml_content, reason, status, attempts, payload, created_at, updated_at
+    ) VALUES (
+      ${input.saleId}, ${input.xmlContent}, ${input.reason}, 'pending', 0,
+      ${JSON.stringify(input.payload)}::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    )
+    RETURNING id
+  `;
+  return inserted[0].id;
+}
+
+const contingency_get = defineEventHandler(async () => {
+  try {
+    await ensureContingencySchema();
+    return await sql`
+      SELECT
+        cn.id,
+        cn.sale_id::text AS sale_id,
+        cn.reason,
+        COALESCE(cn.status, 'pending') AS status,
+        COALESCE(cn.attempts, 0) AS attempts,
+        cn.last_attempt_at,
+        cn.resolved_at,
+        cn.created_at,
+        cn.updated_at,
+        COALESCE(s.total_amount, 0) AS total_amount,
+        c.name AS customer_name,
+        COALESCE(
+          NULLIF((cn.payload->>'numero')::text, '')::integer,
+          (regexp_match(cn.xml_content, '<nNF>([0-9]+)</nNF>'))[1]::integer
+        ) AS numero
+      FROM contingency_notes cn
+      LEFT JOIN sales s ON s.id::text = cn.sale_id::text
+      LEFT JOIN customers c ON c.id = s.customer_id
+      ORDER BY
+        CASE WHEN COALESCE(cn.status, 'pending') = 'pending' THEN 0 ELSE 1 END,
+        cn.created_at DESC
+    `;
+  } catch (error) {
+    console.error("Error fetching contingency notes:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Erro ao carregar notas em conting\xEAncia"
+    });
+  }
+});
+
+const contingency_get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: contingency_get
+});
+
+async function enviarParaSefaz(xml, ambiente) {
+  var _a, _b, _c, _d, _e, _f, _g, _h;
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 1e3));
+    const chaveMatch = xml.match(/Id="NFe(\d{44})"/);
+    const chaveAcesso = chaveMatch ? chaveMatch[1] : "";
+    const numeroMatch = xml.match(/<nNF>(\d+)<\/nNF>/);
+    const numero = numeroMatch ? parseInt(numeroMatch[1]) : 0;
+    const qrCodeMatch = xml.match(/<qrCode>(.*?)<\/qrCode>/s);
+    const qrCode = qrCodeMatch ? qrCodeMatch[1].trim() : "";
+    const urlChaveMatch = xml.match(/<urlChave>(.*?)<\/urlChave>/s);
+    const urlConsulta = urlChaveMatch ? urlChaveMatch[1].trim() : "";
+    const protocolo = `RR${Date.now().toString().slice(-9)}`;
+    const xmlRetorno = `<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe versao="4.00">
+    <infNFe Id="NFe${chaveAcesso}" versao="4.00">
+      ${((_a = xml.match(/<ide>[\s\S]*?<\/ide>/)) == null ? void 0 : _a[0]) || ""}
+      ${((_b = xml.match(/<emit>[\s\S]*?<\/emit>/)) == null ? void 0 : _b[0]) || ""}
+      ${((_c = xml.match(/<dest>[\s\S]*?<\/dest>/)) == null ? void 0 : _c[0]) || ""}
+      ${((_d = xml.match(/<detalhe>[\s\S]*?<\/detalhe>/)) == null ? void 0 : _d[0]) || ""}
+      ${((_e = xml.match(/<total>[\s\S]*?<\/total>/)) == null ? void 0 : _e[0]) || ""}
+      ${((_f = xml.match(/<transp>[\s\S]*?<\/transp>/)) == null ? void 0 : _f[0]) || ""}
+      ${((_g = xml.match(/<pag>[\s\S]*?<\/pag>/)) == null ? void 0 : _g[0]) || ""}
+      ${((_h = xml.match(/<infAdic>[\s\S]*?<\/infAdic>/)) == null ? void 0 : _h[0]) || ""}
+    </infNFe>
+    <infNFeSupl>
+      <qrCode>${qrCode}</qrCode>
+      <urlChave>${urlConsulta}</urlChave>
+    </infNFeSupl>
+  </NFe>
+  <protNFe versao="4.00">
+    <infProt Id="ID1${chaveAcesso}01">
+      <tpAmb>${ambiente === "producao" ? "1" : "2"}</tpAmb>
+      <verAplic>4.00</verAplic>
+      <chNFe>${chaveAcesso}</chNFe>
+      <dhRecbto>${(/* @__PURE__ */ new Date()).toISOString()}</dhRecbto>
+      <nProt>${protocolo}</nProt>
+      <digVal>${Buffer.from(chaveAcesso).toString("base64").substring(0, 28)}</digVal>
+      <cStat>100</cStat>
+      <xMotivo>Autorizado o uso da NF-e</xMotivo>
+    </infProt>
+  </protNFe>
+</nfeProc>`;
+    return {
+      success: true,
+      status: "autorizada",
+      mensagem: "NFC-e autorizada com sucesso pela SEFAZ",
+      chave_acesso: chaveAcesso,
+      numero,
+      protocolo,
+      qr_code: qrCode,
+      url_consulta: urlConsulta,
+      xml_retorno: xmlRetorno
+    };
+  } catch (error) {
+    console.error("Error sending to SEFAZ:", error);
+    return {
+      success: false,
+      status: "rejeitada",
+      mensagem: "Erro ao comunicar com SEFAZ"
+    };
+  }
+}
+
+const extractNumber = (xml, tag, fallback) => {
+  const match = xml.match(new RegExp(`<${tag}>([0-9]+)</${tag}>`));
+  return match ? Number(match[1]) : fallback;
+};
+const retry_post = defineEventHandler(async (event) => {
+  var _a, _b, _c;
+  const id = getRouterParam(event, "id");
+  if (!id || !/^\d+$/.test(id)) {
+    throw createError({ statusCode: 400, statusMessage: "ID de conting\xEAncia inv\xE1lido" });
+  }
+  try {
+    await ensureContingencySchema();
+    const notes = await sql`
+      SELECT * FROM contingency_notes WHERE id = ${id} LIMIT 1
+    `;
+    if (notes.length === 0) {
+      throw createError({ statusCode: 404, statusMessage: "Nota em conting\xEAncia n\xE3o encontrada" });
+    }
+    const note = notes[0];
+    if (note.status === "resolved") {
+      throw createError({ statusCode: 409, statusMessage: "Esta NFC-e j\xE1 foi reenviada" });
+    }
+    if (!note.xml_content) {
+      throw createError({ statusCode: 422, statusMessage: "XML n\xE3o armazenado para reenvio" });
+    }
+    const alreadyAuthorized = await sql`
+      SELECT id FROM nfce
+      WHERE sale_id::text = ${String(note.sale_id)} AND status = 'autorizada'
+      LIMIT 1
+    `;
+    if (alreadyAuthorized.length > 0) {
+      await sql`
+        UPDATE contingency_notes
+        SET status = 'resolved', resolved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+      `;
+      return { success: true, message: "A venda j\xE1 possu\xEDa uma NFC-e autorizada. Conting\xEAncia finalizada." };
+    }
+    await sql`
+      UPDATE contingency_notes
+      SET status = 'processing', attempts = COALESCE(attempts, 0) + 1,
+          last_attempt_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id}
+    `;
+    const ambiente = ((_a = note.payload) == null ? void 0 : _a.ambiente) || "homologacao";
+    const sefazResult = await enviarParaSefaz(note.xml_content, ambiente);
+    if (!sefazResult.success) {
+      const reason = sefazResult.mensagem || "Falha ao comunicar com a SEFAZ";
+      await sql`
+        UPDATE contingency_notes
+        SET status = 'pending', reason = ${reason}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+      `;
+      throw createError({ statusCode: 503, statusMessage: reason });
+    }
+    const numero = Number(sefazResult.numero || ((_b = note.payload) == null ? void 0 : _b.numero) || extractNumber(note.xml_content, "nNF", 0));
+    const serie = Number(((_c = note.payload) == null ? void 0 : _c.serie) || extractNumber(note.xml_content, "serie", 1));
+    const inserted = await sql`
+      INSERT INTO nfce (
+        sale_id, chave_acesso, numero, serie, data_emissao, data_autorizacao,
+        protocolo, status, qr_code, xml_envio, xml_retorno, url_consulta,
+        ambiente, mensagem_status
+      ) VALUES (
+        ${String(note.sale_id)}, ${sefazResult.chave_acesso || ""}, ${numero}, ${serie},
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ${sefazResult.protocolo || ""},
+        'autorizada', ${sefazResult.qr_code || ""}, ${note.xml_content},
+        ${sefazResult.xml_retorno || ""}, ${sefazResult.url_consulta || ""},
+        ${ambiente}, ${sefazResult.mensagem || "NFC-e autorizada ap\xF3s conting\xEAncia"}
+      ) RETURNING id
+    `;
+    await sql`
+      UPDATE sales
+      SET xml_chave = ${sefazResult.chave_acesso || ""},
+          xml_numero = ${numero},
+          xml_status = 'autorizada',
+          xml_content = ${sefazResult.xml_retorno || note.xml_content}
+      WHERE id::text = ${String(note.sale_id)}
+    `;
+    await sql`
+      UPDATE contingency_notes
+      SET status = 'resolved', reason = ${sefazResult.mensagem || "NFC-e autorizada"},
+          resolved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id}
+    `;
+    return {
+      success: true,
+      message: "NFC-e reenviada e autorizada com sucesso",
+      nfce_id: inserted[0].id
+    };
+  } catch (error) {
+    console.error("Error retrying contingency note:", error);
+    if (error.statusCode) {
+      throw error;
+    }
+    await sql`
+      UPDATE contingency_notes
+      SET status = 'pending', reason = ${error.message || "Erro inesperado no reenvio"},
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id}
+    `;
+    throw createError({
+      statusCode: 500,
+      statusMessage: error.message || "Erro ao reenviar NFC-e"
+    });
+  }
+});
+
+const retry_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: retry_post
 });
 
 const customers_get = defineEventHandler(async () => {
@@ -2655,71 +2973,6 @@ const _sale_id__get$1 = /*#__PURE__*/Object.freeze({
   default: _sale_id__get
 });
 
-async function enviarParaSefaz(xml, ambiente) {
-  var _a, _b, _c, _d, _e, _f, _g, _h;
-  try {
-    await new Promise((resolve) => setTimeout(resolve, 1e3));
-    const chaveMatch = xml.match(/Id="NFe(\d{44})"/);
-    const chaveAcesso = chaveMatch ? chaveMatch[1] : "";
-    const numeroMatch = xml.match(/<nNF>(\d+)<\/nNF>/);
-    const numero = numeroMatch ? parseInt(numeroMatch[1]) : 0;
-    const qrCodeMatch = xml.match(/<qrCode>(.*?)<\/qrCode>/s);
-    const qrCode = qrCodeMatch ? qrCodeMatch[1].trim() : "";
-    const urlChaveMatch = xml.match(/<urlChave>(.*?)<\/urlChave>/s);
-    const urlConsulta = urlChaveMatch ? urlChaveMatch[1].trim() : "";
-    const protocolo = `RR${Date.now().toString().slice(-9)}`;
-    const xmlRetorno = `<?xml version="1.0" encoding="UTF-8"?>
-<nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-  <NFe versao="4.00">
-    <infNFe Id="NFe${chaveAcesso}" versao="4.00">
-      ${((_a = xml.match(/<ide>[\s\S]*?<\/ide>/)) == null ? void 0 : _a[0]) || ""}
-      ${((_b = xml.match(/<emit>[\s\S]*?<\/emit>/)) == null ? void 0 : _b[0]) || ""}
-      ${((_c = xml.match(/<dest>[\s\S]*?<\/dest>/)) == null ? void 0 : _c[0]) || ""}
-      ${((_d = xml.match(/<detalhe>[\s\S]*?<\/detalhe>/)) == null ? void 0 : _d[0]) || ""}
-      ${((_e = xml.match(/<total>[\s\S]*?<\/total>/)) == null ? void 0 : _e[0]) || ""}
-      ${((_f = xml.match(/<transp>[\s\S]*?<\/transp>/)) == null ? void 0 : _f[0]) || ""}
-      ${((_g = xml.match(/<pag>[\s\S]*?<\/pag>/)) == null ? void 0 : _g[0]) || ""}
-      ${((_h = xml.match(/<infAdic>[\s\S]*?<\/infAdic>/)) == null ? void 0 : _h[0]) || ""}
-    </infNFe>
-    <infNFeSupl>
-      <qrCode>${qrCode}</qrCode>
-      <urlChave>${urlConsulta}</urlChave>
-    </infNFeSupl>
-  </NFe>
-  <protNFe versao="4.00">
-    <infProt Id="ID1${chaveAcesso}01">
-      <tpAmb>${ambiente === "producao" ? "1" : "2"}</tpAmb>
-      <verAplic>4.00</verAplic>
-      <chNFe>${chaveAcesso}</chNFe>
-      <dhRecbto>${(/* @__PURE__ */ new Date()).toISOString()}</dhRecbto>
-      <nProt>${protocolo}</nProt>
-      <digVal>${Buffer.from(chaveAcesso).toString("base64").substring(0, 28)}</digVal>
-      <cStat>100</cStat>
-      <xMotivo>Autorizado o uso da NF-e</xMotivo>
-    </infProt>
-  </protNFe>
-</nfeProc>`;
-    return {
-      success: true,
-      status: "autorizada",
-      mensagem: "NFC-e autorizada com sucesso pela SEFAZ",
-      chave_acesso: chaveAcesso,
-      numero,
-      protocolo,
-      qr_code: qrCode,
-      url_consulta: urlConsulta,
-      xml_retorno: xmlRetorno
-    };
-  } catch (error) {
-    console.error("Error sending to SEFAZ:", error);
-    return {
-      success: false,
-      status: "rejeitada",
-      mensagem: "Erro ao comunicar com SEFAZ"
-    };
-  }
-}
-
 const UF_CODES = {
   AC: "12",
   AL: "27",
@@ -3084,15 +3337,39 @@ const emitir_post = defineEventHandler(async (event) => {
     const xmlEnvio = await generateNfceXml(nfceData, config, proximoNumero, serieNfce);
     console.log("\u2705 XML gerado, tamanho:", xmlEnvio.length);
     console.log("\u{1F4E4} Enviando para SEFAZ...");
-    const sefazResult = await enviarParaSefaz(xmlEnvio, config.ambiente || "homologacao");
+    let sefazResult;
+    try {
+      sefazResult = await enviarParaSefaz(xmlEnvio, config.ambiente || "homologacao");
+    } catch (sendError2) {
+      sefazResult = {
+        success: false,
+        status: "erro",
+        mensagem: (sendError2 == null ? void 0 : sendError2.message) || "Falha de conex\xE3o com a SEFAZ"
+      };
+    }
     console.log("\u{1F4E4} Resposta SEFAZ:", sefazResult);
-    if (!sefazResult || !sefazResult.success) {
+    if (!sefazResult.success) {
+      const failureReason = sefazResult.mensagem || "N\xE3o foi poss\xEDvel comunicar com a SEFAZ";
       console.error("\u274C Erro ao autorizar NFC-e na SEFAZ:", sefazResult);
+      await saveContingencyNote({
+        saleId: String(saleDbId),
+        xmlContent: xmlEnvio,
+        reason: failureReason,
+        payload: {
+          ambiente: config.ambiente || "homologacao",
+          numero: proximoNumero,
+          serie: serieNfce,
+          valor_total
+        }
+      });
       await sql`
         INSERT INTO nfce (sale_id, status, xml_envio, mensagem_status, ambiente, numero, serie)
-        VALUES (${String(saleIdNumber)}, 'rejeitada', ${xmlEnvio}, ${(sefazResult == null ? void 0 : sefazResult.mensagem) || "Erro desconhecido da SEFAZ"}, ${config.ambiente || "homologacao"}, ${proximoNumero}, ${serieNfce})
+        VALUES (${String(saleIdNumber)}, 'rejeitada', ${xmlEnvio}, ${failureReason}, ${config.ambiente || "homologacao"}, ${proximoNumero}, ${serieNfce})
       `;
-      throw createError({ statusCode: 502, statusMessage: (sefazResult == null ? void 0 : sefazResult.mensagem) || "Erro ao autorizar NFC-e na SEFAZ" });
+      await sql`
+        UPDATE sales SET xml_status = 'contingencia' WHERE id = ${saleDbId}
+      `;
+      throw createError({ statusCode: 503, statusMessage: `${failureReason}. NFC-e salva em conting\xEAncia para reenvio.` });
     }
     console.log("\u2705 NFC-e autorizada! Chave:", sefazResult.chave_acesso, "N\xFAmero:", sefazResult.numero);
     console.log("\u{1F4BE} Salvando NFC-e no banco de dados...");
@@ -3598,26 +3875,28 @@ const xml_get$1 = /*#__PURE__*/Object.freeze({
 
 const testDb_get = defineEventHandler(async () => {
   try {
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) {
-      return {
-        success: false,
-        error: "DATABASE_URL n\xE3o est\xE1 definida",
-        env: Object.keys(process.env).filter((k) => k.includes("DATABASE") || k.includes("NEON"))
-      };
-    }
-    const result = await sql`SELECT 1 as test`;
+    const target = getDatabaseTarget();
+    const result = await sql`
+      SELECT
+        current_database() AS database,
+        current_user AS user,
+        version() AS version
+    `;
     return {
       success: true,
-      message: "Conex\xE3o com banco de dados funcionando!",
-      testResult: result,
-      dbUrlPrefix: dbUrl.substring(0, 20) + "..."
+      message: "Conex\xE3o com PostgreSQL funcionando!",
+      connection: {
+        mode: target.isLocal ? "local" : "remote",
+        host: target.host,
+        port: target.port,
+        database: target.database
+      },
+      server: result[0]
     };
   } catch (error) {
     return {
       success: false,
-      error: error.message,
-      stack: error.stack
+      error: error.message || "Erro ao conectar com PostgreSQL"
     };
   }
 });

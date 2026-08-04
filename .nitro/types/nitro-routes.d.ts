@@ -27,6 +27,12 @@ declare module "nitropack/types" {
       'delete': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/categories/[id].delete').default>>>>
       'put': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/categories/[id].put').default>>>>
     }
+    '/api/contingency': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/contingency.get').default>>>>
+    }
+    '/api/contingency/:id/retry': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/contingency/[id]/retry.post').default>>>>
+    }
     '/api/customers': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/customers.get').default>>>>
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/customers.post').default>>>>
