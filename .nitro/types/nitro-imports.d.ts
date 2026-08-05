@@ -124,6 +124,12 @@ declare global {
   const useStorage: typeof import('../../node_modules/.pnpm/nitropack@2.13.4_vite@8.0.1_bfd3c051142d9d9d6fde84a1daf6ba2f/node_modules/nitropack/dist/runtime/internal/storage').useStorage
   const writeEarlyHints: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3').writeEarlyHints
 }
+// for type re-export
+declare global {
+  // @ts-ignore
+  export type { SqlQueryClient } from '../../server/utils/db'
+  import('../../server/utils/db')
+}
 export { useNitroApp } from 'nitropack/runtime/internal/app';
 export { useRuntimeConfig, useAppConfig } from 'nitropack/runtime/internal/config';
 export { defineNitroPlugin, nitroPlugin } from 'nitropack/runtime/internal/plugin';

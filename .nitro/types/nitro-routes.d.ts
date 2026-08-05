@@ -87,6 +87,9 @@ declare module "nitropack/types" {
     '/api/nfce/xml/:id': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/nfce/xml/[id].get').default>>>>
     }
+    '/api/nfe/emitir': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/nfe/emitir.post').default>>>>
+    }
     '/api/products': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/products.get').default>>>>
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/products.post').default>>>>

@@ -1,14 +1,20 @@
 import { Pool } from 'pg';
 
-interface SqlClient {
+export interface SqlQueryClient {
   (strings: TemplateStringsArray, ...values: any[]): Promise<any[]>;
-  (): SqlClient;
+  (): SqlQueryClient;
   query(text: string, values?: any[]): Promise<any[]>;
+}
+
+interface SqlClient extends SqlQueryClient {
+  transaction<T>(callback: (transaction: SqlQueryClient) => Promise<T>): Promise<T>;
 }
 
 type DatabaseGlobal = typeof globalThis & {
   __pdvPostgresPool?: Pool;
 };
+
+type QueryExecutor = (text: string, values?: any[]) => Promise<any[]>;
 
 const databaseGlobal = globalThis as DatabaseGlobal;
 
@@ -39,25 +45,52 @@ function getPool() {
   return databaseGlobal.__pdvPostgresPool;
 }
 
-const executeQuery = async (text: string, values: any[] = []) => {
+function createQueryClient(execute: QueryExecutor): SqlQueryClient {
+  let queryClient: SqlQueryClient;
+
+  queryClient = ((strings?: TemplateStringsArray, ...values: any[]) => {
+    if (!strings) {
+      return queryClient;
+    }
+
+    let text = strings[0];
+    for (let index = 0; index < values.length; index += 1) {
+      text += `$${index + 1}${strings[index + 1]}`;
+    }
+
+    return execute(text, values);
+  }) as SqlQueryClient;
+
+  queryClient.query = execute;
+  return queryClient;
+}
+
+const executeQuery: QueryExecutor = async (text, values = []) => {
   const result = await getPool().query(text, values);
   return result.rows;
 };
 
-const sqlTag = ((strings?: TemplateStringsArray, ...values: any[]) => {
-  if (!strings) {
-    return sql;
+const sqlTag = createQueryClient(executeQuery) as SqlClient;
+
+sqlTag.transaction = async <T>(callback: (transaction: SqlQueryClient) => Promise<T>) => {
+  const client = await getPool().connect();
+  const transaction = createQueryClient(async (text, values = []) => {
+    const result = await client.query(text, values);
+    return result.rows;
+  });
+
+  try {
+    await client.query('BEGIN');
+    const result = await callback(transaction);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
-
-  let text = strings[0];
-  for (let index = 0; index < values.length; index += 1) {
-    text += `$${index + 1}${strings[index + 1]}`;
-  }
-
-  return executeQuery(text, values);
-}) as SqlClient;
-
-sqlTag.query = executeQuery;
+};
 
 export const sql = sqlTag;
 

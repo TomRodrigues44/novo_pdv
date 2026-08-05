@@ -14,6 +14,7 @@ import {
   Bike,
   Shield,
   FileText,
+  FilePlus2,
   WifiOff,
 } from "lucide-react";
 
@@ -29,6 +30,7 @@ const AdminSidebar = () => {
     { path: "/admin/cash-register", icon: DollarSign, label: "Fluxo de Caixa" },
     { path: "/admin/reports", icon: BarChart3, label: "Relatórios" },
     { path: "/admin/fiscal", icon: Shield, label: "Configurações Fiscais" },
+    { path: "/admin/nfe", icon: FilePlus2, label: "Emitir NF-e" },
     { path: "/admin/xmls", icon: FileText, label: "XMLs Fiscais" },
     { path: "/admin/contingency", icon: WifiOff, label: "Contingência" },
     { path: "/kitchen", icon: ChefHat, label: "Cozinha" },

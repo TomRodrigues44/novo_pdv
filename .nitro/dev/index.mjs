@@ -934,22 +934,7 @@ const plugins = [
   
 ];
 
-const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"20621-55TFWTkMGc99bgXuuP1ddJ4PQ9w\"",
-    "mtime": "2026-08-05T13:33:44.974Z",
-    "size": 132641,
-    "path": "index.mjs"
-  },
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"759a5-aqYL1LCcJbGXkrvWk9cp1ldF6ss\"",
-    "mtime": "2026-08-05T13:33:44.974Z",
-    "size": 481701,
-    "path": "index.mjs.map"
-  }
-};
+const assets = {};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1070,8 +1055,9 @@ const _lazy_fHvjOj = () => Promise.resolve().then(function () { return _id__put$
 const _lazy_o3Jy8Y = () => Promise.resolve().then(function () { return nfce_get$1; });
 const _lazy_IbtS6o = () => Promise.resolve().then(function () { return qrCode_get$1; });
 const _lazy_jCpQHj = () => Promise.resolve().then(function () { return _sale_id__get$1; });
-const _lazy_MwmAsd = () => Promise.resolve().then(function () { return emitir_post$1; });
+const _lazy_MwmAsd = () => Promise.resolve().then(function () { return emitir_post$3; });
 const _lazy_9g6I2U = () => Promise.resolve().then(function () { return _id__get$1; });
+const _lazy_Ubuh2Q = () => Promise.resolve().then(function () { return emitir_post$1; });
 const _lazy_T_NEx7 = () => Promise.resolve().then(function () { return products_get$1; });
 const _lazy_dTrC0F = () => Promise.resolve().then(function () { return products_post$1; });
 const _lazy_gYdxNd = () => Promise.resolve().then(function () { return _id__delete$1; });
@@ -1119,6 +1105,7 @@ const handlers = [
   { route: '/api/nfce/:sale_id', handler: _lazy_jCpQHj, lazy: true, middleware: false, method: "get" },
   { route: '/api/nfce/emitir', handler: _lazy_MwmAsd, lazy: true, middleware: false, method: "post" },
   { route: '/api/nfce/xml/:id', handler: _lazy_9g6I2U, lazy: true, middleware: false, method: "get" },
+  { route: '/api/nfe/emitir', handler: _lazy_Ubuh2Q, lazy: true, middleware: false, method: "post" },
   { route: '/api/products', handler: _lazy_T_NEx7, lazy: true, middleware: false, method: "get" },
   { route: '/api/products', handler: _lazy_dTrC0F, lazy: true, middleware: false, method: "post" },
   { route: '/api/products/:id', handler: _lazy_gYdxNd, lazy: true, middleware: false, method: "delete" },
@@ -1419,21 +1406,44 @@ function getPool() {
   }
   return databaseGlobal.__pdvPostgresPool;
 }
+function createQueryClient(execute) {
+  let queryClient;
+  queryClient = ((strings, ...values) => {
+    if (!strings) {
+      return queryClient;
+    }
+    let text = strings[0];
+    for (let index = 0; index < values.length; index += 1) {
+      text += `$${index + 1}${strings[index + 1]}`;
+    }
+    return execute(text, values);
+  });
+  queryClient.query = execute;
+  return queryClient;
+}
 const executeQuery = async (text, values = []) => {
   const result = await getPool().query(text, values);
   return result.rows;
 };
-const sqlTag = ((strings, ...values) => {
-  if (!strings) {
-    return sql;
+const sqlTag = createQueryClient(executeQuery);
+sqlTag.transaction = async (callback) => {
+  const client = await getPool().connect();
+  const transaction = createQueryClient(async (text, values = []) => {
+    const result = await client.query(text, values);
+    return result.rows;
+  });
+  try {
+    await client.query("BEGIN");
+    const result = await callback(transaction);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
-  let text = strings[0];
-  for (let index = 0; index < values.length; index += 1) {
-    text += `$${index + 1}${strings[index + 1]}`;
-  }
-  return executeQuery(text, values);
-});
-sqlTag.query = executeQuery;
+};
 const sql = sqlTag;
 function getDatabaseTarget() {
   const url = new URL(getConnectionString());
@@ -2983,7 +2993,7 @@ const _sale_id__get$1 = /*#__PURE__*/Object.freeze({
   default: _sale_id__get
 });
 
-const UF_CODES = {
+const UF_CODES$1 = {
   AC: "12",
   AL: "27",
   AP: "16",
@@ -3055,7 +3065,7 @@ const validateFiscalConfig = (config) => {
     });
   }
   const uf = normalizeText(config.uf).toUpperCase();
-  const codigoUf = UF_CODES[uf];
+  const codigoUf = UF_CODES$1[uf];
   const codigoMunicipio = uf === "RR" ? RR_MUNICIPALITY_CODES[normalizeKey(config.municipio)] : void 0;
   if (!codigoUf || !codigoMunicipio) {
     throw createError({
@@ -3280,7 +3290,7 @@ const toNumber = (value, fallback) => {
   const n = Number(value);
   return isNaN(n) ? fallback : n;
 };
-const emitir_post = defineEventHandler(async (event) => {
+const emitir_post$2 = defineEventHandler(async (event) => {
   try {
     console.log("\u{1F4CB} Iniciando emiss\xE3o de NFC-e...");
     const body = await readBody(event);
@@ -3436,9 +3446,9 @@ const emitir_post = defineEventHandler(async (event) => {
   }
 });
 
-const emitir_post$1 = /*#__PURE__*/Object.freeze({
+const emitir_post$3 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: emitir_post
+  default: emitir_post$2
 });
 
 const _id__get = defineEventHandler(async (event) => {
@@ -3485,6 +3495,445 @@ const _id__get = defineEventHandler(async (event) => {
 const _id__get$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: _id__get
+});
+
+const UF_CODES = {
+  AC: "12",
+  AL: "27",
+  AP: "16",
+  AM: "13",
+  BA: "29",
+  CE: "23",
+  DF: "53",
+  ES: "32",
+  GO: "52",
+  MA: "21",
+  MT: "51",
+  MS: "50",
+  MG: "31",
+  PA: "15",
+  PB: "25",
+  PR: "41",
+  PE: "26",
+  PI: "22",
+  RJ: "33",
+  RN: "24",
+  RS: "43",
+  RO: "11",
+  RR: "14",
+  SC: "42",
+  SP: "35",
+  SE: "28",
+  TO: "17"
+};
+const text$1 = (value) => String(value != null ? value : "").trim();
+const digits$1 = (value) => text$1(value).replace(/\D/g, "");
+const xml = (value) => text$1(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+function accessKeyDigit(key) {
+  const weights = [2, 3, 4, 5, 6, 7, 8, 9];
+  let sum = 0;
+  for (let index = key.length - 1; index >= 0; index -= 1) {
+    sum += Number(key[index]) * weights[(key.length - 1 - index) % weights.length];
+  }
+  const remainder = sum % 11;
+  return String(remainder < 2 ? 0 : 11 - remainder);
+}
+function generateAccessKey(ufCode, issuedAt, cnpj, series, number) {
+  const yearMonth = `${String(issuedAt.getFullYear()).slice(-2)}${String(issuedAt.getMonth() + 1).padStart(2, "0")}`;
+  const numericCode = Math.floor(1e7 + Math.random() * 9e7).toString();
+  const base = `${ufCode}${yearMonth}${digits$1(cnpj)}55${String(series).padStart(3, "0")}${String(number).padStart(9, "0")}1${numericCode}`;
+  return `${base}${accessKeyDigit(base)}`;
+}
+function paymentCode(type) {
+  const codes = {
+    cash: "01",
+    credit: "03",
+    debit: "04",
+    pix: "17",
+    boleto: "15",
+    bank_transfer: "18",
+    other: "99"
+  };
+  return codes[type] || "99";
+}
+function generateNfeXml(data, config, number, series) {
+  const requiredConfig = ["cnpj", "razao_social", "inscricao_estadual", "crt", "cep", "logradouro", "numero", "bairro", "municipio", "uf"];
+  const missingConfig = requiredConfig.filter((field) => !text$1(config[field]));
+  if (missingConfig.length > 0) {
+    throw createError({ statusCode: 400, statusMessage: "Complete as Configura\xE7\xF5es Fiscais antes de emitir a NF-e." });
+  }
+  const emitterUf = text$1(config.uf).toUpperCase();
+  const ufCode = UF_CODES[emitterUf];
+  if (!ufCode) {
+    throw createError({ statusCode: 400, statusMessage: "UF do emitente inv\xE1lida." });
+  }
+  const issuedAt = /* @__PURE__ */ new Date();
+  const accessKey = generateAccessKey(ufCode, issuedAt, config.cnpj, series, number);
+  const recipient = data.customer;
+  const recipientDocument = digits$1(recipient.cpf_cnpj);
+  const recipientUf = text$1(recipient.uf).toUpperCase();
+  const interstate = recipientUf !== emitterUf;
+  const productsTotal = data.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const freight = Number(data.freight) || 0;
+  const total = productsTotal + freight;
+  const itemsXml = data.items.map((item, index) => {
+    var _a;
+    const fiscal = item.fiscal || {};
+    const itemTotal = item.price * item.quantity;
+    const cfop = digits$1(fiscal.cfop) || (interstate ? "6102" : "5102");
+    const ncm = digits$1(fiscal.ncm);
+    const origin = Number((_a = fiscal.origem) != null ? _a : 0);
+    return `
+      <det nItem="${index + 1}">
+        <prod>
+          <cProd>${xml(item.id)}</cProd>
+          <cEAN>SEM GTIN</cEAN>
+          <xProd>${xml(item.name)}</xProd>
+          <NCM>${ncm}</NCM>
+          ${digits$1(fiscal.cest) ? `<CEST>${digits$1(fiscal.cest)}</CEST>` : ""}
+          <CFOP>${cfop}</CFOP>
+          <uCom>${xml(fiscal.unidade || "UN")}</uCom>
+          <qCom>${Number(item.quantity).toFixed(4)}</qCom>
+          <vUnCom>${Number(item.price).toFixed(10)}</vUnCom>
+          <vProd>${itemTotal.toFixed(2)}</vProd>
+          <cEANTrib>SEM GTIN</cEANTrib>
+          <uTrib>${xml(fiscal.unidade || "UN")}</uTrib>
+          <qTrib>${Number(item.quantity).toFixed(4)}</qTrib>
+          <vUnTrib>${Number(item.price).toFixed(10)}</vUnTrib>
+          <indTot>1</indTot>
+        </prod>
+        <imposto>
+          <ICMS><ICMSSN102><orig>${origin}</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS>
+          <PIS><PISSN><CST>49</CST></PISSN></PIS>
+          <COFINS><COFINSSN><CST>49</CST></COFINSSN></COFINS>
+        </imposto>
+      </det>`;
+  }).join("");
+  const paymentsXml = data.payments.map((payment) => `
+      <detPag><tPag>${paymentCode(payment.type)}</tPag><vPag>${Number(payment.amount).toFixed(2)}</vPag></detPag>`).join("");
+  const consultationUrl = "https://www.sefaz.rr.gov.br/nfe/consulta";
+  const emitterMunicipalityCode = digits$1(config.codigo_municipio || "1400100");
+  const generatedXml = `<?xml version="1.0" encoding="UTF-8"?>
+<NFe xmlns="http://www.portalfiscal.inf.br/nfe">
+  <infNFe Id="NFe${accessKey}" versao="4.00">
+    <ide>
+      <cUF>${ufCode}</cUF><cNF>${accessKey.slice(35, 43)}</cNF><natOp>VENDA DE MERCADORIA</natOp>
+      <mod>55</mod><serie>${series}</serie><nNF>${number}</nNF><dhEmi>${issuedAt.toISOString()}</dhEmi>
+      <tpNF>1</tpNF><idDest>${interstate ? 2 : 1}</idDest><cMunFG>${emitterMunicipalityCode}</cMunFG>
+      <tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>${accessKey.slice(-1)}</cDV>
+      <tpAmb>${2}</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal>
+      <indPres>1</indPres><procEmi>0</procEmi><verProc>PDV-1.0</verProc>
+    </ide>
+    <emit>
+      <CNPJ>${digits$1(config.cnpj)}</CNPJ><xNome>${xml(config.razao_social)}</xNome><xFant>${xml(config.nome_fantasia)}</xFant>
+      <enderEmit><xLgr>${xml(config.logradouro)}</xLgr><nro>${xml(config.numero)}</nro>${config.complemento ? `<xCpl>${xml(config.complemento)}</xCpl>` : ""}
+        <xBairro>${xml(config.bairro)}</xBairro><cMun>${emitterMunicipalityCode}</cMun><xMun>${xml(config.municipio)}</xMun>
+        <UF>${emitterUf}</UF><CEP>${digits$1(config.cep)}</CEP><cPais>1058</cPais><xPais>BRASIL</xPais></enderEmit>
+      <IE>${digits$1(config.inscricao_estadual)}</IE><CRT>${text$1(config.crt)}</CRT>
+    </emit>
+    <dest>
+      <${recipientDocument.length === 14 ? "CNPJ" : "CPF"}>${recipientDocument}</${recipientDocument.length === 14 ? "CNPJ" : "CPF"}>
+      <xNome>${xml(recipient.name)}</xNome><enderDest><xLgr>${xml(recipient.logradouro)}</xLgr><nro>${xml(recipient.numero)}</nro>
+        ${recipient.complemento ? `<xCpl>${xml(recipient.complemento)}</xCpl>` : ""}<xBairro>${xml(recipient.bairro)}</xBairro>
+        <cMun>${digits$1(recipient.codigo_municipio)}</cMun><xMun>${xml(recipient.municipio)}</xMun><UF>${recipientUf}</UF>
+        <CEP>${digits$1(recipient.cep)}</CEP><cPais>1058</cPais><xPais>BRASIL</xPais>${digits$1(recipient.phone) ? `<fone>${digits$1(recipient.phone)}</fone>` : ""}</enderDest>
+      <indIEDest>${digits$1(recipient.inscricao_estadual) ? 1 : 9}</indIEDest>${digits$1(recipient.inscricao_estadual) ? `<IE>${digits$1(recipient.inscricao_estadual)}</IE>` : ""}
+      ${recipient.email ? `<email>${xml(recipient.email)}</email>` : ""}
+    </dest>${itemsXml}
+    <total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP>
+      <vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet>
+      <vProd>${productsTotal.toFixed(2)}</vProd><vFrete>${freight.toFixed(2)}</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc>
+      <vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS>
+      <vOutro>0.00</vOutro><vNF>${total.toFixed(2)}</vNF><vTotTrib>0.00</vTotTrib></ICMSTot></total>
+    <transp><modFrete>${data.freightMode || (freight > 0 ? "0" : "9")}</modFrete></transp>
+    <pag>${paymentsXml}</pag>
+    <infAdic><infCpl>NF-e EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL.</infCpl></infAdic>
+  </infNFe>
+</NFe>`;
+  return { accessKey, xml: generatedXml, consultationUrl };
+}
+
+async function authorizeNfeSimulation(xml, environment) {
+  var _a;
+  await new Promise((resolve) => setTimeout(resolve, 700));
+  const accessKey = (_a = xml.match(/Id="NFe(\d{44})"/)) == null ? void 0 : _a[1];
+  if (!accessKey || !xml.includes("<mod>55</mod>")) {
+    return {
+      success: false,
+      status: "rejeitada",
+      message: "XML inv\xE1lido para NF-e modelo 55."
+    };
+  }
+  const protocol = `SIM${Date.now().toString().slice(-12)}`;
+  const authorizationXml = `<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+  ${xml.replace(/^<\?xml[^>]*>\s*/, "")}
+  <protNFe versao="4.00"><infProt><tpAmb>${2}</tpAmb>
+    <chNFe>${accessKey}</chNFe><dhRecbto>${(/* @__PURE__ */ new Date()).toISOString()}</dhRecbto>
+    <nProt>${protocol}</nProt><cStat>100</cStat><xMotivo>Autorizado o uso da NF-e em simula\xE7\xE3o</xMotivo>
+  </infProt></protNFe>
+</nfeProc>`;
+  return {
+    success: true,
+    status: "autorizada",
+    message: "NF-e autorizada em ambiente de homologa\xE7\xE3o/simula\xE7\xE3o.",
+    protocol,
+    authorizationXml
+  };
+}
+
+async function ensureNfeSchema(client = sql) {
+  await client.query(`
+    ALTER TABLE customers
+      ADD COLUMN IF NOT EXISTS cpf_cnpj TEXT,
+      ADD COLUMN IF NOT EXISTS inscricao_estadual TEXT,
+      ADD COLUMN IF NOT EXISTS cep TEXT,
+      ADD COLUMN IF NOT EXISTS logradouro TEXT,
+      ADD COLUMN IF NOT EXISTS numero TEXT,
+      ADD COLUMN IF NOT EXISTS complemento TEXT,
+      ADD COLUMN IF NOT EXISTS bairro TEXT,
+      ADD COLUMN IF NOT EXISTS municipio TEXT,
+      ADD COLUMN IF NOT EXISTS uf TEXT,
+      ADD COLUMN IF NOT EXISTS codigo_municipio TEXT
+  `);
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS nfe (
+      id BIGSERIAL PRIMARY KEY,
+      sale_id TEXT NOT NULL UNIQUE,
+      customer_id TEXT,
+      chave_acesso TEXT NOT NULL,
+      numero INTEGER NOT NULL,
+      serie INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      ambiente TEXT NOT NULL,
+      protocolo TEXT,
+      data_emissao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      data_autorizacao TIMESTAMPTZ,
+      natureza_operacao TEXT NOT NULL DEFAULT 'VENDA',
+      valor_produtos NUMERIC(12, 2) NOT NULL,
+      valor_frete NUMERIC(12, 2) NOT NULL DEFAULT 0,
+      valor_total NUMERIC(12, 2) NOT NULL,
+      destinatario JSONB NOT NULL,
+      itens JSONB NOT NULL,
+      pagamentos JSONB NOT NULL,
+      xml_envio TEXT NOT NULL,
+      xml_retorno TEXT,
+      url_consulta TEXT,
+      mensagem_status TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+const digits = (value) => String(value != null ? value : "").replace(/\D/g, "");
+const text = (value) => String(value != null ? value : "").trim();
+const emitir_post = defineEventHandler(async (event) => {
+  try {
+    await ensureNfeSchema();
+    const body = await readBody(event);
+    const customer = body.customer || {};
+    const requestedItems = Array.isArray(body.items) ? body.items : [];
+    const payments = Array.isArray(body.payments) ? body.payments : [];
+    const freight = Math.max(Number(body.freight) || 0, 0);
+    const document = digits(customer.cpf_cnpj);
+    const requiredCustomerFields = ["name", "cep", "logradouro", "numero", "bairro", "municipio", "uf", "codigo_municipio"];
+    const missingCustomerFields = requiredCustomerFields.filter((field) => !text(customer[field]));
+    if (![11, 14].includes(document.length) || missingCustomerFields.length > 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Preencha CPF/CNPJ e todos os campos obrigat\xF3rios do endere\xE7o do destinat\xE1rio."
+      });
+    }
+    if (digits(customer.cep).length !== 8 || digits(customer.codigo_municipio).length !== 7) {
+      throw createError({ statusCode: 400, statusMessage: "CEP ou c\xF3digo IBGE do munic\xEDpio inv\xE1lido." });
+    }
+    if (!/^[A-Za-z]{2}$/.test(text(customer.uf))) {
+      throw createError({ statusCode: 400, statusMessage: "UF do destinat\xE1rio inv\xE1lida." });
+    }
+    if (requestedItems.length === 0) {
+      throw createError({ statusCode: 400, statusMessage: "Adicione pelo menos um produto \xE0 NF-e." });
+    }
+    const productIds = [...new Set(requestedItems.map((item) => text(item.productId)).filter(Boolean))];
+    const products = await sql`
+      SELECT id, name, price, stock, fiscal
+      FROM products
+      WHERE id = ANY(${productIds}::text[])
+    `;
+    const productMap = new Map(products.map((product) => [String(product.id), product]));
+    const items = requestedItems.map((requested) => {
+      const product = productMap.get(text(requested.productId));
+      const quantity = Number(requested.quantity);
+      if (!product || !Number.isInteger(quantity) || quantity <= 0) {
+        throw createError({ statusCode: 400, statusMessage: "Produto ou quantidade inv\xE1lida." });
+      }
+      if (product.stock !== null && Number(product.stock) < quantity) {
+        throw createError({ statusCode: 400, statusMessage: `Estoque insuficiente para ${product.name}.` });
+      }
+      const fiscal = typeof product.fiscal === "string" ? JSON.parse(product.fiscal) : product.fiscal || {};
+      if (digits(fiscal.ncm).length !== 8) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: `Complete o NCM do produto \u201C${product.name}\u201D no cadastro de produtos.`
+        });
+      }
+      return {
+        id: String(product.id),
+        name: String(product.name),
+        price: Number(product.price),
+        quantity,
+        fiscal
+      };
+    });
+    const productsTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const total = productsTotal + freight;
+    const paymentsTotal = payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    if (payments.length === 0 || Math.abs(paymentsTotal - total) > 0.01) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "A soma das formas de pagamento deve ser igual ao total da NF-e."
+      });
+    }
+    const configRows = await sql`
+      SELECT * FROM company_fiscal_config
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    if (configRows.length === 0) {
+      throw createError({ statusCode: 400, statusMessage: "Configure os dados fiscais da empresa antes de emitir." });
+    }
+    const numberRows = await sql`
+      UPDATE company_fiscal_config
+      SET ultima_nfe = COALESCE(ultima_nfe, 0) + 1
+      WHERE id = ${configRows[0].id}
+      RETURNING ultima_nfe, serie_nfe
+    `;
+    const number = Number(numberRows[0].ultima_nfe);
+    const series = Number(numberRows[0].serie_nfe || 1);
+    const homologationConfig = { ...configRows[0], ambiente: "homologacao" };
+    const generated = generateNfeXml({
+      customer: { ...customer, cpf_cnpj: document },
+      items,
+      payments,
+      freight,
+      freightMode: body.freightMode
+    }, homologationConfig, number, series);
+    const authorization = await authorizeNfeSimulation(generated.xml, "homologacao");
+    if (!authorization.success) {
+      throw createError({ statusCode: 422, statusMessage: authorization.message });
+    }
+    const result = await sql.transaction(async (transaction) => {
+      const customerId = text(customer.id) || `customer-nfe-${Date.now()}`;
+      const address = `${text(customer.logradouro)}, ${text(customer.numero)} - ${text(customer.bairro)}, ${text(customer.municipio)}/${text(customer.uf).toUpperCase()}`;
+      const existingCustomer = await transaction`SELECT id FROM customers WHERE id = ${customerId} LIMIT 1`;
+      if (existingCustomer.length > 0) {
+        await transaction`
+          UPDATE customers SET
+            name = ${text(customer.name)}, phone = ${text(customer.phone) || null},
+            email = ${text(customer.email) || null}, address = ${address},
+            cpf_cnpj = ${document}, inscricao_estadual = ${digits(customer.inscricao_estadual) || null},
+            cep = ${digits(customer.cep)}, logradouro = ${text(customer.logradouro)}, numero = ${text(customer.numero)},
+            complemento = ${text(customer.complemento) || null}, bairro = ${text(customer.bairro)},
+            municipio = ${text(customer.municipio)}, uf = ${text(customer.uf).toUpperCase()},
+            codigo_municipio = ${digits(customer.codigo_municipio)}, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ${customerId}
+        `;
+      } else {
+        await transaction`
+          INSERT INTO customers (
+            id, name, phone, address, email, points, total_spent, cpf_cnpj, inscricao_estadual,
+            cep, logradouro, numero, complemento, bairro, municipio, uf, codigo_municipio
+          ) VALUES (
+            ${customerId}, ${text(customer.name)}, ${text(customer.phone) || null}, ${address},
+            ${text(customer.email) || null}, 0, 0, ${document}, ${digits(customer.inscricao_estadual) || null},
+            ${digits(customer.cep)}, ${text(customer.logradouro)}, ${text(customer.numero)},
+            ${text(customer.complemento) || null}, ${text(customer.bairro)}, ${text(customer.municipio)},
+            ${text(customer.uf).toUpperCase()}, ${digits(customer.codigo_municipio)}
+          )
+        `;
+      }
+      const dailyRows = await transaction`
+        SELECT COALESCE(MAX(daily_sale_number), 99) + 1 AS next_number
+        FROM sales WHERE DATE(created_at) = CURRENT_DATE
+      `;
+      const saleRows = await transaction`
+        INSERT INTO sales (total_amount, customer_id, freight, status, daily_sale_number, xml_chave, xml_numero, xml_status, xml_content)
+        VALUES (${total}, ${customerId}, ${freight}, 'delivered', ${dailyRows[0].next_number},
+          ${generated.accessKey}, ${number}, 'autorizada', ${authorization.authorizationXml || generated.xml})
+        RETURNING id, daily_sale_number
+      `;
+      const sale = saleRows[0];
+      for (const item of items) {
+        await transaction`
+          INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, flavors)
+          VALUES (${sale.id}, ${item.id}, ${item.name}, ${item.quantity}, ${item.price}, ${null})
+        `;
+        await transaction`
+          UPDATE products SET stock = stock - ${item.quantity} WHERE id = ${item.id}
+        `;
+      }
+      for (const payment of payments) {
+        await transaction`
+          INSERT INTO sale_payments (sale_id, payment_type, amount)
+          VALUES (${sale.id}, ${text(payment.type)}, ${Number(payment.amount)})
+        `;
+      }
+      await transaction`
+        UPDATE customers SET total_spent = COALESCE(total_spent, 0) + ${total} WHERE id = ${customerId}
+      `;
+      const nfeRows = await transaction`
+        INSERT INTO nfe (
+          sale_id, customer_id, chave_acesso, numero, serie, status, ambiente, protocolo,
+          data_autorizacao, valor_produtos, valor_frete, valor_total, destinatario, itens,
+          pagamentos, xml_envio, xml_retorno, url_consulta, mensagem_status
+        ) VALUES (
+          ${String(sale.id)}, ${customerId}, ${generated.accessKey}, ${number}, ${series}, 'autorizada',
+          'homologacao', ${authorization.protocol || null}, CURRENT_TIMESTAMP, ${productsTotal}, ${freight},
+          ${total}, ${JSON.stringify(customer)}::jsonb, ${JSON.stringify(items)}::jsonb,
+          ${JSON.stringify(payments)}::jsonb, ${generated.xml}, ${authorization.authorizationXml || null},
+          ${generated.consultationUrl}, ${authorization.message}
+        ) RETURNING id
+      `;
+      return {
+        nfeId: nfeRows[0].id,
+        saleId: sale.id,
+        dailySaleNumber: sale.daily_sale_number,
+        customerId
+      };
+    });
+    return {
+      success: true,
+      message: "NF-e autorizada em homologa\xE7\xE3o e venda registrada com sucesso.",
+      nfe: {
+        id: result.nfeId,
+        number,
+        series,
+        accessKey: generated.accessKey,
+        protocol: authorization.protocol,
+        status: "autorizada",
+        environment: "homologacao",
+        consultationUrl: generated.consultationUrl
+      },
+      sale: {
+        id: result.saleId,
+        dailySaleNumber: result.dailySaleNumber,
+        total
+      },
+      customerId: result.customerId
+    };
+  } catch (error) {
+    console.error("Erro ao emitir NF-e:", error);
+    if (error.statusCode) throw error;
+    throw createError({
+      statusCode: 500,
+      statusMessage: error.message || "Erro ao emitir NF-e."
+    });
+  }
+});
+
+const emitir_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: emitir_post
 });
 
 const products_get = defineEventHandler(async () => {
