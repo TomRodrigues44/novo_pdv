@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"vite\" \"nitro dev --port 3000\"",
-    "dev:client": "vite",
-    "dev:server": "nitro dev --port 3000",
+      "dev": "concurrently \"vite\" \"NODE_OPTIONS=--use-system-ca nitro dev --port 3000\"",
+      "dev:client": "vite",
+      "dev:server": "NODE_OPTIONS=--use-system-ca nitro dev --port 3000",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",

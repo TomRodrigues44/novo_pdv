@@ -27,7 +27,6 @@ import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793
 import forge from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/node-forge@1.4.0/node_modules/node-forge/lib/index.js';
 import QRCode from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
 import https from 'node:https';
-import tls from 'node:tls';
 import { Pool } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pg@8.22.0/node_modules/pg/esm/index.mjs';
 import { v4 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
 
@@ -2727,11 +2726,10 @@ function sendSoapRequest(url, soapBody, certificate, environment) {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
       rejectUnauthorized: isProduction,
-      checkServerIdentity: isProduction ? tls.checkServerIdentity : () => void 0
+      keepAlive: false
     };
-    const request = https.request(urlObj, {
+    const request = https.request(url, {
       ...tlsOptions,
-      agent: new https.Agent({ ...tlsOptions, keepAlive: false }),
       method: "POST",
       timeout: 6e4,
       headers: {
