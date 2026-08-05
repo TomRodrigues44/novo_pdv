@@ -221,8 +221,10 @@ export function ReceiptDialog({ open, onClose, total, freight, cartItems, paymen
             <span>R$ {total.toFixed(2)}</span>
           </div>
 
+          {isBudget && <hr className="border-dashed border-black my-2" />}
+
           {isBudget ? (
-            <p className="mt-1">
+            <p>
               Forma de Pagamento: {payments.length > 0
                 ? payments.map((payment) => paymentTypeMap[payment.type] || 'Outro').join(' + ')
                 : 'Não informado'}
