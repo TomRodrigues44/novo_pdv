@@ -937,16 +937,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"203c4-8a9pnDD55+qX3vtY4Wj2b+rHVNs\"",
-    "mtime": "2026-08-04T17:06:38.992Z",
-    "size": 132036,
+    "etag": "\"2050d-dvu7/PAWy076Te5zSHoeV4oUWHs\"",
+    "mtime": "2026-08-05T13:02:52.387Z",
+    "size": 132365,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"75568-UIYtaIjI66xOFELlquPtNcOcovw\"",
-    "mtime": "2026-08-04T17:06:38.993Z",
-    "size": 480616,
+    "etag": "\"75446-tmsBsNNR7Vpi4uSEHqnk7oAdDYs\"",
+    "mtime": "2026-08-05T13:02:52.387Z",
+    "size": 480326,
     "path": "index.mjs.map"
   }
 };
@@ -2719,7 +2719,7 @@ const sales_post$2 = defineEventHandler(async (event) => {
               ${item.name},
               ${item.quantity},
               ${item.price},
-              ${item.flavors ? JSON.stringify(item.flavors) : null}::jsonb
+              ${Array.isArray(item.flavors) ? item.flavors : null}
             )
           `;
         }
@@ -3764,7 +3764,7 @@ const sales_post = defineEventHandler(async (event) => {
             ${item.name},
             ${item.quantity},
             ${item.price},
-            ${item.flavors ? JSON.stringify(item.flavors) : null}
+            ${Array.isArray(item.flavors) ? item.flavors : null}
           );
         `;
       }

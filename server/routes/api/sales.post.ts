@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
             ${item.name},
             ${item.quantity},
             ${item.price},
-            ${item.flavors ? JSON.stringify(item.flavors) : null}
+            ${Array.isArray(item.flavors) ? item.flavors : null}
           );
         `;
       }
