@@ -19,6 +19,8 @@ interface FlavorDialogProps {
 }
 
 const FLAVORS = [
+  "Todos",
+  "Só Salgados",
   "Coxinha de Frango",
   "Croquete de Queijo/Presunto",
   "Bolinha de Pizza",
