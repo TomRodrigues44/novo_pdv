@@ -17,6 +17,7 @@ interface SaleItem {
 
 interface Sale {
   id: string;
+  daily_sale_number?: number;
   total_amount: number;
   payment_method: string;
   freight: number;
@@ -215,7 +216,7 @@ const Kitchen = () => {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Clock className="h-5 w-5" />
-                    Pedido #{String(sale.id).slice(-6)}
+                    Pedido #{sale.daily_sale_number || String(sale.id).slice(-6)}
                     {sale.customer_name && (
                       <>
                         <span className="text-gray-400">•</span>

@@ -6,8 +6,9 @@ export default defineEventHandler(async () => {
       SELECT 
         s.id, 
         s.total_amount, 
-        s.created_at, 
+        s.created_at,
         s.customer_id,
+        c.name AS customer_name,
         s.freight,
         s.status,
         s.daily_sale_number,
@@ -15,7 +16,15 @@ export default defineEventHandler(async () => {
         s.xml_numero,
         s.xml_status,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', si.product_id, 'name', si.product_name, 'price', si.price, 'quantity', si.quantity))
+          (SELECT json_agg(json_build_object(
+            'id', si.id,
+            'product_id', si.product_id,
+            'name', si.product_name,
+            'product_name', si.product_name,
+            'price', si.price,
+            'quantity', si.quantity,
+            'flavors', si.flavors
+          ))
            FROM sale_items si WHERE si.sale_id = s.id),
           '[]'::json
         ) as items,
@@ -25,6 +34,7 @@ export default defineEventHandler(async () => {
           '[]'::json
         ) as payments
       FROM sales s
+      LEFT JOIN customers c ON c.id = s.customer_id
       ORDER BY s.created_at DESC
       LIMIT 200;
     `;
