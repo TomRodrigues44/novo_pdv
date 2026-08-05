@@ -3502,7 +3502,7 @@ const _id__get$1 = /*#__PURE__*/Object.freeze({
 const _saleId__get = defineEventHandler(async (event) => {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
   try {
-    const saleId = getRouterParam(event, "sale_id");
+    const saleId = getRouterParam(event, "saleId");
     if (!saleId) {
       throw createError({
         statusCode: 400,
@@ -3718,7 +3718,7 @@ function generateNfeXml(data, config, number, series) {
       <mod>55</mod><serie>${series}</serie><nNF>${number}</nNF><dhEmi>${issuedAt.toISOString()}</dhEmi>
       <tpNF>1</tpNF><idDest>${interstate ? 2 : 1}</idDest><cMunFG>${emitterMunicipalityCode}</cMunFG>
       <tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>${accessKey.slice(-1)}</cDV>
-      <tpAmb>${2}</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal>
+      <tpAmb>${config.ambiente === "producao" ? 1 : 2}</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal>
       <indPres>1</indPres><procEmi>0</procEmi><verProc>PDV-1.0</verProc>
     </ide>
     <emit>
@@ -3765,7 +3765,7 @@ async function authorizeNfeSimulation(xml, environment) {
   const authorizationXml = `<?xml version="1.0" encoding="UTF-8"?>
 <nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
   ${xml.replace(/^<\?xml[^>]*>\s*/, "")}
-  <protNFe versao="4.00"><infProt><tpAmb>${2}</tpAmb>
+  <protNFe versao="4.00"><infProt><tpAmb>${environment === "producao" ? 1 : 2}</tpAmb>
     <chNFe>${accessKey}</chNFe><dhRecbto>${(/* @__PURE__ */ new Date()).toISOString()}</dhRecbto>
     <nProt>${protocol}</nProt><cStat>100</cStat><xMotivo>Autorizado o uso da NF-e em simula\xE7\xE3o</xMotivo>
   </infProt></protNFe>
@@ -3907,15 +3907,15 @@ const emitir_post = defineEventHandler(async (event) => {
     `;
     const number = Number(numberRows[0].ultima_nfe);
     const series = Number(numberRows[0].serie_nfe || 1);
-    const homologationConfig = { ...configRows[0], ambiente: "homologacao" };
+    const ambiente = configRows[0].ambiente === "producao" ? "producao" : "homologacao";
     const generated = generateNfeXml({
       customer: { ...customer, cpf_cnpj: document },
       items,
       payments,
       freight,
       freightMode: body.freightMode
-    }, homologationConfig, number, series);
-    const authorization = await authorizeNfeSimulation(generated.xml, "homologacao");
+    }, configRows[0], number, series);
+    const authorization = await authorizeNfeSimulation(generated.xml, ambiente);
     if (!authorization.success) {
       throw createError({ statusCode: 422, statusMessage: authorization.message });
     }
@@ -3985,7 +3985,7 @@ const emitir_post = defineEventHandler(async (event) => {
           pagamentos, xml_envio, xml_retorno, url_consulta, mensagem_status
         ) VALUES (
           ${String(sale.id)}, ${customerId}, ${generated.accessKey}, ${number}, ${series}, 'autorizada',
-          'homologacao', ${authorization.protocol || null}, CURRENT_TIMESTAMP, ${productsTotal}, ${freight},
+          ${ambiente}, ${authorization.protocol || null}, CURRENT_TIMESTAMP, ${productsTotal}, ${freight},
           ${total}, ${JSON.stringify(customer)}::jsonb, ${JSON.stringify(items)}::jsonb,
           ${JSON.stringify(payments)}::jsonb, ${generated.xml}, ${authorization.authorizationXml || null},
           ${generated.consultationUrl}, ${authorization.message}
@@ -4018,7 +4018,7 @@ const emitir_post = defineEventHandler(async (event) => {
     }
     return {
       success: true,
-      message: "NF-e autorizada em homologa\xE7\xE3o e venda registrada com sucesso.",
+      message: ambiente === "producao" ? "NF-e autorizada em produ\xE7\xE3o e venda registrada com sucesso." : "NF-e autorizada em homologa\xE7\xE3o e venda registrada com sucesso.",
       nfe: {
         id: result.nfeId,
         number,
@@ -4026,7 +4026,7 @@ const emitir_post = defineEventHandler(async (event) => {
         accessKey: generated.accessKey,
         protocol: authorization.protocol,
         status: "autorizada",
-        environment: "homologacao",
+        environment: ambiente,
         consultationUrl: generated.consultationUrl
       },
       sale: {

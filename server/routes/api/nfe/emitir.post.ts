@@ -96,16 +96,16 @@ export default defineEventHandler(async (event) => {
     `;
     const number = Number(numberRows[0].ultima_nfe);
     const series = Number(numberRows[0].serie_nfe || 1);
-    const homologationConfig = { ...configRows[0], ambiente: 'homologacao' };
+    const ambiente = configRows[0].ambiente === 'producao' ? 'producao' : 'homologacao';
     const generated = generateNfeXml({
       customer: { ...customer, cpf_cnpj: document },
       items,
       payments,
       freight,
       freightMode: body.freightMode,
-    }, homologationConfig, number, series);
+    }, configRows[0], number, series);
 
-    const authorization = await authorizeNfeSimulation(generated.xml, 'homologacao');
+    const authorization = await authorizeNfeSimulation(generated.xml, ambiente);
     if (!authorization.success) {
       throw createError({ statusCode: 422, statusMessage: authorization.message });
     }
@@ -182,7 +182,7 @@ export default defineEventHandler(async (event) => {
           pagamentos, xml_envio, xml_retorno, url_consulta, mensagem_status
         ) VALUES (
           ${String(sale.id)}, ${customerId}, ${generated.accessKey}, ${number}, ${series}, 'autorizada',
-          'homologacao', ${authorization.protocol || null}, CURRENT_TIMESTAMP, ${productsTotal}, ${freight},
+          ${ambiente}, ${authorization.protocol || null}, CURRENT_TIMESTAMP, ${productsTotal}, ${freight},
           ${total}, ${JSON.stringify(customer)}::jsonb, ${JSON.stringify(items)}::jsonb,
           ${JSON.stringify(payments)}::jsonb, ${generated.xml}, ${authorization.authorizationXml || null},
           ${generated.consultationUrl}, ${authorization.message}
@@ -219,7 +219,9 @@ export default defineEventHandler(async (event) => {
 
     return {
       success: true,
-      message: 'NF-e autorizada em homologação e venda registrada com sucesso.',
+      message: ambiente === 'producao'
+        ? 'NF-e autorizada em produção e venda registrada com sucesso.'
+        : 'NF-e autorizada em homologação e venda registrada com sucesso.',
       nfe: {
         id: result.nfeId,
         number,
@@ -227,7 +229,7 @@ export default defineEventHandler(async (event) => {
         accessKey: generated.accessKey,
         protocol: authorization.protocol,
         status: 'autorizada',
-        environment: 'homologacao',
+        environment: ambiente,
         consultationUrl: generated.consultationUrl,
       },
       sale: {

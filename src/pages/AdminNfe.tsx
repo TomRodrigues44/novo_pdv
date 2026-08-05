@@ -82,6 +82,14 @@ const AdminNfe = () => {
   const [motoboys, setMotoboys] = useState<{ id: string; name: string; phone?: string }[]>([]);
   const [selectedMotoboy, setSelectedMotoboy] = useState<{ id: string; name: string } | null>(null);
   const [isDanfeOpen, setIsDanfeOpen] = useState(false);
+  const [fiscalEnv, setFiscalEnv] = useState<string>('homologacao');
+
+  useEffect(() => {
+    fetch('/api/fiscal/company-config')
+      .then((res) => res.json())
+      .then((data) => setFiscalEnv(data?.ambiente || 'homologacao'))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     Promise.all([fetch('/api/products'), fetch('/api/customers'), fetch('/api/motoboys')])
@@ -225,7 +233,11 @@ const AdminNfe = () => {
               <FileCheck2 className="h-8 w-8 text-orange-600" />
               <h1 className="text-3xl font-bold">Emissão de NF-e</h1>
               <Badge variant="secondary">Modelo 55</Badge>
-              <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Homologação / Simulação</Badge>
+              {fiscalEnv === 'producao' ? (
+                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Produção</Badge>
+              ) : (
+                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Homologação / Simulação</Badge>
+              )}
             </div>
             <p className="mt-1 text-gray-600">
               A venda, o estoque e o financeiro serão atualizados somente após a autorização simulada.

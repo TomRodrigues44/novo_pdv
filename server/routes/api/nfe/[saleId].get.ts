@@ -2,7 +2,7 @@ import { sql } from '../../../utils/db';
 
 export default defineEventHandler(async (event) => {
   try {
-    const saleId = getRouterParam(event, 'sale_id');
+    const saleId = getRouterParam(event, 'saleId');
 
     if (!saleId) {
       throw createError({
