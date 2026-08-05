@@ -934,7 +934,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"203c4-8a9pnDD55+qX3vtY4Wj2b+rHVNs\"",
+    "mtime": "2026-08-04T17:06:38.992Z",
+    "size": 132036,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"75568-UIYtaIjI66xOFELlquPtNcOcovw\"",
+    "mtime": "2026-08-04T17:06:38.993Z",
+    "size": 480616,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1531,30 +1546,25 @@ const close_post = defineEventHandler(async (event) => {
     }
     const register = openRegister[0];
     const sales = await sql`
-          SELECT payment_method, payments, total_amount
-          FROM sales
-          WHERE created_at >= ${register.opened_at}
-        `;
+      SELECT
+        s.id,
+        s.total_amount,
+        COALESCE(SUM(sp.amount) FILTER (WHERE sp.payment_type = 'cash'), 0) AS cash_paid,
+        COALESCE(SUM(sp.amount) FILTER (WHERE sp.payment_type <> 'cash'), 0) AS non_cash_paid
+      FROM sales s
+      LEFT JOIN sale_payments sp ON sp.sale_id = s.id
+      WHERE s.created_at >= ${register.opened_at}
+      GROUP BY s.id, s.total_amount
+    `;
     let salesTotal = 0;
     let cashSales = 0;
     sales.forEach((sale) => {
       const total = parseFloat(sale.total_amount);
+      const cashPaid = parseFloat(sale.cash_paid);
+      const nonCashPaid = parseFloat(sale.non_cash_paid);
+      const netCash = Math.min(cashPaid, Math.max(total - nonCashPaid, 0));
       salesTotal += total;
-      if (sale.payments && Array.isArray(sale.payments)) {
-        sale.payments.forEach((payment) => {
-          const amount = parseFloat(payment.amount);
-          const change = parseFloat(payment.change || 0);
-          const netAmount = amount - change;
-          if (payment.type === "cash") {
-            cashSales += netAmount;
-          }
-        });
-      } else {
-        const method = sale.payment_method.toLowerCase();
-        if (method.includes("dinheiro") || method.includes("cash")) {
-          cashSales += total;
-        }
-      }
+      cashSales += netCash;
     });
     const transactionsResult = await sql`
           SELECT type, COALESCE(SUM(amount), 0) as total

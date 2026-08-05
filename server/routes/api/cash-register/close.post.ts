@@ -20,42 +20,30 @@ export default defineEventHandler(async (event) => {
     }
     
     const register = openRegister[0];
-    
-    // Buscar todas as vendas do período com a coluna payments
-        const sales = await sql`
-          SELECT payment_method, payments, total_amount
-          FROM sales
-          WHERE created_at >= ${register.opened_at}
-        `;
-    
+
+    const sales = await sql`
+      SELECT
+        s.id,
+        s.total_amount,
+        COALESCE(SUM(sp.amount) FILTER (WHERE sp.payment_type = 'cash'), 0) AS cash_paid,
+        COALESCE(SUM(sp.amount) FILTER (WHERE sp.payment_type <> 'cash'), 0) AS non_cash_paid
+      FROM sales s
+      LEFT JOIN sale_payments sp ON sp.sale_id = s.id
+      WHERE s.created_at >= ${register.opened_at}
+      GROUP BY s.id, s.total_amount
+    `;
+
     let salesTotal = 0;
     let cashSales = 0;
-    
-    // Calcular totais a partir do JSON de pagamentos
+
     sales.forEach((sale) => {
       const total = parseFloat(sale.total_amount);
+      const cashPaid = parseFloat(sale.cash_paid);
+      const nonCashPaid = parseFloat(sale.non_cash_paid);
+      const netCash = Math.min(cashPaid, Math.max(total - nonCashPaid, 0));
+
       salesTotal += total;
-      
-      // Se tiver o campo payments (JSON), usar ele
-      if (sale.payments && Array.isArray(sale.payments)) {
-        sale.payments.forEach((payment) => {
-          const amount = parseFloat(payment.amount);
-          const change = parseFloat(payment.change || 0);
-          
-          // Valor líquido = valor recebido - troco
-          const netAmount = amount - change;
-          
-          if (payment.type === 'cash') {
-            cashSales += netAmount;
-          }
-        });
-      } else {
-        // Fallback para o campo payment_method antigo (string)
-        const method = sale.payment_method.toLowerCase();
-        if (method.includes('dinheiro') || method.includes('cash')) {
-          cashSales += total;
-        }
-      }
+      cashSales += netCash;
     });
     
     // Calcular transações (sangrias/adições/vales)
