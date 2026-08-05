@@ -74,18 +74,24 @@ function sendSoapRequest(
     const isProduction = environment === 'producao';
 
     console.log(
-      `[NFE] TLS ${isProduction ? 'verificado' : 'de homologação'}: ${urlObj.hostname}`,
+      `[NFE] TLS ${isProduction ? 'verificado' : 'relaxado para homologação'}: ${urlObj.hostname}`,
     );
 
-    const agent = new https.Agent({
+    const tlsOptions = {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
       rejectUnauthorized: isProduction,
+      checkServerIdentity: isProduction
+        ? undefined
+        : () => undefined,
       keepAlive: false,
-    });
+    };
+
+    const agent = new https.Agent(tlsOptions);
 
     const request = https.request(urlObj, {
       agent,
+      ...tlsOptions,
       method: 'POST',
       timeout: 60000,
       headers: {

@@ -939,16 +939,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2a1b5-gqHyfHH75OjnIQMIjB/sFklFgi0\"",
-    "mtime": "2026-08-05T15:31:47.303Z",
-    "size": 172469,
+    "etag": "\"2a154-i2idNTPH+ERaV/jYOl3G3Q5m4TQ\"",
+    "mtime": "2026-08-05T15:36:22.333Z",
+    "size": 172372,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"9d34f-bZkkEtDgLtXYT6P/4J2pYciEif8\"",
-    "mtime": "2026-08-05T15:31:47.318Z",
-    "size": 643919,
+    "etag": "\"9d971-fa1UwQbvvwz4IDKrlZR1WarF0zE\"",
+    "mtime": "2026-08-05T15:36:22.333Z",
+    "size": 645489,
     "path": "index.mjs.map"
   }
 };
@@ -2742,16 +2742,19 @@ function sendSoapRequest(url, soapBody, certificate, environment) {
     const urlObj = new URL(url);
     const isProduction = environment === "producao";
     console.log(
-      `[NFE] TLS ${isProduction ? "verificado" : "de homologa\xE7\xE3o"}: ${urlObj.hostname}`
+      `[NFE] TLS ${isProduction ? "verificado" : "relaxado para homologa\xE7\xE3o"}: ${urlObj.hostname}`
     );
-    const agent = new https.Agent({
+    const tlsOptions = {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
       rejectUnauthorized: isProduction,
+      checkServerIdentity: isProduction ? void 0 : () => void 0,
       keepAlive: false
-    });
+    };
+    const agent = new https.Agent(tlsOptions);
     const request = https.request(urlObj, {
       agent,
+      ...tlsOptions,
       method: "POST",
       timeout: 6e4,
       headers: {
