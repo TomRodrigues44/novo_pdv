@@ -240,7 +240,7 @@ const AdminNfe = () => {
               )}
             </div>
             <p className="mt-1 text-gray-600">
-              A venda, o estoque e o financeiro serão atualizados somente após a autorização simulada.
+              A NF-e é assinada digitalmente e enviada para a SEFAZ. A venda só é registrada após a autorização.
             </p>
           </div>
 

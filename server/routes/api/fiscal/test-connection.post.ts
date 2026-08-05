@@ -1,89 +1,62 @@
 import { sql } from '../../../utils/db';
+import { loadActiveCertificate } from '../../../lib/nfe/certificate';
+import { checkStatusServico } from '../../../lib/nfe/sefaz';
 
 export default defineEventHandler(async (event) => {
   try {
-    // Buscar configuração da empresa
-        const configResult = await sql`
-          SELECT * FROM company_fiscal_config
-          ORDER BY created_at DESC
-          LIMIT 1
-        `;
-    
+    const configResult = await sql`
+      SELECT * FROM company_fiscal_config
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
     if (!configResult || configResult.length === 0) {
       throw createError({
         statusCode: 400,
         statusMessage: 'Configuração da empresa não encontrada',
       });
     }
-    
+
     const config = configResult[0];
-    
-    // Buscar certificado ativo
-        const certResult = await sql`
-          SELECT * FROM digital_certificates
-          WHERE ativo = true
-          ORDER BY created_at DESC
-          LIMIT 1
-        `;
-    
-    if (!certResult || certResult.length === 0) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'Nenhum certificado ativo encontrado',
-      });
-    }
-    
-    const cert = certResult[0];
-    
-    // Verificar se o certificado está expirado
+    const ambiente = config.ambiente === 'producao' ? 'producao' : 'homologacao';
+
+    // Carregar certificado digital
+    const certificate = await loadActiveCertificate();
+
     const now = new Date();
-    const validade = new Date(cert.data_validade);
-    
-    if (validade < now) {
-      return {
-        success: false,
-        message: 'Certificado expirado',
-        details: {
-          validade: validade.toISOString(),
-          hoje: now.toISOString(),
-        },
-      };
-    }
-    
-    // Simular teste de conexão com SEFAZ
-    // Na prática, aqui você usaria uma biblioteca como nfse-node ou similar
-    // para fazer uma requisição real ao serviço de status da SEFAZ-RR
-    
-    // URL do serviço de status da SEFAZ-RR (homologação)
-    const sefazUrl = config.ambiente === 'producao' 
-      ? 'https://nfe.sefaz.rr.gov.br/nfe/services/NfeStatusServico2'
-      : 'https://homologacao.nfe.sefaz.rr.gov.br/nfe/services/NfeStatusServico2';
-    
-    // Simular resposta bem-sucedida
-    // Em produção, você faria uma requisição SOAP real usando o certificado
-    const diasRestantes = Math.floor((validade.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    
+    const diasRestantes = Math.floor(
+      (certificate.validTo.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    // Fazer requisição SOAP real ao serviço de status da SEFAZ-RR
+    const sefazResult = await checkStatusServico(ambiente, certificate);
+
     return {
-      success: true,
-      message: 'Conexão com SEFAZ-RR estabelecida com sucesso',
+      success: sefazResult.status === '107',
+      message: sefazResult.status === '107'
+        ? 'SEFAZ-RR online e operante'
+        : sefazResult.status === '108'
+          ? 'SEFAZ-RR em manutenção'
+          : `SEFAZ-RR respondeu: ${sefazResult.message} (cStat: ${sefazResult.status})`,
       details: {
-        ambiente: config.ambiente,
+        ambiente,
         cnpj: config.cnpj,
         razao_social: config.razao_social,
         certificado: {
-          nome: cert.nome,
-          validade: validade.toISOString(),
+          nome: certificate.subject || 'Certificado A1',
+          validade: certificate.validTo.toISOString(),
           dias_restantes: diasRestantes,
         },
-        sefaz_url: sefazUrl,
-        nota: 'Este é um teste simulado. Em produção, uma requisição SOAP real seria feita.',
+        sefaz_status: sefazResult.status,
+        sefaz_motivo: sefazResult.message,
       },
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error testing SEFAZ connection:', error);
+    if (error.statusCode) throw error;
     throw createError({
       statusCode: 500,
-      statusMessage: 'Error testing SEFAZ connection',
+      statusMessage: error.message || 'Error testing SEFAZ connection',
     });
   }
 });

@@ -1,7 +1,7 @@
 import process from 'node:process';globalThis._importMeta_={url:import.meta.url,env:process.env};import { tmpdir } from 'node:os';
 import { Server } from 'node:http';
 import { resolve, dirname, join } from 'node:path';
-import nodeCrypto from 'node:crypto';
+import crypto from 'node:crypto';
 import { parentPort, threadId } from 'node:worker_threads';
 import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestURL, getRequestHeader, getResponseHeader, getRequestHeaders, setResponseHeaders, setResponseStatus, send, removeResponseHeader, appendResponseHeader, setResponseHeader, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, readBody, getQuery as getQuery$1, readFormData } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index.mjs';
 import destr from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/destr@2.0.5/node_modules/destr/dist/index.mjs';
@@ -24,7 +24,9 @@ import { SourceMapConsumer } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/no
 import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
+import forge from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/node-forge@1.4.0/node_modules/node-forge/lib/index.js';
 import QRCode from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
+import https from 'node:https';
 import { Pool } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pg@8.22.0/node_modules/pg/esm/index.mjs';
 import { v4 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
 
@@ -1299,7 +1301,7 @@ async function runTask(name, {
 }
 
 if (!globalThis.crypto) {
-  globalThis.crypto = nodeCrypto.webcrypto;
+  globalThis.crypto = crypto.webcrypto;
 }
 const { NITRO_NO_UNIX_SOCKET, NITRO_DEV_WORKER_ID } = process.env;
 trapUnhandledNodeErrors();
@@ -2359,6 +2361,7 @@ const certificates_get$1 = /*#__PURE__*/Object.freeze({
 });
 
 const certificates_post = defineEventHandler(async (event) => {
+  var _a, _b, _c;
   try {
     const formData = await readFormData(event);
     const file = formData.get("file");
@@ -2371,21 +2374,52 @@ const certificates_post = defineEventHandler(async (event) => {
       });
     }
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const dataValidade = /* @__PURE__ */ new Date();
-    dataValidade.setFullYear(dataValidade.getFullYear() + 1);
+    const pfxBuffer = Buffer.from(arrayBuffer);
+    let dataValidade = /* @__PURE__ */ new Date();
+    let certificadoInfo = "";
+    try {
+      const p12Asn1 = forge.asn1.fromDer(pfxBuffer.toString("binary"));
+      const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, senha);
+      let certificate = null;
+      for (const safeContent of p12.safeContents) {
+        for (const bag of safeContent.safeBags) {
+          if (bag.type === forge.pki.oids.certBag && bag.cert && !certificate) {
+            certificate = bag.cert;
+          }
+        }
+      }
+      if (!certificate) {
+        throw new Error("Certificado X.509 n\xE3o encontrado no arquivo.");
+      }
+      dataValidade = ((_a = certificate.validity) == null ? void 0 : _a.notAfter) || /* @__PURE__ */ new Date();
+      if (dataValidade < /* @__PURE__ */ new Date()) {
+        throw new Error(`Certificado expirado em ${dataValidade.toLocaleDateString("pt-BR")}.`);
+      }
+      certificadoInfo = ((_c = (_b = certificate.subject) == null ? void 0 : _b.attributes) == null ? void 0 : _c.map((attr) => `${attr.shortName}=${attr.value}`).join(", ")) || "";
+      await sql`UPDATE digital_certificates SET ativo = false WHERE ativo = true`;
+    } catch (certError) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: `Certificado inv\xE1lido: ${certError.message || "senha incorreta ou arquivo corrompido."}`
+      });
+    }
     const id = `cert-${Date.now()}`;
     const result = await sql`
-          INSERT INTO digital_certificates (id, nome, arquivo, senha, data_validade)
-          VALUES (${id}, ${nome}, ${buffer}, ${senha}, ${dataValidade})
+          INSERT INTO digital_certificates (id, nome, arquivo, senha, data_validade, ativo)
+          VALUES (${id}, ${nome}, ${pfxBuffer}, ${senha}, ${dataValidade}, true)
           RETURNING id, nome, data_validade
         `;
-    return result[0];
+    return {
+      ...result[0],
+      expirado: false,
+      subject: certificadoInfo
+    };
   } catch (error) {
     console.error("Error saving certificate:", error);
+    if (error.statusCode) throw error;
     throw createError({
       statusCode: 500,
-      statusMessage: "Error saving certificate"
+      statusMessage: error.message || "Error saving certificate"
     });
   }
 });
@@ -2533,13 +2567,255 @@ const companyConfig_post$1 = /*#__PURE__*/Object.freeze({
   default: companyConfig_post
 });
 
+async function loadActiveCertificate() {
+  var _a, _b, _c, _d, _e;
+  const rows = await sql`
+    SELECT arquivo, senha
+    FROM digital_certificates
+    WHERE ativo = true
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+  let certRow = rows[0];
+  if (!certRow) {
+    const fallback = await sql`
+      SELECT arquivo, senha
+      FROM digital_certificates
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    certRow = fallback[0];
+  }
+  if (!certRow) {
+    throw new Error("Nenhum certificado digital encontrado. Fa\xE7a upload do certificado A1 em Configura\xE7\xF5es Fiscais.");
+  }
+  const pfxBuffer = Buffer.isBuffer(certRow.arquivo) ? certRow.arquivo : Buffer.from(certRow.arquivo);
+  const password = String(certRow.senha || "");
+  try {
+    const p12Asn1 = forge.asn1.fromDer(pfxBuffer.toString("binary"));
+    const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, password);
+    let privateKey = null;
+    let certificate = null;
+    for (const safeContent of p12.safeContents) {
+      for (const bag of safeContent.safeBags) {
+        if (bag.type === forge.pki.oids.keyBag && bag.asn1 && !privateKey) {
+          privateKey = forge.pki.privateKeyFromAsn1(bag.asn1);
+        } else if (bag.type === forge.pki.oids.pkcs8ShroudedKeyBag && bag.asn1 && !privateKey) {
+          privateKey = forge.pki.decryptPrivateKeyInfo(bag.asn1, password);
+          if (privateKey) {
+            privateKey = forge.pki.privateKeyFromAsn1(privateKey);
+          }
+        } else if (bag.type === forge.pki.oids.certBag && bag.cert && !certificate) {
+          certificate = bag.cert;
+        }
+      }
+    }
+    if (!privateKey) {
+      throw new Error("Chave privada n\xE3o encontrada no certificado.");
+    }
+    if (!certificate) {
+      throw new Error("Certificado X.509 n\xE3o encontrado no PFX.");
+    }
+    const validTo = ((_a = certificate.validity) == null ? void 0 : _a.notAfter) || /* @__PURE__ */ new Date();
+    if (validTo < /* @__PURE__ */ new Date()) {
+      throw new Error(`Certificado digital expirado em ${validTo.toLocaleDateString("pt-BR")}. Renove o certificado A1.`);
+    }
+    const privateKeyPem = forge.pki.privateKeyToPem(privateKey);
+    const certificatePem = forge.pki.certificateToPem(certificate);
+    const certificateBase64 = forge.util.encode64(
+      forge.asn1.toDer(forge.pki.certificateToAsn1(certificate)).getBytes()
+    );
+    const subject = ((_c = (_b = certificate.subject) == null ? void 0 : _b.attributes) == null ? void 0 : _c.map((attr) => `${attr.shortName}=${attr.value}`).join(", ")) || "";
+    return {
+      pfxBuffer,
+      password,
+      privateKeyPem,
+      certificatePem,
+      certificateBase64,
+      validTo,
+      subject
+    };
+  } catch (error) {
+    if (((_d = error.message) == null ? void 0 : _d.includes("Certificado digital expirado")) || ((_e = error.message) == null ? void 0 : _e.includes("n\xE3o encontrado"))) {
+      throw error;
+    }
+    throw new Error(`Erro ao ler o certificado digital: senha incorreta ou arquivo inv\xE1lido. ${error.message || ""}`);
+  }
+}
+
+const SEFAZ_ENDPOINTS = {
+  homologacao: {
+    autorizacao: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeAutorizacao",
+    retAutorizacao: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeRetAutorizacao",
+    statusServico: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeStatusServico"
+  },
+  producao: {
+    autorizacao: "https://nfe.sefaz.rr.gov.br/nfe2/services/NfeAutorizacao",
+    retAutorizacao: "https://nfe.sefaz.rr.gov.br/nfe2/services/NfeRetAutorizacao",
+    statusServico: "https://nfe.sefaz.rr.gov.br/nfe2/services/NfeStatusServico"
+  }
+};
+function extractTag(xml, tag) {
+  const match = xml.match(new RegExp(`<(?:[\\w]+:)?${tag}[^>]*>([^<]*)</(?:[\\w]+:)?${tag}>`, "i"));
+  return match ? match[1].trim() : null;
+}
+function buildSoapEnvelope(serviceAction, innerXml) {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
+    <${serviceAction} xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao">
+      <nfeDadosMsg>
+${innerXml}
+      </nfeDadosMsg>
+    </${serviceAction}>
+  </soap:Body>
+</soap:Envelope>`;
+}
+function sendSoapRequest(url, soapBody, certificate) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const agent = new https.Agent({
+      pfx: certificate.pfxBuffer,
+      passphrase: certificate.password,
+      rejectUnauthorized: false,
+      keepAlive: false
+    });
+    const options = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || 443,
+      path: urlObj.pathname + urlObj.search,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/soap+xml; charset=utf-8",
+        "Content-Length": Buffer.byteLength(soapBody).toString(),
+        "User-Agent": "PDV-NFe/1.0"
+      },
+      agent,
+      timeout: 6e4
+    };
+    const req = https.request(options, (res) => {
+      let data = "";
+      res.on("data", (chunk) => {
+        data += chunk;
+      });
+      res.on("end", () => resolve(data));
+    });
+    req.on("error", (error) => {
+      reject(new Error(`Erro de comunica\xE7\xE3o com a SEFAZ: ${error.message}`));
+    });
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("Tempo limite excedido ao aguardar resposta da SEFAZ (60s)."));
+    });
+    req.write(soapBody);
+    req.end();
+  });
+}
+function parseAuthorizationResponse(responseXml) {
+  const protCStat = extractTag(responseXml, "cStat");
+  extractTag(responseXml, "nProt");
+  const xMotivo = extractTag(responseXml, "xMotivo");
+  extractTag(responseXml, "dhRecbto");
+  extractTag(responseXml, "chNFe");
+  const nRec = extractTag(responseXml, "nRec");
+  if (nRec && protCStat === "103") {
+    return {
+      success: false,
+      status: "processando",
+      message: "Lote recebido pela SEFAZ. Aguardando processamento.",
+      rawResponse: responseXml
+    };
+  }
+  const protMatch = responseXml.match(/<protNFe[\s\S]*?<\/protNFe>/i);
+  if (protMatch) {
+    const protXml = protMatch[0];
+    const innerCStat = extractTag(protXml, "cStat");
+    const innerProt = extractTag(protXml, "nProt");
+    const innerMotivo = extractTag(protXml, "xMotivo");
+    const innerDate = extractTag(protXml, "dhRecbto");
+    if (innerCStat === "100") {
+      return {
+        success: true,
+        status: "autorizada",
+        message: innerMotivo || "Autorizado o uso da NF-e",
+        protocol: innerProt,
+        authorizationDate: innerDate,
+        authorizationXml: protXml,
+        rawResponse: responseXml
+      };
+    }
+    return {
+      success: false,
+      status: "rejeitada",
+      message: `cStat ${innerCStat}: ${innerMotivo || "NF-e rejeitada"}`,
+      rawResponse: responseXml
+    };
+  }
+  return {
+    success: false,
+    status: "rejeitada",
+    message: xMotivo ? `cStat ${protCStat}: ${xMotivo}` : "Resposta inesperada da SEFAZ. Verifique o certificado e os dados.",
+    rawResponse: responseXml
+  };
+}
+async function pollForResult(nRec, environment, certificate) {
+  const endpoint = SEFAZ_ENDPOINTS[environment] || SEFAZ_ENDPOINTS.homologacao;
+  const innerXml = `<consReciNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+      <tpAmb>${environment === "producao" ? 1 : 2}</tpAmb>
+      <nRec>${nRec}</nRec>
+    </consReciNFe>`;
+  const soapBody = buildSoapEnvelope("nfeRetAutorizacaoLote", innerXml);
+  return sendSoapRequest(endpoint.retAutorizacao, soapBody, certificate);
+}
+async function authorizeNfe(signedXml, accessKey, environment, certificate) {
+  const endpoint = SEFAZ_ENDPOINTS[environment] || SEFAZ_ENDPOINTS.homologacao;
+  const loteId = String(Date.now()).slice(-15);
+  const nfeXml = signedXml.replace(/^<\?xml[^>]*>\s*/, "").trim();
+  const innerXml = `<enviNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+      <idLote>${loteId}</idLote>
+      <indSinc>1</indSinc>
+      <NFe>${nfeXml}</NFe>
+    </enviNFe>`;
+  const soapBody = buildSoapEnvelope("nfeAutorizacaoLote", innerXml);
+  console.log(`[NFE] Enviando NF-e para SEFAZ (${environment})...`);
+  const responseXml = await sendSoapRequest(endpoint.autorizacao, soapBody, certificate);
+  console.log("[NFE] Resposta recebida da SEFAZ.");
+  let result = parseAuthorizationResponse(responseXml);
+  if (result.status === "processando") {
+    const nRec = extractTag(responseXml, "nRec");
+    if (nRec) {
+      console.log(`[NFE] Lote em processamento (nRec: ${nRec}). Consultando resultado...`);
+      await new Promise((resolve) => setTimeout(resolve, 3e3));
+      const pollResponse = await pollForResult(nRec, environment, certificate);
+      result = parseAuthorizationResponse(pollResponse);
+    }
+  }
+  return result;
+}
+async function checkStatusServico(environment, certificate) {
+  const endpoint = SEFAZ_ENDPOINTS[environment] || SEFAZ_ENDPOINTS.homologacao;
+  const innerXml = `<consStatServ versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+      <tpAmb>${environment === "producao" ? 1 : 2}</tpAmb>
+      <cUF>14</cUF>
+      <xServ>STATUS</xServ>
+    </consStatServ>`;
+  const soapBody = buildSoapEnvelope("nfeStatusServicoNF", innerXml);
+  const responseXml = await sendSoapRequest(endpoint.statusServico, soapBody, certificate);
+  const cStat = extractTag(responseXml, "cStat");
+  const xMotivo = extractTag(responseXml, "xMotivo");
+  return {
+    status: cStat || "unknown",
+    message: xMotivo || "Sem resposta da SEFAZ"
+  };
+}
+
 const testConnection_post = defineEventHandler(async (event) => {
   try {
     const configResult = await sql`
-          SELECT * FROM company_fiscal_config
-          ORDER BY created_at DESC
-          LIMIT 1
-        `;
+      SELECT * FROM company_fiscal_config
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
     if (!configResult || configResult.length === 0) {
       throw createError({
         statusCode: 400,
@@ -2547,54 +2823,35 @@ const testConnection_post = defineEventHandler(async (event) => {
       });
     }
     const config = configResult[0];
-    const certResult = await sql`
-          SELECT * FROM digital_certificates
-          WHERE ativo = true
-          ORDER BY created_at DESC
-          LIMIT 1
-        `;
-    if (!certResult || certResult.length === 0) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "Nenhum certificado ativo encontrado"
-      });
-    }
-    const cert = certResult[0];
+    const ambiente = config.ambiente === "producao" ? "producao" : "homologacao";
+    const certificate = await loadActiveCertificate();
     const now = /* @__PURE__ */ new Date();
-    const validade = new Date(cert.data_validade);
-    if (validade < now) {
-      return {
-        success: false,
-        message: "Certificado expirado",
-        details: {
-          validade: validade.toISOString(),
-          hoje: now.toISOString()
-        }
-      };
-    }
-    const sefazUrl = config.ambiente === "producao" ? "https://nfe.sefaz.rr.gov.br/nfe/services/NfeStatusServico2" : "https://homologacao.nfe.sefaz.rr.gov.br/nfe/services/NfeStatusServico2";
-    const diasRestantes = Math.floor((validade.getTime() - now.getTime()) / (1e3 * 60 * 60 * 24));
+    const diasRestantes = Math.floor(
+      (certificate.validTo.getTime() - now.getTime()) / (1e3 * 60 * 60 * 24)
+    );
+    const sefazResult = await checkStatusServico(ambiente, certificate);
     return {
-      success: true,
-      message: "Conex\xE3o com SEFAZ-RR estabelecida com sucesso",
+      success: sefazResult.status === "107",
+      message: sefazResult.status === "107" ? "SEFAZ-RR online e operante" : sefazResult.status === "108" ? "SEFAZ-RR em manuten\xE7\xE3o" : `SEFAZ-RR respondeu: ${sefazResult.message} (cStat: ${sefazResult.status})`,
       details: {
-        ambiente: config.ambiente,
+        ambiente,
         cnpj: config.cnpj,
         razao_social: config.razao_social,
         certificado: {
-          nome: cert.nome,
-          validade: validade.toISOString(),
+          nome: certificate.subject || "Certificado A1",
+          validade: certificate.validTo.toISOString(),
           dias_restantes: diasRestantes
         },
-        sefaz_url: sefazUrl,
-        nota: "Este \xE9 um teste simulado. Em produ\xE7\xE3o, uma requisi\xE7\xE3o SOAP real seria feita."
+        sefaz_status: sefazResult.status,
+        sefaz_motivo: sefazResult.message
       }
     };
   } catch (error) {
     console.error("Error testing SEFAZ connection:", error);
+    if (error.statusCode) throw error;
     throw createError({
       statusCode: 500,
-      statusMessage: "Error testing SEFAZ connection"
+      statusMessage: error.message || "Error testing SEFAZ connection"
     });
   }
 });
@@ -3750,35 +4007,6 @@ function generateNfeXml(data, config, number, series) {
   return { accessKey, xml: generatedXml, consultationUrl };
 }
 
-async function authorizeNfeSimulation(xml, environment) {
-  var _a;
-  await new Promise((resolve) => setTimeout(resolve, 700));
-  const accessKey = (_a = xml.match(/Id="NFe(\d{44})"/)) == null ? void 0 : _a[1];
-  if (!accessKey || !xml.includes("<mod>55</mod>")) {
-    return {
-      success: false,
-      status: "rejeitada",
-      message: "XML inv\xE1lido para NF-e modelo 55."
-    };
-  }
-  const protocol = `SIM${Date.now().toString().slice(-12)}`;
-  const authorizationXml = `<?xml version="1.0" encoding="UTF-8"?>
-<nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-  ${xml.replace(/^<\?xml[^>]*>\s*/, "")}
-  <protNFe versao="4.00"><infProt><tpAmb>${environment === "producao" ? 1 : 2}</tpAmb>
-    <chNFe>${accessKey}</chNFe><dhRecbto>${(/* @__PURE__ */ new Date()).toISOString()}</dhRecbto>
-    <nProt>${protocol}</nProt><cStat>100</cStat><xMotivo>Autorizado o uso da NF-e em simula\xE7\xE3o</xMotivo>
-  </infProt></protNFe>
-</nfeProc>`;
-  return {
-    success: true,
-    status: "autorizada",
-    message: "NF-e autorizada em ambiente de homologa\xE7\xE3o/simula\xE7\xE3o.",
-    protocol,
-    authorizationXml
-  };
-}
-
 async function ensureNfeSchema(client = sql) {
   await client.query(`
     ALTER TABLE customers
@@ -3792,6 +4020,9 @@ async function ensureNfeSchema(client = sql) {
       ADD COLUMN IF NOT EXISTS municipio TEXT,
       ADD COLUMN IF NOT EXISTS uf TEXT,
       ADD COLUMN IF NOT EXISTS codigo_municipio TEXT
+  `);
+  await client.query(`
+    ALTER TABLE digital_certificates ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT false
   `);
   await client.query(`
     CREATE TABLE IF NOT EXISTS nfe (
@@ -3821,6 +4052,46 @@ async function ensureNfeSchema(client = sql) {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
+}
+
+const NFE_NAMESPACE = "http://www.portalfiscal.inf.br/nfe";
+const DSIG_NAMESPACE = "http://www.w3.org/2000/09/xmldsig#";
+function canonicalizeInfNFe(xml, accessKey) {
+  const id = `NFe${accessKey}`;
+  const startMarker = `<infNFe Id="${id}"`;
+  const startPos = xml.indexOf(startMarker);
+  if (startPos === -1) {
+    throw new Error("Elemento infNFe n\xE3o encontrado no XML para assinatura.");
+  }
+  const endMarker = "</infNFe>";
+  const endPos = xml.indexOf(endMarker, startPos);
+  if (endPos === -1) {
+    throw new Error("Fechamento do elemento infNFe n\xE3o encontrado.");
+  }
+  const elementXml = xml.substring(startPos, endPos + endMarker.length);
+  return elementXml.replace(
+    `<infNFe Id="${id}"`,
+    `<infNFe xmlns="${NFE_NAMESPACE}" Id="${id}"`
+  );
+}
+function buildCanonicalSignedInfo(accessKey, digestValue) {
+  const id = `NFe${accessKey}`;
+  return `<SignedInfo xmlns="${DSIG_NAMESPACE}"><CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></CanonicalizationMethod><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"></SignatureMethod><Reference URI="#${id}"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"></Transform><Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></Transform></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"></DigestMethod><DigestValue>${digestValue}</DigestValue></Reference></SignedInfo>`;
+}
+function signNfeXml(xml, accessKey, privateKeyPem, certificateBase64) {
+  const canonicalizedInfNFe = canonicalizeInfNFe(xml, accessKey);
+  const digestValue = crypto.createHash("sha1").update(canonicalizedInfNFe, "utf8").digest("base64");
+  const canonicalSignedInfo = buildCanonicalSignedInfo(accessKey, digestValue);
+  const signer = crypto.createSign("RSA-SHA1");
+  signer.update(canonicalSignedInfo, "utf8");
+  const signatureValue = signer.sign(privateKeyPem, "base64");
+  const signatureBlock = `<Signature xmlns="${DSIG_NAMESPACE}">` + canonicalSignedInfo + `<SignatureValue>${signatureValue}</SignatureValue><KeyInfo><X509Data><X509Certificate>${certificateBase64}</X509Certificate></X509Data></KeyInfo></Signature>`;
+  const insertPos = xml.indexOf("</infNFe>");
+  if (insertPos === -1) {
+    throw new Error("N\xE3o foi poss\xEDvel inserir a assinatura: infNFe n\xE3o encontrado.");
+  }
+  const signedXml = xml.substring(0, insertPos + "</infNFe>".length) + signatureBlock + xml.substring(insertPos + "</infNFe>".length);
+  return { signedXml, digestValue, signatureValue };
 }
 
 const digits = (value) => String(value != null ? value : "").replace(/\D/g, "");
@@ -3915,9 +4186,24 @@ const emitir_post = defineEventHandler(async (event) => {
       freight,
       freightMode: body.freightMode
     }, configRows[0], number, series);
-    const authorization = await authorizeNfeSimulation(generated.xml, ambiente);
+    const certificate = await loadActiveCertificate();
+    const { signedXml } = signNfeXml(
+      generated.xml,
+      generated.accessKey,
+      certificate.privateKeyPem,
+      certificate.certificateBase64
+    );
+    const authorization = await authorizeNfe(signedXml, generated.accessKey, ambiente, certificate);
     if (!authorization.success) {
-      throw createError({ statusCode: 422, statusMessage: authorization.message });
+      await sql`
+        UPDATE company_fiscal_config
+        SET ultima_nfe = GREATEST(COALESCE(ultima_nfe, 1) - 1, 0)
+        WHERE id = ${configRows[0].id}
+      `;
+      throw createError({
+        statusCode: 422,
+        statusMessage: `SEFAZ rejeitou a NF-e: ${authorization.message}`
+      });
     }
     const result = await sql.transaction(async (transaction) => {
       const customerId = text(customer.id) || `customer-nfe-${Date.now()}`;
@@ -3956,7 +4242,7 @@ const emitir_post = defineEventHandler(async (event) => {
       const saleRows = await transaction`
         INSERT INTO sales (total_amount, customer_id, freight, status, daily_sale_number, xml_chave, xml_numero, xml_status, xml_content)
         VALUES (${total}, ${customerId}, ${freight}, 'delivered', ${dailyRows[0].next_number},
-          ${generated.accessKey}, ${number}, 'autorizada', ${authorization.authorizationXml || generated.xml})
+          ${generated.accessKey}, ${number}, 'autorizada', ${signedXml})
         RETURNING id, daily_sale_number
       `;
       const sale = saleRows[0];
@@ -3987,7 +4273,7 @@ const emitir_post = defineEventHandler(async (event) => {
           ${String(sale.id)}, ${customerId}, ${generated.accessKey}, ${number}, ${series}, 'autorizada',
           ${ambiente}, ${authorization.protocol || null}, CURRENT_TIMESTAMP, ${productsTotal}, ${freight},
           ${total}, ${JSON.stringify(customer)}::jsonb, ${JSON.stringify(items)}::jsonb,
-          ${JSON.stringify(payments)}::jsonb, ${generated.xml}, ${authorization.authorizationXml || null},
+          ${JSON.stringify(payments)}::jsonb, ${signedXml}, ${authorization.authorizationXml || authorization.rawResponse || null},
           ${generated.consultationUrl}, ${authorization.message}
         ) RETURNING id
       `;

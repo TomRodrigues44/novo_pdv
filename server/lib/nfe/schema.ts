@@ -17,6 +17,10 @@ export async function ensureNfeSchema(client: SqlQueryClient = sql) {
   `);
 
   await client.query(`
+    ALTER TABLE digital_certificates ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT false
+  `);
+
+  await client.query(`
     CREATE TABLE IF NOT EXISTS nfe (
       id BIGSERIAL PRIMARY KEY,
       sale_id TEXT NOT NULL UNIQUE,

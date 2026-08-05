@@ -1,7 +1,9 @@
 import { sql } from '../../../utils/db';
 import { generateNfeXml } from '../../../lib/nfe/generator';
-import { authorizeNfeSimulation } from '../../../lib/nfe/sefaz';
+import { authorizeNfe } from '../../../lib/nfe/sefaz';
 import { ensureNfeSchema } from '../../../lib/nfe/schema';
+import { loadActiveCertificate } from '../../../lib/nfe/certificate';
+import { signNfeXml } from '../../../lib/nfe/signer';
 
 const digits = (value: unknown) => String(value ?? '').replace(/\D/g, '');
 const text = (value: unknown) => String(value ?? '').trim();
@@ -105,9 +107,32 @@ export default defineEventHandler(async (event) => {
       freightMode: body.freightMode,
     }, configRows[0], number, series);
 
-    const authorization = await authorizeNfeSimulation(generated.xml, ambiente);
+    // Carregar certificado digital A1
+    const certificate = await loadActiveCertificate();
+
+    // Assinar o XML da NF-e com o certificado digital
+    const { signedXml } = signNfeXml(
+      generated.xml,
+      generated.accessKey,
+      certificate.privateKeyPem,
+      certificate.certificateBase64,
+    );
+
+    // Enviar para a SEFAZ-RR e aguardar autorização
+    const authorization = await authorizeNfe(signedXml, generated.accessKey, ambiente, certificate);
+
     if (!authorization.success) {
-      throw createError({ statusCode: 422, statusMessage: authorization.message });
+      // NF-e rejeitada — não registra a venda, mas decrementa o número
+      // para que possa ser reutilizado na próxima tentativa
+      await sql`
+        UPDATE company_fiscal_config
+        SET ultima_nfe = GREATEST(COALESCE(ultima_nfe, 1) - 1, 0)
+        WHERE id = ${configRows[0].id}
+      `;
+      throw createError({
+        statusCode: 422,
+        statusMessage: `SEFAZ rejeitou a NF-e: ${authorization.message}`,
+      });
     }
 
     const result = await sql.transaction(async (transaction) => {
@@ -149,7 +174,7 @@ export default defineEventHandler(async (event) => {
       const saleRows = await transaction`
         INSERT INTO sales (total_amount, customer_id, freight, status, daily_sale_number, xml_chave, xml_numero, xml_status, xml_content)
         VALUES (${total}, ${customerId}, ${freight}, 'delivered', ${dailyRows[0].next_number},
-          ${generated.accessKey}, ${number}, 'autorizada', ${authorization.authorizationXml || generated.xml})
+          ${generated.accessKey}, ${number}, 'autorizada', ${signedXml})
         RETURNING id, daily_sale_number
       `;
       const sale = saleRows[0];
@@ -184,7 +209,7 @@ export default defineEventHandler(async (event) => {
           ${String(sale.id)}, ${customerId}, ${generated.accessKey}, ${number}, ${series}, 'autorizada',
           ${ambiente}, ${authorization.protocol || null}, CURRENT_TIMESTAMP, ${productsTotal}, ${freight},
           ${total}, ${JSON.stringify(customer)}::jsonb, ${JSON.stringify(items)}::jsonb,
-          ${JSON.stringify(payments)}::jsonb, ${generated.xml}, ${authorization.authorizationXml || null},
+          ${JSON.stringify(payments)}::jsonb, ${signedXml}, ${authorization.authorizationXml || authorization.rawResponse || null},
           ${generated.consultationUrl}, ${authorization.message}
         ) RETURNING id
       `;
