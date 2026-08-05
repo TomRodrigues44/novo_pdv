@@ -182,7 +182,7 @@ export function ReceiptDialog({ open, onClose, total, freight, cartItems, paymen
 
           <div className="mb-2">
             <div className="grid grid-cols-12 gap-1 font-bold">
-              <div className="col-span-6">DESC</div>
+              <div className="col-span-6">DESCRIÇÃO</div>
               <div className="col-span-2 text-right">QTD</div>
               <div className="col-span-2 text-right">V.UN</div>
               <div className="col-span-2 text-right">V.TOT</div>
@@ -221,14 +221,22 @@ export function ReceiptDialog({ open, onClose, total, freight, cartItems, paymen
             <span>R$ {total.toFixed(2)}</span>
           </div>
 
-          <div className="mt-1">
-            {payments.map((p, i) => (
-              <div key={i} className="flex justify-between">
-                <span>{paymentTypeMap[p.type] || 'Outro'}</span>
-                <span>R$ {(p.amount || 0).toFixed(2)}</span>
-              </div>
-            ))}
-          </div>
+          {isBudget ? (
+            <p className="mt-1">
+              Forma de Pagamento: {payments.length > 0
+                ? payments.map((payment) => paymentTypeMap[payment.type] || 'Outro').join(' + ')
+                : 'Não informado'}
+            </p>
+          ) : (
+            <div className="mt-1">
+              {payments.map((payment, index) => (
+                <div key={index} className="flex justify-between">
+                  <span>{paymentTypeMap[payment.type] || 'Outro'}</span>
+                  <span>R$ {(payment.amount || 0).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <hr className="border-dashed border-black my-2" />
 
