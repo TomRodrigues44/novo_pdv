@@ -559,10 +559,6 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
       <DocumentDialog
         open={isDocumentDialogOpen}
         onClose={() => setIsDocumentDialogOpen(false)}
-        total={totalWithFreight}
-        freight={freight}
-        cartItems={cartItems}
-        payments={currentPayments}
         onGenerateDocument={handleGenerateDocument}
         isEmitting={emittingNfce}
       />

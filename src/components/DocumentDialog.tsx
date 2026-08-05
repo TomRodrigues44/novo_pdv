@@ -110,6 +110,7 @@ interface ReceiptDialogProps {
   open: boolean;
   onClose: () => void;
   total: number;
+  freight: number;
   cartItems: SaleItem[];
   payments: Payment[];
   documentType: 'quote' | 'fiscal';
@@ -117,7 +118,7 @@ interface ReceiptDialogProps {
   nfceData: NfceData | null;
 }
 
-export function ReceiptDialog({ open, onClose, total, cartItems, payments, documentType, saleId, nfceData }: ReceiptDialogProps) {
+export function ReceiptDialog({ open, onClose, total, freight, cartItems, payments, documentType, saleId, nfceData }: ReceiptDialogProps) {
   const [companyConfig, setCompanyConfig] = useState<CompanyConfig | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -131,7 +132,7 @@ export function ReceiptDialog({ open, onClose, total, cartItems, payments, docum
   }, [open]);
 
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
+    contentRef: printRef,
     documentTitle: `${documentType === 'fiscal' ? 'NFC-e' : 'Orcamento'}-${nfceData?.numero || saleId}`,
   });
 
@@ -201,6 +202,19 @@ export function ReceiptDialog({ open, onClose, total, cartItems, payments, docum
           </div>
 
           <hr className="border-dashed border-black my-2" />
+
+          {isBudget && freight > 0 && (
+            <>
+              <div className="flex justify-between">
+                <span>SUBTOTAL:</span>
+                <span>R$ {(total - freight).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>FRETE:</span>
+                <span>R$ {freight.toFixed(2)}</span>
+              </div>
+            </>
+          )}
 
           <div className="flex justify-between font-bold">
             <span>TOTAL:</span>
