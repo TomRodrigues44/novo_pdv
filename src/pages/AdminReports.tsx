@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAdmin } from "@/hooks/use-admin";
 import AdminSidebar from "@/components/AdminSidebar";
 import { ReceiptDialog } from "@/components/DocumentDialog";
+import { DanfeDialog } from "@/components/DanfeDialog";
 import {
   Card,
   CardContent,
@@ -33,26 +34,39 @@ const AdminReports = () => {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [loadingReceipt, setLoadingReceipt] = useState(false);
   const [nfceData, setNfceData] = useState(null);
+  const [nfeData, setNfeData] = useState<any>(null);
+  const [isDanfeOpen, setIsDanfeOpen] = useState(false);
 
   const report = getSalesReport(days);
 
   const handlePrintClick = async (sale: any) => {
     setLoadingReceipt(true);
     setSelectedSale(sale);
-    setNfceData(null); // Reset previous NFC-e data
+    setNfceData(null);
+    setNfeData(null);
 
     try {
-      // Check if there's an associated NFC-e
+      // Try NF-e (model 55) first
       if (sale.xml_status === 'autorizada' && sale.id) {
-        const response = await fetch(`/api/nfce/${sale.id}`);
-        if (response.ok) {
-          const nfce = await response.json();
+        const nfeResponse = await fetch(`/api/nfe/${sale.id}`);
+        if (nfeResponse.ok) {
+          const nfe = await nfeResponse.json();
+          setNfeData(nfe);
+          setIsDanfeOpen(true);
+          setLoadingReceipt(false);
+          return;
+        }
+
+        // Otherwise try NFC-e (model 65)
+        const nfceResponse = await fetch(`/api/nfce/${sale.id}`);
+        if (nfceResponse.ok) {
+          const nfce = await nfceResponse.json();
           setNfceData(nfce);
         }
       }
     } catch (error) {
-      console.error("Failed to fetch NFC-e data for reprinting:", error);
-      toast.error("Não foi possível carregar os dados da NFC-e para reimpressão.");
+      console.error("Failed to fetch fiscal data for reprinting:", error);
+      toast.error("Não foi possível carregar os dados fiscais para reimpressão.");
     } finally {
       setIsReceiptOpen(true);
       setLoadingReceipt(false);
@@ -220,11 +234,34 @@ const AdminReports = () => {
           </Card>
         </div>
       </div>
-      {selectedSale && (
+      {selectedSale && nfeData && (
+        <DanfeDialog
+          open={isDanfeOpen}
+          onClose={() => setIsDanfeOpen(false)}
+          nfeData={{
+            number: nfeData.number,
+            series: nfeData.series,
+            accessKey: nfeData.accessKey,
+            protocol: nfeData.protocol,
+            status: nfeData.status,
+            environment: nfeData.environment,
+            consultationUrl: nfeData.consultationUrl,
+          }}
+          customer={nfeData.customer}
+          items={nfeData.items || []}
+          payments={nfeData.payments || []}
+          freight={nfeData.freight || parseFloat(selectedSale.freight || 0)}
+          productsTotal={nfeData.productsTotal || (parseFloat(selectedSale.total_amount || 0) - parseFloat(selectedSale.freight || 0))}
+          total={nfeData.total || parseFloat(selectedSale.total_amount || 0)}
+        />
+      )}
+
+      {selectedSale && !nfeData && (
         <ReceiptDialog
           open={isReceiptOpen}
           onClose={() => setIsReceiptOpen(false)}
           total={parseFloat(selectedSale.total_amount || 0)}
+          freight={parseFloat(selectedSale.freight || 0)}
           cartItems={selectedSale.items || []}
           payments={selectedSale.payments || []}
           documentType={selectedSale.xml_status === 'autorizada' ? 'fiscal' : 'quote'}

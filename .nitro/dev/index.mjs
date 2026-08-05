@@ -1057,6 +1057,7 @@ const _lazy_IbtS6o = () => Promise.resolve().then(function () { return qrCode_ge
 const _lazy_jCpQHj = () => Promise.resolve().then(function () { return _sale_id__get$1; });
 const _lazy_MwmAsd = () => Promise.resolve().then(function () { return emitir_post$3; });
 const _lazy_9g6I2U = () => Promise.resolve().then(function () { return _id__get$1; });
+const _lazy_VzYBUW = () => Promise.resolve().then(function () { return _saleId__get$1; });
 const _lazy_Ubuh2Q = () => Promise.resolve().then(function () { return emitir_post$1; });
 const _lazy_T_NEx7 = () => Promise.resolve().then(function () { return products_get$1; });
 const _lazy_dTrC0F = () => Promise.resolve().then(function () { return products_post$1; });
@@ -1105,6 +1106,7 @@ const handlers = [
   { route: '/api/nfce/:sale_id', handler: _lazy_jCpQHj, lazy: true, middleware: false, method: "get" },
   { route: '/api/nfce/emitir', handler: _lazy_MwmAsd, lazy: true, middleware: false, method: "post" },
   { route: '/api/nfce/xml/:id', handler: _lazy_9g6I2U, lazy: true, middleware: false, method: "get" },
+  { route: '/api/nfe/:saleId', handler: _lazy_VzYBUW, lazy: true, middleware: false, method: "get" },
   { route: '/api/nfe/emitir', handler: _lazy_Ubuh2Q, lazy: true, middleware: false, method: "post" },
   { route: '/api/products', handler: _lazy_T_NEx7, lazy: true, middleware: false, method: "get" },
   { route: '/api/products', handler: _lazy_dTrC0F, lazy: true, middleware: false, method: "post" },
@@ -3497,6 +3499,101 @@ const _id__get$1 = /*#__PURE__*/Object.freeze({
   default: _id__get
 });
 
+const _saleId__get = defineEventHandler(async (event) => {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
+  try {
+    const saleId = getRouterParam(event, "sale_id");
+    if (!saleId) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "sale_id \xE9 obrigat\xF3rio"
+      });
+    }
+    const result = await sql`
+      SELECT
+        n.*,
+        c.name AS customer_name,
+        c.cpf_cnpj AS customer_cpf_cnpj,
+        c.inscricao_estadual AS customer_ie,
+        c.phone AS customer_phone,
+        c.email AS customer_email,
+        c.cep AS customer_cep,
+        c.logradouro AS customer_logradouro,
+        c.numero AS customer_numero,
+        c.complemento AS customer_complemento,
+        c.bairro AS customer_bairro,
+        c.municipio AS customer_municipio,
+        c.uf AS customer_uf
+      FROM nfe n
+      LEFT JOIN customers c ON c.id = n.customer_id
+      WHERE n.sale_id = ${saleId}
+      ORDER BY n.created_at DESC
+      LIMIT 1
+    `;
+    if (!result || result.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "NF-e n\xE3o encontrada para esta venda"
+      });
+    }
+    const row = result[0];
+    const items = Array.isArray(row.itens) ? row.itens : typeof row.itens === "string" ? (() => {
+      try {
+        return JSON.parse(row.itens);
+      } catch {
+        return [];
+      }
+    })() : [];
+    const payments = Array.isArray(row.pagamentos) ? row.pagamentos : typeof row.pagamentos === "string" ? (() => {
+      try {
+        return JSON.parse(row.pagamentos);
+      } catch {
+        return [];
+      }
+    })() : [];
+    const customer = {
+      name: row.customer_name || ((_a = row.destinatario) == null ? void 0 : _a.name) || "",
+      cpf_cnpj: row.customer_cpf_cnpj || ((_b = row.destinatario) == null ? void 0 : _b.cpf_cnpj) || "",
+      inscricao_estadual: row.customer_ie || ((_c = row.destinatario) == null ? void 0 : _c.inscricao_estadual) || "",
+      phone: row.customer_phone || ((_d = row.destinatario) == null ? void 0 : _d.phone) || "",
+      email: row.customer_email || ((_e = row.destinatario) == null ? void 0 : _e.email) || "",
+      cep: row.customer_cep || ((_f = row.destinatario) == null ? void 0 : _f.cep) || "",
+      logradouro: row.customer_logradouro || ((_g = row.destinatario) == null ? void 0 : _g.logradouro) || "",
+      numero: row.customer_numero || ((_h = row.destinatario) == null ? void 0 : _h.numero) || "",
+      complemento: row.customer_complemento || ((_i = row.destinatario) == null ? void 0 : _i.complemento) || "",
+      bairro: row.customer_bairro || ((_j = row.destinatario) == null ? void 0 : _j.bairro) || "",
+      municipio: row.customer_municipio || ((_k = row.destinatario) == null ? void 0 : _k.municipio) || "",
+      uf: row.customer_uf || ((_l = row.destinatario) == null ? void 0 : _l.uf) || ""
+    };
+    return {
+      number: row.numero,
+      series: row.serie,
+      accessKey: row.chave_acesso,
+      protocol: row.protocolo || "",
+      status: row.status,
+      environment: row.ambiente,
+      consultationUrl: row.url_consulta || "",
+      customer,
+      items,
+      payments,
+      freight: Number(row.valor_frete) || 0,
+      productsTotal: Number(row.valor_produtos) || 0,
+      total: Number(row.valor_total) || 0
+    };
+  } catch (error) {
+    if (error.statusCode) throw error;
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Erro ao buscar NF-e"
+    });
+  }
+});
+
+const _saleId__get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _saleId__get
+});
+
 const UF_CODES = {
   AC: "12",
   AL: "27",
@@ -3901,6 +3998,24 @@ const emitir_post = defineEventHandler(async (event) => {
         customerId
       };
     });
+    const motoboy = body.motoboy;
+    let sangriaCreated = false;
+    if (freight > 0 && motoboy && motoboy.id && motoboy.name) {
+      const openRegister = await sql`
+        SELECT id FROM cash_registers
+        WHERE status = 'open'
+        ORDER BY opened_at DESC
+        LIMIT 1
+      `;
+      if (openRegister.length > 0) {
+        await sql`
+          INSERT INTO cash_transactions (id, cash_register_id, type, amount, description)
+          VALUES (${"trans-nfe-" + Date.now()}, ${openRegister[0].id}, 'withdrawal', ${freight},
+            ${"Taxa Entrega NF-e - " + text(motoboy.name)})
+        `;
+        sangriaCreated = true;
+      }
+    }
     return {
       success: true,
       message: "NF-e autorizada em homologa\xE7\xE3o e venda registrada com sucesso.",
@@ -3919,7 +4034,8 @@ const emitir_post = defineEventHandler(async (event) => {
         dailySaleNumber: result.dailySaleNumber,
         total
       },
-      customerId: result.customerId
+      customerId: result.customerId,
+      sangriaCreated
     };
   } catch (error) {
     console.error("Erro ao emitir NF-e:", error);

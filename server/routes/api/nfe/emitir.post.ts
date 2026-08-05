@@ -197,6 +197,26 @@ export default defineEventHandler(async (event) => {
       };
     });
 
+    const motoboy = body.motoboy;
+    let sangriaCreated = false;
+
+    if (freight > 0 && motoboy && motoboy.id && motoboy.name) {
+      const openRegister = await sql`
+        SELECT id FROM cash_registers
+        WHERE status = 'open'
+        ORDER BY opened_at DESC
+        LIMIT 1
+      `;
+      if (openRegister.length > 0) {
+        await sql`
+          INSERT INTO cash_transactions (id, cash_register_id, type, amount, description)
+          VALUES (${'trans-nfe-' + Date.now()}, ${openRegister[0].id}, 'withdrawal', ${freight},
+            ${'Taxa Entrega NF-e - ' + text(motoboy.name)})
+        `;
+        sangriaCreated = true;
+      }
+    }
+
     return {
       success: true,
       message: 'NF-e autorizada em homologação e venda registrada com sucesso.',
@@ -216,6 +236,7 @@ export default defineEventHandler(async (event) => {
         total,
       },
       customerId: result.customerId,
+      sangriaCreated,
     };
   } catch (error: any) {
     console.error('Erro ao emitir NF-e:', error);

@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { FileCheck2, Loader2, PackagePlus, Plus, Search, Trash2, UserRound } from 'lucide-react';
+import { FileCheck2, Loader2, PackagePlus, Plus, Search, Trash2, Truck, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
+import { DanfeDialog } from '@/components/DanfeDialog';
 
 interface Product {
   id: string;
@@ -78,14 +79,21 @@ const AdminNfe = () => {
   const [loading, setLoading] = useState(true);
   const [emitting, setEmitting] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [motoboys, setMotoboys] = useState<{ id: string; name: string; phone?: string }[]>([]);
+  const [selectedMotoboy, setSelectedMotoboy] = useState<{ id: string; name: string } | null>(null);
+  const [isDanfeOpen, setIsDanfeOpen] = useState(false);
 
   useEffect(() => {
-    Promise.all([fetch('/api/products'), fetch('/api/customers')])
-      .then(async ([productsResponse, customersResponse]) => {
+    Promise.all([fetch('/api/products'), fetch('/api/customers'), fetch('/api/motoboys')])
+      .then(async ([productsResponse, customersResponse, motoboysResponse]) => {
         if (!productsResponse.ok || !customersResponse.ok) throw new Error('Falha ao carregar dados');
-        const [productsData, customersData] = await Promise.all([productsResponse.json(), customersResponse.json()]);
+        const [productsData, customersData, motoboysData] = await Promise.all([
+          productsResponse.json(), customersResponse.json(),
+          motoboysResponse.ok ? motoboysResponse.json() : [],
+        ]);
         setProducts(Array.isArray(productsData) ? productsData : []);
         setCustomers(Array.isArray(customersData) ? customersData : []);
+        setMotoboys(Array.isArray(motoboysData) ? motoboysData : []);
       })
       .catch(() => toast.error('Não foi possível carregar clientes e produtos.'))
       .finally(() => setLoading(false));
@@ -162,6 +170,10 @@ const AdminNfe = () => {
   };
 
   const emitNfe = async () => {
+    if (freight > 0 && !selectedMotoboy) {
+      toast.error('Selecione um motoboy para a entrega com frete.');
+      return;
+    }
     setEmitting(true);
     setResult(null);
     try {
@@ -174,12 +186,17 @@ const AdminNfe = () => {
           freight,
           freightMode,
           payments: payments.map(({ type, amount }) => ({ type, amount })),
+          motoboy: selectedMotoboy,
         }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.statusMessage || data.message || 'Erro ao emitir NF-e');
       setResult(data);
-      toast.success('NF-e autorizada em homologação e venda registrada!');
+      setIsDanfeOpen(true);
+      toast.success('NF-e autorizada e DANFE gerado!');
+      if (data.sangriaCreated) {
+        toast.info('Sangria de frete registrada no fluxo de caixa.');
+      }
     } catch (error: any) {
       toast.error(error.message || 'Erro ao emitir NF-e.');
     } finally {
@@ -305,6 +322,28 @@ const AdminNfe = () => {
                 <div className="space-y-2"><Label>Responsável pelo frete</Label><Select value={freightMode} onValueChange={setFreightMode}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="9">Sem frete</SelectItem><SelectItem value="0">Frete por conta do emitente</SelectItem><SelectItem value="1">Frete por conta do destinatário</SelectItem></SelectContent></Select></div>
               </div>
 
+              {freight > 0 && (
+                <div className="space-y-2 rounded-lg border-2 border-blue-200 bg-blue-50 p-4">
+                  <Label className="flex items-center gap-2 text-blue-800"><Truck className="h-4 w-4" /> Selecione o motoboy para a entrega *</Label>
+                  <Select
+                    value={selectedMotoboy?.id || ''}
+                    onValueChange={(value) => {
+                      const motoboy = motoboys.find((m) => m.id === value);
+                      setSelectedMotoboy(motoboy ? { id: motoboy.id, name: motoboy.name } : null);
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione um motoboy" /></SelectTrigger>
+                    <SelectContent>
+                      {motoboys.map((motoboy) => (
+                        <SelectItem key={motoboy.id} value={motoboy.id}>
+                          {motoboy.name}{motoboy.phone ? ` — ${motoboy.phone}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <Separator />
               <div className="space-y-3">
                 {payments.map((payment) => (
@@ -335,6 +374,11 @@ const AdminNfe = () => {
                 <p><strong>Protocolo:</strong> {result.nfe.protocol}</p>
                 <p className="break-all"><strong>Chave:</strong> {result.nfe.accessKey}</p>
                 <p><strong>Venda:</strong> #{result.sale.id} · <strong>Senha:</strong> {result.sale.dailySaleNumber} · <strong>Total:</strong> {currency(result.sale.total)}</p>
+                {result.sangriaCreated && <p className="text-blue-700"><strong>Sangria de frete registrada no fluxo de caixa.</strong></p>}
+                <Button className="mt-2" onClick={() => setIsDanfeOpen(true)}>
+                  <FileCheck2 className="mr-2 h-4 w-4" />
+                  Visualizar / Imprimir DANFE
+                </Button>
               </CardContent>
             </Card>
           )}
@@ -348,6 +392,37 @@ const AdminNfe = () => {
           </div>
         </div>
       </main>
+
+      {result && (
+        <DanfeDialog
+          open={isDanfeOpen}
+          onClose={() => setIsDanfeOpen(false)}
+          nfeData={{
+            number: result.nfe.number,
+            series: result.nfe.series,
+            accessKey: result.nfe.accessKey,
+            protocol: result.nfe.protocol,
+            status: result.nfe.status,
+            environment: result.nfe.environment,
+            consultationUrl: result.nfe.consultationUrl,
+          }}
+          customer={customer}
+          items={items.map((item) => ({
+            id: item.product.id,
+            name: item.product.name,
+            quantity: item.quantity,
+            price: Number(item.product.price),
+            fiscal: typeof item.product.fiscal === 'string'
+              ? (() => { try { return JSON.parse(item.product.fiscal as string); } catch { return {}; } })()
+              : item.product.fiscal || {},
+          }))}
+          payments={payments.map(({ type, amount }) => ({ type, amount }))}
+          freight={freight}
+          productsTotal={productsTotal}
+          total={total}
+          motoboy={selectedMotoboy}
+        />
+      )}
     </div>
   );
 };
