@@ -27,6 +27,7 @@ import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793
 import forge from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/node-forge@1.4.0/node_modules/node-forge/lib/index.js';
 import QRCode from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
 import https from 'node:https';
+import tls from 'node:tls';
 import { Pool } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pg@8.22.0/node_modules/pg/esm/index.mjs';
 import { v4 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
 
@@ -936,7 +937,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"2a370-3IEE5HX1sIgZHQPStextVKMEE0o\"",
+    "mtime": "2026-08-05T15:37:23.042Z",
+    "size": 172912,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"9db69-4nPnf0UM7S6wGh+WdhdTYvANf44\"",
+    "mtime": "2026-08-05T15:37:23.057Z",
+    "size": 645993,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -2726,10 +2742,11 @@ function sendSoapRequest(url, soapBody, certificate, environment) {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
       rejectUnauthorized: isProduction,
-      keepAlive: false
+      checkServerIdentity: isProduction ? tls.checkServerIdentity : () => void 0
     };
-    const request = https.request(url, {
+    const request = https.request(urlObj, {
       ...tlsOptions,
+      agent: new https.Agent({ ...tlsOptions, keepAlive: false }),
       method: "POST",
       timeout: 6e4,
       headers: {

@@ -1,4 +1,5 @@
 import https from 'node:https';
+import tls from 'node:tls';
 import type { LoadedCertificate } from './certificate';
 
 type SefazEnvironment = 'homologacao' | 'producao';
@@ -74,11 +75,14 @@ function sendSoapRequest(
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
       rejectUnauthorized: isProduction,
-      keepAlive: false,
+      checkServerIdentity: isProduction
+        ? tls.checkServerIdentity
+        : () => undefined,
     };
 
-    const request = https.request(url, {
+    const request = https.request(urlObj, {
       ...tlsOptions,
+      agent: new https.Agent({ ...tlsOptions, keepAlive: false }),
       method: 'POST',
       timeout: 60000,
       headers: {
