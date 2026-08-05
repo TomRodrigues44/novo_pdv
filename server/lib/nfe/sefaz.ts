@@ -1,5 +1,4 @@
 import https from 'node:https';
-import tls from 'node:tls';
 import type { LoadedCertificate } from './certificate';
 
 type SefazEnvironment = 'homologacao' | 'producao';
@@ -32,29 +31,34 @@ export interface NfeAuthorizationResult {
 }
 
 function extractTag(xml: string, tag: string): string | null {
-  const match = xml.match(new RegExp(
+  const expression = new RegExp(
     `<(?:[\\w.-]+:)?${tag}\\b[^>]*>([\\s\\S]*?)</(?:[\\w.-]+:)?${tag}>`,
     'i',
-  ));
+  );
+  const match = xml.match(expression);
   return match?.[1]?.trim() || null;
 }
 
 function extractElement(xml: string, tag: string): string | null {
-  return xml.match(new RegExp(
+  const expression = new RegExp(
     `<(?:[\\w.-]+:)?${tag}\\b[^>]*>[\\s\\S]*?</(?:[\\w.-]+:)?${tag}>`,
     'i',
-  ))?.[0] || null;
+  );
+  return xml.match(expression)?.[0] || null;
 }
 
-function buildSoapEnvelope(action: string, namespace: string, innerXml: string): string {
+function buildSoapEnvelope(serviceAction: string, serviceNamespace: string, innerXml: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
-<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<soap:Envelope
+  xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <soap:Body>
-    <${action} xmlns="${namespace}">
+    <${serviceAction} xmlns="${serviceNamespace}">
       <nfeDadosMsg>
 ${innerXml}
       </nfeDadosMsg>
-    </${action}>
+    </${serviceAction}>
   </soap:Body>
 </soap:Envelope>`;
 }
@@ -66,23 +70,22 @@ function sendSoapRequest(
   environment: SefazEnvironment,
 ): Promise<{ statusCode: number; body: string }> {
   return new Promise((resolve, reject) => {
-    const isProduction = environment === 'producao';
     const urlObj = new URL(url);
+    const isProduction = environment === 'producao';
 
-    console.log(`[NFE] TLS ${isProduction ? 'verificado' : 'relaxado para homologação'}: ${urlObj.hostname}`);
+    console.log(
+      `[NFE] TLS ${isProduction ? 'verificado' : 'de homologação'}: ${urlObj.hostname}`,
+    );
 
-    const tlsOptions: https.RequestOptions = {
+    const agent = new https.Agent({
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
       rejectUnauthorized: isProduction,
-      checkServerIdentity: isProduction
-        ? tls.checkServerIdentity
-        : () => undefined,
-    };
+      keepAlive: false,
+    });
 
     const request = https.request(urlObj, {
-      ...tlsOptions,
-      agent: new https.Agent({ ...tlsOptions, keepAlive: false }),
+      agent,
       method: 'POST',
       timeout: 60000,
       headers: {
@@ -93,17 +96,23 @@ function sendSoapRequest(
       },
     }, (response) => {
       let body = '';
+
       response.setEncoding('utf8');
-      response.on('data', (chunk: string) => { body += chunk; });
-      response.on('end', () => resolve({
-        statusCode: response.statusCode || 0,
-        body,
-      }));
+      response.on('data', (chunk: string) => {
+        body += chunk;
+      });
+      response.on('end', () => {
+        resolve({
+          statusCode: response.statusCode || 0,
+          body,
+        });
+      });
     });
 
     request.on('error', (error) => {
       reject(new Error(`Erro de comunicação com a SEFAZ: ${error.message}`));
     });
+
     request.on('timeout', () => {
       request.destroy();
       reject(new Error('Tempo limite excedido ao aguardar resposta da SEFAZ (60 segundos).'));
@@ -114,16 +123,23 @@ function sendSoapRequest(
   });
 }
 
-function parseAuthorizationResponse(xml: string, httpStatus: number): NfeAuthorizationResult {
-  const fault = extractTag(xml, 'faultstring') || extractTag(xml, 'Reason');
+function parseAuthorizationResponse(responseXml: string, httpStatus: number): NfeAuthorizationResult {
+  const fault = extractTag(responseXml, 'faultstring') || extractTag(responseXml, 'Reason');
+
   if (fault) {
-    return { success: false, status: 'rejeitada', message: `Falha SOAP da SEFAZ: ${fault}`, rawResponse: xml };
+    return {
+      success: false,
+      status: 'rejeitada',
+      message: `Falha SOAP da SEFAZ: ${fault}`,
+      rawResponse: responseXml,
+    };
   }
 
-  const cStat = extractTag(xml, 'cStat');
-  const xMotivo = extractTag(xml, 'xMotivo');
-  const protocol = extractTag(xml, 'nProt');
-  const receipt = extractTag(xml, 'nRec');
+  const cStat = extractTag(responseXml, 'cStat');
+  const xMotivo = extractTag(responseXml, 'xMotivo');
+  const protocol = extractTag(responseXml, 'nProt');
+  const authorizationDate = extractTag(responseXml, 'dhRecbto');
+  const receipt = extractTag(responseXml, 'nRec');
 
   if (cStat === '100') {
     return {
@@ -131,14 +147,19 @@ function parseAuthorizationResponse(xml: string, httpStatus: number): NfeAuthori
       status: 'autorizada',
       message: xMotivo || 'Autorizado o uso da NF-e',
       protocol: protocol || undefined,
-      authorizationDate: extractTag(xml, 'dhRecbto') || undefined,
-      authorizationXml: extractElement(xml, 'protNFe') || xml,
-      rawResponse: xml,
+      authorizationDate: authorizationDate || undefined,
+      authorizationXml: extractElement(responseXml, 'protNFe') || responseXml,
+      rawResponse: responseXml,
     };
   }
 
   if (cStat === '103' && receipt) {
-    return { success: false, status: 'processando', message: 'Lote recebido pela SEFAZ e aguardando processamento.', rawResponse: xml };
+    return {
+      success: false,
+      status: 'processando',
+      message: 'Lote recebido pela SEFAZ e aguardando processamento.',
+      rawResponse: responseXml,
+    };
   }
 
   if (cStat) {
@@ -146,7 +167,7 @@ function parseAuthorizationResponse(xml: string, httpStatus: number): NfeAuthori
       success: false,
       status: 'rejeitada',
       message: `SEFAZ rejeitou a NF-e (cStat ${cStat}): ${xMotivo || 'motivo não informado'}`,
-      rawResponse: xml,
+      rawResponse: responseXml,
     };
   }
 
@@ -154,9 +175,9 @@ function parseAuthorizationResponse(xml: string, httpStatus: number): NfeAuthori
     success: false,
     status: 'rejeitada',
     message: httpStatus >= 400
-      ? `A SEFAZ respondeu HTTP ${httpStatus} sem informar o cStat. Resposta recebida: ${xml.slice(0, 300)}`
+      ? `A SEFAZ respondeu HTTP ${httpStatus} sem informar o cStat. Resposta recebida: ${responseXml.slice(0, 300)}`
       : 'A SEFAZ respondeu sem cStat. Verifique o endpoint, o namespace SOAP e o XML enviado.',
-    rawResponse: xml,
+    rawResponse: responseXml,
   };
 }
 
@@ -165,14 +186,21 @@ async function pollForResult(
   environment: SefazEnvironment,
   certificate: LoadedCertificate,
 ): Promise<NfeAuthorizationResult> {
+  const endpoint = SEFAZ_ENDPOINTS[environment];
   const innerXml = `<consReciNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
   <tpAmb>${environment === 'producao' ? '1' : '2'}</tpAmb>
   <nRec>${receipt}</nRec>
 </consReciNFe>`;
 
+  const soapBody = buildSoapEnvelope(
+    'nfeRetAutorizacaoLote4',
+    'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4',
+    innerXml,
+  );
+
   const response = await sendSoapRequest(
-    SEFAZ_ENDPOINTS[environment].retAutorizacao,
-    buildSoapEnvelope('nfeRetAutorizacaoLote4', 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4', innerXml),
+    endpoint.retAutorizacao,
+    soapBody,
     certificate,
     environment,
   );
@@ -186,25 +214,40 @@ export async function authorizeNfe(
   environment: string,
   certificate: LoadedCertificate,
 ): Promise<NfeAuthorizationResult> {
-  const normalizedEnvironment: SefazEnvironment = environment === 'producao' ? 'producao' : 'homologacao';
+  const normalizedEnvironment: SefazEnvironment =
+    environment === 'producao' ? 'producao' : 'homologacao';
+  const endpoint = SEFAZ_ENDPOINTS[normalizedEnvironment];
+  const loteId = String(Date.now()).slice(-15);
   const nfeXml = signedXml.replace(/^<\?xml[^>]*>\s*/i, '').trim();
+
   const innerXml = `<enviNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-  <idLote>${String(Date.now()).slice(-15)}</idLote>
+  <idLote>${loteId}</idLote>
   <indSinc>1</indSinc>
   <NFe>${nfeXml}</NFe>
 </enviNFe>`;
 
+  const soapBody = buildSoapEnvelope(
+    'nfeAutorizacaoLote4',
+    'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4',
+    innerXml,
+  );
+
+  console.log(`[NFE] Enviando XML assinado para a SEFAZ-RR (${normalizedEnvironment})...`);
+
   const response = await sendSoapRequest(
-    SEFAZ_ENDPOINTS[normalizedEnvironment].autorizacao,
-    buildSoapEnvelope('nfeAutorizacaoLote4', 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4', innerXml),
+    endpoint.autorizacao,
+    soapBody,
     certificate,
     normalizedEnvironment,
   );
 
   let result = parseAuthorizationResponse(response.body, response.statusCode);
+
   if (result.status === 'processando') {
     const receipt = extractTag(response.body, 'nRec');
+
     if (receipt) {
+      console.log(`[NFE] Lote recebido. Consultando recibo ${receipt}...`);
       await new Promise((resolve) => setTimeout(resolve, 3000));
       result = await pollForResult(receipt, normalizedEnvironment, certificate);
     }
@@ -217,16 +260,25 @@ export async function checkStatusServico(
   environment: string,
   certificate: LoadedCertificate,
 ): Promise<{ status: string; message: string }> {
-  const normalizedEnvironment: SefazEnvironment = environment === 'producao' ? 'producao' : 'homologacao';
+  const normalizedEnvironment: SefazEnvironment =
+    environment === 'producao' ? 'producao' : 'homologacao';
+  const endpoint = SEFAZ_ENDPOINTS[normalizedEnvironment];
+
   const innerXml = `<consStatServ versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
   <tpAmb>${normalizedEnvironment === 'producao' ? '1' : '2'}</tpAmb>
   <cUF>14</cUF>
   <xServ>STATUS</xServ>
 </consStatServ>`;
 
+  const soapBody = buildSoapEnvelope(
+    'nfeStatusServicoNF4',
+    'http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4',
+    innerXml,
+  );
+
   const response = await sendSoapRequest(
-    SEFAZ_ENDPOINTS[normalizedEnvironment].statusServico,
-    buildSoapEnvelope('nfeStatusServicoNF4', 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4', innerXml),
+    endpoint.statusServico,
+    soapBody,
     certificate,
     normalizedEnvironment,
   );
