@@ -936,7 +936,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"299dc-k/GXXYKDOn+SI6bRD6x1SyOk9Nw\"",
+    "mtime": "2026-08-05T15:19:40.414Z",
+    "size": 170460,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"9b848-KfuxRcJPHe01NmAoTJaw6X9U3Pk\"",
+    "mtime": "2026-08-05T15:19:40.417Z",
+    "size": 637000,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -2567,8 +2582,31 @@ const companyConfig_post$1 = /*#__PURE__*/Object.freeze({
   default: companyConfig_post
 });
 
+function extractPrivateKey(bag, password) {
+  if (bag.key) {
+    return bag.key;
+  }
+  if (!bag.asn1) {
+    return null;
+  }
+  try {
+    if (bag.type === forge.pki.oids.keyBag) {
+      return forge.pki.privateKeyFromAsn1(bag.asn1);
+    }
+    if (bag.type === forge.pki.oids.pkcs8ShroudedKeyBag) {
+      const decryptedKeyInfo = forge.pki.decryptPrivateKeyInfo(bag.asn1, password);
+      if (!decryptedKeyInfo) {
+        return null;
+      }
+      return forge.pki.privateKeyFromAsn1(decryptedKeyInfo);
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
 async function loadActiveCertificate() {
-  var _a, _b, _c, _d, _e;
+  var _a, _b, _c;
   const rows = await sql`
     SELECT arquivo, senha
     FROM digital_certificates
@@ -2587,7 +2625,9 @@ async function loadActiveCertificate() {
     certRow = fallback[0];
   }
   if (!certRow) {
-    throw new Error("Nenhum certificado digital encontrado. Fa\xE7a upload do certificado A1 em Configura\xE7\xF5es Fiscais.");
+    throw new Error(
+      "Nenhum certificado digital encontrado. Fa\xE7a upload do certificado A1 em Configura\xE7\xF5es Fiscais."
+    );
   }
   const pfxBuffer = Buffer.isBuffer(certRow.arquivo) ? certRow.arquivo : Buffer.from(certRow.arquivo);
   const password = String(certRow.senha || "");
@@ -2597,35 +2637,42 @@ async function loadActiveCertificate() {
     let privateKey = null;
     let certificate = null;
     for (const safeContent of p12.safeContents) {
-      for (const bag of safeContent.safeBags) {
-        if (bag.type === forge.pki.oids.keyBag && bag.asn1 && !privateKey) {
-          privateKey = forge.pki.privateKeyFromAsn1(bag.asn1);
-        } else if (bag.type === forge.pki.oids.pkcs8ShroudedKeyBag && bag.asn1 && !privateKey) {
-          privateKey = forge.pki.decryptPrivateKeyInfo(bag.asn1, password);
-          if (privateKey) {
-            privateKey = forge.pki.privateKeyFromAsn1(privateKey);
-          }
-        } else if (bag.type === forge.pki.oids.certBag && bag.cert && !certificate) {
+      for (const rawBag of safeContent.safeBags) {
+        const bag = rawBag;
+        if (!privateKey) {
+          privateKey = extractPrivateKey(bag, password);
+        }
+        if (!certificate && bag.type === forge.pki.oids.certBag && bag.cert) {
           certificate = bag.cert;
         }
+        if (privateKey && certificate) {
+          break;
+        }
+      }
+      if (privateKey && certificate) {
+        break;
       }
     }
     if (!privateKey) {
-      throw new Error("Chave privada n\xE3o encontrada no certificado.");
+      throw new Error(
+        "Chave privada n\xE3o encontrada no certificado. Confirme que o arquivo \xE9 um certificado A1 (.pfx/.p12) com chave privada e que a senha est\xE1 correta."
+      );
     }
     if (!certificate) {
-      throw new Error("Certificado X.509 n\xE3o encontrado no PFX.");
+      throw new Error("Certificado X.509 n\xE3o encontrado no arquivo PFX.");
     }
     const validTo = ((_a = certificate.validity) == null ? void 0 : _a.notAfter) || /* @__PURE__ */ new Date();
     if (validTo < /* @__PURE__ */ new Date()) {
-      throw new Error(`Certificado digital expirado em ${validTo.toLocaleDateString("pt-BR")}. Renove o certificado A1.`);
+      throw new Error(
+        `Certificado digital expirado em ${validTo.toLocaleDateString("pt-BR")}. Renove o certificado A1.`
+      );
     }
     const privateKeyPem = forge.pki.privateKeyToPem(privateKey);
     const certificatePem = forge.pki.certificateToPem(certificate);
     const certificateBase64 = forge.util.encode64(
       forge.asn1.toDer(forge.pki.certificateToAsn1(certificate)).getBytes()
     );
-    const subject = ((_c = (_b = certificate.subject) == null ? void 0 : _b.attributes) == null ? void 0 : _c.map((attr) => `${attr.shortName}=${attr.value}`).join(", ")) || "";
+    const subject = ((_c = (_b = certificate.subject) == null ? void 0 : _b.attributes) == null ? void 0 : _c.map((attribute) => `${attribute.shortName}=${attribute.value}`).join(", ")) || "";
     return {
       pfxBuffer,
       password,
@@ -2636,10 +2683,13 @@ async function loadActiveCertificate() {
       subject
     };
   } catch (error) {
-    if (((_d = error.message) == null ? void 0 : _d.includes("Certificado digital expirado")) || ((_e = error.message) == null ? void 0 : _e.includes("n\xE3o encontrado"))) {
+    const message = String((error == null ? void 0 : error.message) || "");
+    if (message.includes("Chave privada n\xE3o encontrada") || message.includes("Certificado X.509 n\xE3o encontrado") || message.includes("Certificado digital expirado")) {
       throw error;
     }
-    throw new Error(`Erro ao ler o certificado digital: senha incorreta ou arquivo inv\xE1lido. ${error.message || ""}`);
+    throw new Error(
+      `Erro ao ler o certificado digital: senha incorreta ou arquivo inv\xE1lido. ${message}`
+    );
   }
 }
 

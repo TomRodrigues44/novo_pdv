@@ -11,6 +11,43 @@ export interface LoadedCertificate {
   subject: string;
 }
 
+type ForgeSafeBag = {
+  type?: string;
+  asn1?: forge.asn1.Asn1;
+  key?: forge.pki.PrivateKey;
+  cert?: forge.pki.Certificate;
+};
+
+function extractPrivateKey(bag: ForgeSafeBag, password: string): forge.pki.PrivateKey | null {
+  if (bag.key) {
+    return bag.key;
+  }
+
+  if (!bag.asn1) {
+    return null;
+  }
+
+  try {
+    if (bag.type === forge.pki.oids.keyBag) {
+      return forge.pki.privateKeyFromAsn1(bag.asn1);
+    }
+
+    if (bag.type === forge.pki.oids.pkcs8ShroudedKeyBag) {
+      const decryptedKeyInfo = forge.pki.decryptPrivateKeyInfo(bag.asn1, password);
+
+      if (!decryptedKeyInfo) {
+        return null;
+      }
+
+      return forge.pki.privateKeyFromAsn1(decryptedKeyInfo);
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 export async function loadActiveCertificate(): Promise<LoadedCertificate> {
   const rows = await sql`
     SELECT arquivo, senha
@@ -33,7 +70,9 @@ export async function loadActiveCertificate(): Promise<LoadedCertificate> {
   }
 
   if (!certRow) {
-    throw new Error('Nenhum certificado digital encontrado. Faça upload do certificado A1 em Configurações Fiscais.');
+    throw new Error(
+      'Nenhum certificado digital encontrado. Faça upload do certificado A1 em Configurações Fiscais.',
+    );
   }
 
   const pfxBuffer = Buffer.isBuffer(certRow.arquivo)
@@ -50,40 +89,55 @@ export async function loadActiveCertificate(): Promise<LoadedCertificate> {
     let certificate: forge.pki.Certificate | null = null;
 
     for (const safeContent of p12.safeContents) {
-      for (const bag of safeContent.safeBags) {
-        if (bag.type === forge.pki.oids.keyBag && bag.asn1 && !privateKey) {
-          privateKey = forge.pki.privateKeyFromAsn1(bag.asn1);
-        } else if (bag.type === forge.pki.oids.pkcs8ShroudedKeyBag && bag.asn1 && !privateKey) {
-          privateKey = forge.pki.decryptPrivateKeyInfo(bag.asn1, password);
-          if (privateKey) {
-            privateKey = forge.pki.privateKeyFromAsn1(privateKey);
-          }
-        } else if (bag.type === forge.pki.oids.certBag && bag.cert && !certificate) {
+      for (const rawBag of safeContent.safeBags) {
+        const bag = rawBag as unknown as ForgeSafeBag;
+
+        if (!privateKey) {
+          privateKey = extractPrivateKey(bag, password);
+        }
+
+        if (!certificate && bag.type === forge.pki.oids.certBag && bag.cert) {
           certificate = bag.cert;
         }
+
+        if (privateKey && certificate) {
+          break;
+        }
+      }
+
+      if (privateKey && certificate) {
+        break;
       }
     }
 
     if (!privateKey) {
-      throw new Error('Chave privada não encontrada no certificado.');
+      throw new Error(
+        'Chave privada não encontrada no certificado. Confirme que o arquivo é um certificado A1 (.pfx/.p12) com chave privada e que a senha está correta.',
+      );
     }
+
     if (!certificate) {
-      throw new Error('Certificado X.509 não encontrado no PFX.');
+      throw new Error('Certificado X.509 não encontrado no arquivo PFX.');
     }
 
     const validTo = certificate.validity?.notAfter || new Date();
+
     if (validTo < new Date()) {
-      throw new Error(`Certificado digital expirado em ${validTo.toLocaleDateString('pt-BR')}. Renove o certificado A1.`);
+      throw new Error(
+        `Certificado digital expirado em ${validTo.toLocaleDateString('pt-BR')}. Renove o certificado A1.`,
+      );
     }
 
     const privateKeyPem = forge.pki.privateKeyToPem(privateKey);
     const certificatePem = forge.pki.certificateToPem(certificate);
     const certificateBase64 = forge.util.encode64(
-      forge.asn1.toDer(forge.pki.certificateToAsn1(certificate)).getBytes()
+      forge.asn1.toDer(forge.pki.certificateToAsn1(certificate)).getBytes(),
     );
-    const subject = certificate.subject?.attributes
-      ?.map((attr: any) => `${attr.shortName}=${attr.value}`)
-      .join(', ') || '';
+
+    const subject =
+      certificate.subject?.attributes
+        ?.map((attribute: any) => `${attribute.shortName}=${attribute.value}`)
+        .join(', ') || '';
 
     return {
       pfxBuffer,
@@ -95,9 +149,18 @@ export async function loadActiveCertificate(): Promise<LoadedCertificate> {
       subject,
     };
   } catch (error: any) {
-    if (error.message?.includes('Certificado digital expirado') || error.message?.includes('não encontrado')) {
+    const message = String(error?.message || '');
+
+    if (
+      message.includes('Chave privada não encontrada') ||
+      message.includes('Certificado X.509 não encontrado') ||
+      message.includes('Certificado digital expirado')
+    ) {
       throw error;
     }
-    throw new Error(`Erro ao ler o certificado digital: senha incorreta ou arquivo inválido. ${error.message || ''}`);
+
+    throw new Error(
+      `Erro ao ler o certificado digital: senha incorreta ou arquivo inválido. ${message}`,
+    );
   }
 }
