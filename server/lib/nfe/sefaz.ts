@@ -81,6 +81,7 @@ function sendSoapRequest(
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
       rejectUnauthorized: isProduction,
+      checkServerIdentity: isProduction ? undefined : () => undefined,
       keepAlive: false,
     });
 

@@ -48,6 +48,10 @@ declare module "nitropack/types" {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/certificates.get').default>>>>
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/certificates.post').default>>>>
     }
+    '/api/fiscal/certificates/:id': {
+      'delete': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/certificates/[id].delete').default>>>>
+      'patch': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/certificates/[id].patch').default>>>>
+    }
     '/api/fiscal/company-config': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/company-config.get').default>>>>
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/company-config.post').default>>>>

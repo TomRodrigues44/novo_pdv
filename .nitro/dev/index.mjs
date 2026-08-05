@@ -936,7 +936,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"2aaf6-w4qXphpD5jLb6DBJuJNlHQnm5rQ\"",
+    "mtime": "2026-08-05T17:04:48.307Z",
+    "size": 174838,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"9f0f7-w0w3CfOX+dbZukt/+XCZLiVymvk\"",
+    "mtime": "2026-08-05T17:04:48.307Z",
+    "size": 651511,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1030,20 +1045,22 @@ const _lazy_kdJA4k = () => Promise.resolve().then(function () { return close_pos
 const _lazy_rO_WFu = () => Promise.resolve().then(function () { return open_post$1; });
 const _lazy_BdYJUJ = () => Promise.resolve().then(function () { return cashTransactions_get$1; });
 const _lazy_PEHXk3 = () => Promise.resolve().then(function () { return cashTransactions_post$1; });
-const _lazy_RKtRXd = () => Promise.resolve().then(function () { return _id__delete$9; });
+const _lazy_RKtRXd = () => Promise.resolve().then(function () { return _id__delete$b; });
 const _lazy_IW2_BM = () => Promise.resolve().then(function () { return categories_get$1; });
 const _lazy_MNhMfv = () => Promise.resolve().then(function () { return categories_post$3; });
-const _lazy_gfQAUz = () => Promise.resolve().then(function () { return _id__delete$7; });
+const _lazy_gfQAUz = () => Promise.resolve().then(function () { return _id__delete$9; });
 const _lazy_cFC5Uh = () => Promise.resolve().then(function () { return _id__put$7; });
 const _lazy_Iv96YT = () => Promise.resolve().then(function () { return contingency_get$1; });
 const _lazy_4CVdlH = () => Promise.resolve().then(function () { return retry_post$1; });
 const _lazy_S1l8gD = () => Promise.resolve().then(function () { return customers_get$1; });
 const _lazy_Pnfsz0 = () => Promise.resolve().then(function () { return customers_post$1; });
-const _lazy_jbGOcG = () => Promise.resolve().then(function () { return _id__delete$5; });
+const _lazy_jbGOcG = () => Promise.resolve().then(function () { return _id__delete$7; });
 const _lazy_EFm9MF = () => Promise.resolve().then(function () { return _id__put$5; });
 const _lazy_vMNP2g = () => Promise.resolve().then(function () { return sales_get$3; });
 const _lazy_xe7acr = () => Promise.resolve().then(function () { return certificates_get$1; });
 const _lazy_AbKrHi = () => Promise.resolve().then(function () { return certificates_post$1; });
+const _lazy_YqQJx3 = () => Promise.resolve().then(function () { return _id__delete$5; });
+const _lazy_Y8c96g = () => Promise.resolve().then(function () { return _id__patch$1; });
 const _lazy_JuQZAj = () => Promise.resolve().then(function () { return companyConfig_get$1; });
 const _lazy_MgNWqb = () => Promise.resolve().then(function () { return companyConfig_post$1; });
 const _lazy_UUyT9J = () => Promise.resolve().then(function () { return testConnection_post$1; });
@@ -1093,6 +1110,8 @@ const handlers = [
   { route: '/api/customers/:id/sales', handler: _lazy_vMNP2g, lazy: true, middleware: false, method: "get" },
   { route: '/api/fiscal/certificates', handler: _lazy_xe7acr, lazy: true, middleware: false, method: "get" },
   { route: '/api/fiscal/certificates', handler: _lazy_AbKrHi, lazy: true, middleware: false, method: "post" },
+  { route: '/api/fiscal/certificates/:id', handler: _lazy_YqQJx3, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/fiscal/certificates/:id', handler: _lazy_Y8c96g, lazy: true, middleware: false, method: "patch" },
   { route: '/api/fiscal/company-config', handler: _lazy_JuQZAj, lazy: true, middleware: false, method: "get" },
   { route: '/api/fiscal/company-config', handler: _lazy_MgNWqb, lazy: true, middleware: false, method: "post" },
   { route: '/api/fiscal/test-connection', handler: _lazy_UUyT9J, lazy: true, middleware: false, method: "post" },
@@ -1744,7 +1763,7 @@ const cashTransactions_post$1 = /*#__PURE__*/Object.freeze({
   default: cashTransactions_post
 });
 
-const _id__delete$8 = defineEventHandler(async (event) => {
+const _id__delete$a = defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
     const result = await sql`
@@ -1768,9 +1787,9 @@ const _id__delete$8 = defineEventHandler(async (event) => {
   }
 });
 
-const _id__delete$9 = /*#__PURE__*/Object.freeze({
+const _id__delete$b = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: _id__delete$8
+  default: _id__delete$a
 });
 
 const categories_get = defineEventHandler(async () => {
@@ -1828,7 +1847,7 @@ const categories_post$3 = /*#__PURE__*/Object.freeze({
   default: categories_post$2
 });
 
-const _id__delete$6 = defineEventHandler(async (event) => {
+const _id__delete$8 = defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
     await sql`DELETE FROM products WHERE category = ${id}`;
@@ -1853,9 +1872,9 @@ const _id__delete$6 = defineEventHandler(async (event) => {
   }
 });
 
-const _id__delete$7 = /*#__PURE__*/Object.freeze({
+const _id__delete$9 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: _id__delete$6
+  default: _id__delete$8
 });
 
 const _id__put$6 = defineEventHandler(async (event) => {
@@ -2229,7 +2248,7 @@ const customers_post$1 = /*#__PURE__*/Object.freeze({
   default: customers_post
 });
 
-const _id__delete$4 = defineEventHandler(async (event) => {
+const _id__delete$6 = defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
     await sql`UPDATE sales SET customer_id = NULL WHERE customer_id = ${id}`;
@@ -2254,9 +2273,9 @@ const _id__delete$4 = defineEventHandler(async (event) => {
   }
 });
 
-const _id__delete$5 = /*#__PURE__*/Object.freeze({
+const _id__delete$7 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: _id__delete$4
+  default: _id__delete$6
 });
 
 const _id__put$4 = defineEventHandler(async (event) => {
@@ -2427,6 +2446,74 @@ const certificates_post = defineEventHandler(async (event) => {
 const certificates_post$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: certificates_post
+});
+
+const _id__delete$4 = defineEventHandler(async (event) => {
+  const { id } = event.context.params || {};
+  if (!id) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "ID do certificado n\xE3o fornecido"
+    });
+  }
+  try {
+    await sql`
+      UPDATE digital_certificates
+      SET ativo = false
+      WHERE id = ${id}
+    `;
+    return {
+      message: "Certificado exclu\xEDdo com sucesso"
+    };
+  } catch (error) {
+    console.error("Error deleting certificate:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Erro ao excluir certificado"
+    });
+  }
+});
+
+const _id__delete$5 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _id__delete$4
+});
+
+const _id__patch = defineEventHandler(async (event) => {
+  const { id } = event.context.params || {};
+  if (!id) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "ID do certificado n\xE3o fornecido"
+    });
+  }
+  try {
+    const result = await sql`
+      UPDATE digital_certificates
+      SET ativo = true
+      WHERE id = ${id}
+    `;
+    if (result.rowCount === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Certificado n\xE3o encontrado"
+      });
+    }
+    return {
+      message: "Certificado ativado com sucesso"
+    };
+  } catch (error) {
+    console.error("Error activating certificate:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Erro ao ativar certificado"
+    });
+  }
+});
+
+const _id__patch$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _id__patch
 });
 
 const companyConfig_get = defineEventHandler(async () => {
@@ -2733,6 +2820,7 @@ function sendSoapRequest(url, soapBody, certificate, environment) {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
       rejectUnauthorized: isProduction,
+      checkServerIdentity: isProduction ? void 0 : () => void 0,
       keepAlive: false
     });
     const request = https.request(urlObj, {
@@ -4106,6 +4194,17 @@ async function ensureNfeSchema(client = sql) {
       ADD COLUMN IF NOT EXISTS municipio TEXT,
       ADD COLUMN IF NOT EXISTS uf TEXT,
       ADD COLUMN IF NOT EXISTS codigo_municipio TEXT
+  `);
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS digital_certificates (
+      id TEXT PRIMARY KEY,
+      nome TEXT NOT NULL,
+      arquivo BYTEA NOT NULL,
+      senha TEXT NOT NULL,
+      data_validade TIMESTAMPTZ NOT NULL,
+      ativo BOOLEAN DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
   `);
   await client.query(`
     ALTER TABLE digital_certificates ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT false
