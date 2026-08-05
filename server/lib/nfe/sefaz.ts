@@ -67,13 +67,20 @@ function sendSoapRequest(
   url: string,
   soapBody: string,
   certificate: LoadedCertificate,
+  environment: SefazEnvironment,
 ): Promise<{ statusCode: number; body: string }> {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
+    const isProduction = environment === 'producao';
+
+    console.log(
+      `[NFE] TLS ${isProduction ? 'verificado' : 'de homologação'}: ${urlObj.hostname}`,
+    );
+
     const agent = new https.Agent({
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
-      rejectUnauthorized: true,
+      rejectUnauthorized: isProduction,
       keepAlive: false,
     });
 
@@ -118,6 +125,7 @@ function sendSoapRequest(
 
 function parseAuthorizationResponse(responseXml: string, httpStatus: number): NfeAuthorizationResult {
   const fault = extractTag(responseXml, 'faultstring') || extractTag(responseXml, 'Reason');
+
   if (fault) {
     return {
       success: false,
@@ -190,7 +198,13 @@ async function pollForResult(
     innerXml,
   );
 
-  const response = await sendSoapRequest(endpoint.retAutorizacao, soapBody, certificate);
+  const response = await sendSoapRequest(
+    endpoint.retAutorizacao,
+    soapBody,
+    certificate,
+    environment,
+  );
+
   return parseAuthorizationResponse(response.body, response.statusCode);
 }
 
@@ -219,7 +233,14 @@ export async function authorizeNfe(
   );
 
   console.log(`[NFE] Enviando XML assinado para a SEFAZ-RR (${normalizedEnvironment})...`);
-  const response = await sendSoapRequest(endpoint.autorizacao, soapBody, certificate);
+
+  const response = await sendSoapRequest(
+    endpoint.autorizacao,
+    soapBody,
+    certificate,
+    normalizedEnvironment,
+  );
+
   let result = parseAuthorizationResponse(response.body, response.statusCode);
 
   if (result.status === 'processando') {
@@ -255,7 +276,13 @@ export async function checkStatusServico(
     innerXml,
   );
 
-  const response = await sendSoapRequest(endpoint.statusServico, soapBody, certificate);
+  const response = await sendSoapRequest(
+    endpoint.statusServico,
+    soapBody,
+    certificate,
+    normalizedEnvironment,
+  );
+
   return {
     status: extractTag(response.body, 'cStat') || `HTTP-${response.statusCode}`,
     message: extractTag(response.body, 'xMotivo')

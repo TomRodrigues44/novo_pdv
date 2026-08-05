@@ -939,16 +939,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"29de7-6c1equ3ffRPUEIlxaWVWJwXvOjU\"",
-    "mtime": "2026-08-05T15:29:50.117Z",
-    "size": 171495,
+    "etag": "\"2a1b5-gqHyfHH75OjnIQMIjB/sFklFgi0\"",
+    "mtime": "2026-08-05T15:31:47.303Z",
+    "size": 172469,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"9c4c7-EHSfAHqSWaAfe+BKCaq/3o9wSv0\"",
-    "mtime": "2026-08-05T15:29:50.133Z",
-    "size": 640199,
+    "etag": "\"9d34f-bZkkEtDgLtXYT6P/4J2pYciEif8\"",
+    "mtime": "2026-08-05T15:31:47.318Z",
+    "size": 643919,
     "path": "index.mjs.map"
   }
 };
@@ -2737,13 +2737,17 @@ ${innerXml}
   </soap:Body>
 </soap:Envelope>`;
 }
-function sendSoapRequest(url, soapBody, certificate) {
+function sendSoapRequest(url, soapBody, certificate, environment) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
+    const isProduction = environment === "producao";
+    console.log(
+      `[NFE] TLS ${isProduction ? "verificado" : "de homologa\xE7\xE3o"}: ${urlObj.hostname}`
+    );
     const agent = new https.Agent({
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
-      rejectUnauthorized: true,
+      rejectUnauthorized: isProduction,
       keepAlive: false
     });
     const request = https.request(urlObj, {
@@ -2840,7 +2844,12 @@ async function pollForResult(receipt, environment, certificate) {
     "http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4",
     innerXml
   );
-  const response = await sendSoapRequest(endpoint.retAutorizacao, soapBody, certificate);
+  const response = await sendSoapRequest(
+    endpoint.retAutorizacao,
+    soapBody,
+    certificate,
+    environment
+  );
   return parseAuthorizationResponse(response.body, response.statusCode);
 }
 async function authorizeNfe(signedXml, _accessKey, environment, certificate) {
@@ -2859,7 +2868,12 @@ async function authorizeNfe(signedXml, _accessKey, environment, certificate) {
     innerXml
   );
   console.log(`[NFE] Enviando XML assinado para a SEFAZ-RR (${normalizedEnvironment})...`);
-  const response = await sendSoapRequest(endpoint.autorizacao, soapBody, certificate);
+  const response = await sendSoapRequest(
+    endpoint.autorizacao,
+    soapBody,
+    certificate,
+    normalizedEnvironment
+  );
   let result = parseAuthorizationResponse(response.body, response.statusCode);
   if (result.status === "processando") {
     const receipt = extractTag(response.body, "nRec");
@@ -2884,7 +2898,12 @@ async function checkStatusServico(environment, certificate) {
     "http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4",
     innerXml
   );
-  const response = await sendSoapRequest(endpoint.statusServico, soapBody, certificate);
+  const response = await sendSoapRequest(
+    endpoint.statusServico,
+    soapBody,
+    certificate,
+    normalizedEnvironment
+  );
   return {
     status: extractTag(response.body, "cStat") || `HTTP-${response.statusCode}`,
     message: extractTag(response.body, "xMotivo") || extractTag(response.body, "faultstring") || `Resposta HTTP ${response.statusCode} sem motivo informado`
