@@ -28,6 +28,8 @@ interface SaleItem {
   name: string;
   price: number;
   quantity: number;
+  category?: string;
+  flavors?: string[];
 }
 
 interface Payment {
@@ -190,12 +192,21 @@ export function ReceiptDialog({ open, onClose, total, freight, cartItems, paymen
             {cartItems.map((item, index) => {
               const price = Number(item.price) || 0;
               const quantity = Number(item.quantity) || 0;
+              const showFlavors = item.category === 'salgados' && item.flavors && item.flavors.length > 0;
+
               return (
-                <div key={index} className="grid grid-cols-12 gap-1">
-                  <div className="col-span-6">{item.name}</div>
-                  <div className="col-span-2 text-right">{quantity}</div>
-                  <div className="col-span-2 text-right">{price.toFixed(2)}</div>
-                  <div className="col-span-2 text-right">{(quantity * price).toFixed(2)}</div>
+                <div key={index} className="mb-1">
+                  <div className="grid grid-cols-12 gap-1">
+                    <div className="col-span-6">{item.name}</div>
+                    <div className="col-span-2 text-right">{quantity}</div>
+                    <div className="col-span-2 text-right">{price.toFixed(2)}</div>
+                    <div className="col-span-2 text-right">{(quantity * price).toFixed(2)}</div>
+                  </div>
+                  {showFlavors && (
+                    <p className="pl-2 text-[11px] font-semibold">
+                      Sabores: {item.flavors?.join(', ')}
+                    </p>
+                  )}
                 </div>
               );
             })}
