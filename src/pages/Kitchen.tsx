@@ -257,15 +257,12 @@ const Kitchen = () => {
                           </p>
                           {item.flavors && item.flavors.length > 0 && (
                             <div className="mt-2">
-                              <p className="text-base font-semibold text-gray-700 mb-1">Sabores:</p>
-                              <div className="flex flex-wrap gap-1">
+                              <p className="text-base font-bold text-gray-700 mb-1">Sabores:</p>
+                              <div className="space-y-1 pl-2">
                                 {item.flavors.map((flavor, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="text-base font-semibold bg-white px-3 py-1 rounded-full border border-gray-200"
-                                  >
-                                    {flavor}
-                                  </span>
+                                  <p key={idx} className="text-base font-semibold text-gray-800">
+                                    • {flavor}
+                                  </p>
                                 ))}
                               </div>
                             </div>
