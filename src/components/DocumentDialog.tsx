@@ -203,9 +203,14 @@ export function ReceiptDialog({ open, onClose, total, freight, cartItems, paymen
                     <div className="col-span-2 text-right">{(quantity * price).toFixed(2)}</div>
                   </div>
                   {showFlavors && (
-                    <p className="pl-2 text-[11px] font-semibold">
-                      Sabores: {item.flavors?.join(', ')}
-                    </p>
+                    <div className="pl-2 mt-1 text-[11px]">
+                      <p className="font-bold">Sabores:</p>
+                      {item.flavors?.map((flavor) => (
+                        <p key={flavor} className="pl-2">
+                          • {flavor}
+                        </p>
+                      ))}
+                    </div>
                   )}
                 </div>
               );
