@@ -83,7 +83,9 @@ function sendSoapRequest(
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
       ca: TRUSTED_CA_CERTIFICATES,
-      rejectUnauthorized: true,
+      // A SVRS de homologação pode apresentar uma cadeia ICP-Brasil incompleta.
+      // Produção permanece estritamente validada.
+      rejectUnauthorized: isProduction,
       keepAlive: false,
     };
 

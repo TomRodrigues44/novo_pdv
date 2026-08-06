@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2ad1c-eyIoCfs4qioEux30PzengK8RtWM\"",
-    "mtime": "2026-08-06T14:16:08.384Z",
-    "size": 175388,
+    "etag": "\"2ad5f-7yQqFhNu5Ozf/ITY+SC+d8qBc4k\"",
+    "mtime": "2026-08-06T14:16:27.139Z",
+    "size": 175455,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"9fa3f-DUzakSYmd1inR7PWxPq3OdGv0eU\"",
-    "mtime": "2026-08-06T14:16:08.384Z",
-    "size": 653887,
+    "etag": "\"9fb17-NWHDl4UwBtMF42M+f+IEBUWPfyQ\"",
+    "mtime": "2026-08-06T14:16:27.140Z",
+    "size": 654103,
     "path": "index.mjs.map"
   }
 };
@@ -2879,7 +2879,9 @@ function sendSoapRequest(url, soapBody, certificate, environment, soapAction) {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
       ca: TRUSTED_CA_CERTIFICATES,
-      rejectUnauthorized: true,
+      // A SVRS de homologação pode apresentar uma cadeia ICP-Brasil incompleta.
+      // Produção permanece estritamente validada.
+      rejectUnauthorized: isProduction,
       keepAlive: false
     };
     const agent = new https.Agent(agentOptions);
