@@ -4,11 +4,12 @@ import { loadActiveCertificate } from '../../../lib/nfe/certificate';
 
 interface ProbeResult {
   url: string;
+  method: string;
   statusCode: number;
   snippet: string;
 }
 
-function probeUrl(url: string, pfx: Buffer, passphrase: string): Promise<ProbeResult> {
+function probeUrl(url: string, pfx: Buffer, passphrase: string, method: string, contentType?: string): Promise<ProbeResult> {
   return new Promise((resolve) => {
     const urlObj = new URL(url);
     const agent = new https.Agent({
@@ -17,20 +18,31 @@ function probeUrl(url: string, pfx: Buffer, passphrase: string): Promise<ProbeRe
       rejectUnauthorized: false,
     });
 
+    const headers: Record<string, string> = { 'User-Agent': 'PDV-Diag/1.0' };
+    if (contentType) {
+      headers['Content-Type'] = contentType;
+    }
+
+    const body = contentType ? '<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body/></soap:Envelope>' : '';
+
     const req = https.request(urlObj, {
       agent,
-      method: 'GET',
+      method,
       timeout: 10000,
-      headers: { 'User-Agent': 'PDV-Diag/1.0' },
+      headers: {
+        ...headers,
+        ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}),
+      },
     }, (res) => {
-      let body = '';
+      let respBody = '';
       res.setEncoding('utf8');
-      res.on('data', (chunk: string) => { body += chunk; });
+      res.on('data', (chunk: string) => { respBody += chunk; });
       res.on('end', () => {
         resolve({
           url,
+          method,
           statusCode: res.statusCode || 0,
-          snippet: body.slice(0, 200).replace(/\r?\n/g, ' '),
+          snippet: respBody.slice(0, 300).replace(/\r?\n/g, ' '),
         });
       });
     });
@@ -38,6 +50,7 @@ function probeUrl(url: string, pfx: Buffer, passphrase: string): Promise<ProbeRe
     req.on('error', (error: any) => {
       resolve({
         url,
+        method,
         statusCode: -1,
         snippet: `ERROR: ${error.message}`,
       });
@@ -45,9 +58,12 @@ function probeUrl(url: string, pfx: Buffer, passphrase: string): Promise<ProbeRe
 
     req.on('timeout', () => {
       req.destroy();
-      resolve({ url, statusCode: -1, snippet: 'TIMEOUT' });
+      resolve({ url, method, statusCode: -1, snippet: 'TIMEOUT' });
     });
 
+    if (body) {
+      req.write(body);
+    }
     req.end();
   });
 }
@@ -61,38 +77,39 @@ export default defineEventHandler(async () => {
     const ambiente = configRows[0]?.ambiente === 'producao' ? 'producao' : 'homologacao';
     const cert = await loadActiveCertificate();
 
-    const host = ambiente === 'producao'
-      ? 'https://nfe.sefaz.rr.gov.br'
-      : 'https://homologacao.sefaz.rr.gov.br';
+    // Testar múltiplos domínios possíveis para homologação
+    const hosts = ambiente === 'producao'
+      ? ['https://nfe.sefaz.rr.gov.br', 'https://www.sefaz.rr.gov.br']
+      : ['https://homologacao.sefaz.rr.gov.br', 'https://hnfe.sefaz.rr.gov.br', 'https://hom.sefaz.rr.gov.br'];
 
-    // Testar vários padrões de caminho possíveis
     const paths = [
-      '/',
-      '/nfe2/services/NfeAutorizacao4',
       '/nfe2/services/NFeAutorizacao4',
-      '/nfe/services/NfeAutorizacao4',
-      '/nfeweb/services/NfeAutorizacao4',
-      '/services/NfeAutorizacao4',
-      '/ws/NfeAutorizacao4',
-      '/ws/NfeAutorizacao/NfeAutorizacao4',
-      '/nfe2/services/NfeAutorizacao4?wsdl',
-      '/nfe2/services/NFeStatusServico4',
-      '/nfe2/services/NfeStatusServico4',
-      '/nfe/services/NfeStatusServico4',
+      '/nfe2/services/NfeAutorizacao4',
+      '/nfeweb/services/NFeAutorizacao4',
+      '/nfe/services/NFeAutorizacao4',
     ];
 
-    const urls = paths.map((p) => `${host}${p}`);
-
     const results: ProbeResult[] = [];
-    for (const url of urls) {
-      const result = await probeUrl(url, cert.pfxBuffer, cert.password);
+
+    // Teste 1: GET em todos os hosts raiz
+    for (const host of hosts) {
+      const result = await probeUrl(`${host}/`, cert.pfxBuffer, cert.password, 'GET');
       results.push(result);
-      console.log(`[DIAG] ${result.statusCode}  ${result.url}  →  ${result.snippet.slice(0, 80)}`);
+      console.log(`[DIAG] GET  ${result.statusCode}  ${result.url}  →  ${result.snippet.slice(0, 80)}`);
+    }
+
+    // Teste 2: POST com Content-Type SOAP nos hosts e paths
+    for (const host of hosts) {
+      for (const path of paths) {
+        const url = `${host}${path}`;
+        const result = await probeUrl(url, cert.pfxBuffer, cert.password, 'POST', 'application/soap+xml; charset=utf-8');
+        results.push(result);
+        console.log(`[DIAG] POST ${result.statusCode}  ${result.url}  →  ${result.snippet.slice(0, 80)}`);
+      }
     }
 
     return {
       ambiente,
-      host,
       results,
     };
   } catch (error: any) {

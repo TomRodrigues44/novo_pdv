@@ -939,16 +939,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2ab7d-64cm50CuKQy/e0jinnTlCmrovyY\"",
-    "mtime": "2026-08-06T13:29:53.765Z",
-    "size": 174973,
+    "etag": "\"2b810-mxiuJ5xdV6UAk3VnTYlevQ9VKmM\"",
+    "mtime": "2026-08-06T13:34:02.413Z",
+    "size": 178192,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"9facb-wj5V8pYLyQ75guxXwQOtx2y7tOM\"",
-    "mtime": "2026-08-06T13:29:53.765Z",
-    "size": 654027,
+    "etag": "\"a2422-QN2rzET/akOLUa2P4VgjKEl1Vgg\"",
+    "mtime": "2026-08-06T13:34:02.414Z",
+    "size": 664610,
     "path": "index.mjs.map"
   }
 };
@@ -2826,7 +2826,7 @@ async function loadActiveCertificate() {
   }
 }
 
-function probeUrl(url, pfx, passphrase) {
+function probeUrl(url, pfx, passphrase, method, contentType) {
   return new Promise((resolve) => {
     const urlObj = new URL(url);
     const agent = new https.Agent({
@@ -2834,36 +2834,49 @@ function probeUrl(url, pfx, passphrase) {
       passphrase,
       rejectUnauthorized: false
     });
+    const headers = { "User-Agent": "PDV-Diag/1.0" };
+    if (contentType) {
+      headers["Content-Type"] = contentType;
+    }
+    const body = contentType ? '<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body/></soap:Envelope>' : "";
     const req = https.request(urlObj, {
       agent,
-      method: "GET",
+      method,
       timeout: 1e4,
-      headers: { "User-Agent": "PDV-Diag/1.0" }
+      headers: {
+        ...headers,
+        ...body ? { "Content-Length": Buffer.byteLength(body) } : {}
+      }
     }, (res) => {
-      let body = "";
+      let respBody = "";
       res.setEncoding("utf8");
       res.on("data", (chunk) => {
-        body += chunk;
+        respBody += chunk;
       });
       res.on("end", () => {
         resolve({
           url,
+          method,
           statusCode: res.statusCode || 0,
-          snippet: body.slice(0, 200).replace(/\r?\n/g, " ")
+          snippet: respBody.slice(0, 300).replace(/\r?\n/g, " ")
         });
       });
     });
     req.on("error", (error) => {
       resolve({
         url,
+        method,
         statusCode: -1,
         snippet: `ERROR: ${error.message}`
       });
     });
     req.on("timeout", () => {
       req.destroy();
-      resolve({ url, statusCode: -1, snippet: "TIMEOUT" });
+      resolve({ url, method, statusCode: -1, snippet: "TIMEOUT" });
     });
+    if (body) {
+      req.write(body);
+    }
     req.end();
   });
 }
@@ -2876,31 +2889,29 @@ const diagnostic_get = defineEventHandler(async () => {
     `;
     const ambiente = ((_a = configRows[0]) == null ? void 0 : _a.ambiente) === "producao" ? "producao" : "homologacao";
     const cert = await loadActiveCertificate();
-    const host = ambiente === "producao" ? "https://nfe.sefaz.rr.gov.br" : "https://homologacao.sefaz.rr.gov.br";
+    const hosts = ambiente === "producao" ? ["https://nfe.sefaz.rr.gov.br", "https://www.sefaz.rr.gov.br"] : ["https://homologacao.sefaz.rr.gov.br", "https://hnfe.sefaz.rr.gov.br", "https://hom.sefaz.rr.gov.br"];
     const paths = [
-      "/",
-      "/nfe2/services/NfeAutorizacao4",
       "/nfe2/services/NFeAutorizacao4",
-      "/nfe/services/NfeAutorizacao4",
-      "/nfeweb/services/NfeAutorizacao4",
-      "/services/NfeAutorizacao4",
-      "/ws/NfeAutorizacao4",
-      "/ws/NfeAutorizacao/NfeAutorizacao4",
-      "/nfe2/services/NfeAutorizacao4?wsdl",
-      "/nfe2/services/NFeStatusServico4",
-      "/nfe2/services/NfeStatusServico4",
-      "/nfe/services/NfeStatusServico4"
+      "/nfe2/services/NfeAutorizacao4",
+      "/nfeweb/services/NFeAutorizacao4",
+      "/nfe/services/NFeAutorizacao4"
     ];
-    const urls = paths.map((p) => `${host}${p}`);
     const results = [];
-    for (const url of urls) {
-      const result = await probeUrl(url, cert.pfxBuffer, cert.password);
+    for (const host of hosts) {
+      const result = await probeUrl(`${host}/`, cert.pfxBuffer, cert.password, "GET");
       results.push(result);
-      console.log(`[DIAG] ${result.statusCode}  ${result.url}  \u2192  ${result.snippet.slice(0, 80)}`);
+      console.log(`[DIAG] GET  ${result.statusCode}  ${result.url}  \u2192  ${result.snippet.slice(0, 80)}`);
+    }
+    for (const host of hosts) {
+      for (const path of paths) {
+        const url = `${host}${path}`;
+        const result = await probeUrl(url, cert.pfxBuffer, cert.password, "POST", "application/soap+xml; charset=utf-8");
+        results.push(result);
+        console.log(`[DIAG] POST ${result.statusCode}  ${result.url}  \u2192  ${result.snippet.slice(0, 80)}`);
+      }
     }
     return {
       ambiente,
-      host,
       results
     };
   } catch (error) {
