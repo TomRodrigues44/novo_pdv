@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2ad5f-7yQqFhNu5Ozf/ITY+SC+d8qBc4k\"",
-    "mtime": "2026-08-06T14:16:27.139Z",
-    "size": 175455,
+    "etag": "\"2adc7-BoZApGM3oGS2CHLdk7+2QjrVroU\"",
+    "mtime": "2026-08-06T14:23:44.338Z",
+    "size": 175559,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"9fb17-NWHDl4UwBtMF42M+f+IEBUWPfyQ\"",
-    "mtime": "2026-08-06T14:16:27.140Z",
-    "size": 654103,
+    "etag": "\"9faa8-CN7E6RgLvJg8VvCwSYbQXsXQYu8\"",
+    "mtime": "2026-08-06T14:23:44.338Z",
+    "size": 653992,
     "path": "index.mjs.map"
   }
 };
@@ -2861,12 +2861,7 @@ function extractElement(xml, tag) {
   return ((_a = xml.match(expression)) == null ? void 0 : _a[0]) || null;
 }
 function buildSoapEnvelope(serviceNamespace, innerXml) {
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
-  <soap:Body>
-    <nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg>
-  </soap:Body>
-</soap:Envelope>`;
+  return `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body><nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg></soap:Body></soap:Envelope>`;
 }
 function sendSoapRequest(url, soapBody, certificate, environment, soapAction) {
   return new Promise((resolve, reject) => {
@@ -2970,10 +2965,7 @@ function parseAuthorizationResponse(responseXml, httpStatus) {
 }
 async function pollForResult(receipt, environment, certificate) {
   const endpoint = SEFAZ_ENDPOINTS[environment];
-  const innerXml = `<consReciNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-  <tpAmb>${environment === "producao" ? "1" : "2"}</tpAmb>
-  <nRec>${receipt}</nRec>
-</consReciNFe>`;
+  const innerXml = `<consReciNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><tpAmb>${environment === "producao" ? "1" : "2"}</tpAmb><nRec>${receipt}</nRec></consReciNFe>`;
   const serviceNamespace = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4";
   const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
   const response = await sendSoapRequest(
@@ -2990,11 +2982,7 @@ async function authorizeNfe(signedXml, _accessKey, environment, certificate) {
   const endpoint = SEFAZ_ENDPOINTS[normalizedEnvironment];
   const loteId = String(Date.now()).slice(-15);
   const nfeXml = signedXml.replace(/^<\?xml[^>]*>\s*/i, "").trim();
-  const innerXml = `<enviNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-  <idLote>${loteId}</idLote>
-  <indSinc>1</indSinc>
-  ${nfeXml}
-</enviNFe>`;
+  const innerXml = `<enviNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><idLote>${loteId}</idLote><indSinc>1</indSinc>${nfeXml}</enviNFe>`;
   const serviceNamespace = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4";
   const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
   console.log(`[NFE] Enviando XML assinado para a SVRS (${normalizedEnvironment})...`);
@@ -3019,11 +3007,7 @@ async function authorizeNfe(signedXml, _accessKey, environment, certificate) {
 async function checkStatusServico(environment, certificate) {
   const normalizedEnvironment = environment === "producao" ? "producao" : "homologacao";
   const endpoint = SEFAZ_ENDPOINTS[normalizedEnvironment];
-  const innerXml = `<consStatServ versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-  <tpAmb>${normalizedEnvironment === "producao" ? "1" : "2"}</tpAmb>
-  <cUF>14</cUF>
-  <xServ>STATUS</xServ>
-</consStatServ>`;
+  const innerXml = `<consStatServ versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><tpAmb>${normalizedEnvironment === "producao" ? "1" : "2"}</tpAmb><cUF>14</cUF><xServ>STATUS</xServ></consStatServ>`;
   const serviceNamespace = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4";
   const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
   const response = await sendSoapRequest(
@@ -4370,8 +4354,9 @@ const emitir_post = defineEventHandler(async (event) => {
       freightMode: body.freightMode
     }, configRows[0], number, series);
     const certificate = await loadActiveCertificate();
+    const unsignedXml = generated.xml.replace(/>\s+</g, "><").trim();
     const { signedXml } = signNfeXml(
-      generated.xml,
+      unsignedXml,
       generated.accessKey,
       certificate.privateKeyPem,
       certificate.certificateBase64

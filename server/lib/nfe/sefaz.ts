@@ -56,12 +56,7 @@ function extractElement(xml: string, tag: string): string | null {
 }
 
 function buildSoapEnvelope(serviceNamespace: string, innerXml: string): string {
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
-  <soap:Body>
-    <nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg>
-  </soap:Body>
-</soap:Envelope>`;
+  return `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body><nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg></soap:Body></soap:Envelope>`;
 }
 
 function sendSoapRequest(
@@ -194,10 +189,7 @@ async function pollForResult(
   certificate: LoadedCertificate,
 ): Promise<NfeAuthorizationResult> {
   const endpoint = SEFAZ_ENDPOINTS[environment];
-  const innerXml = `<consReciNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-  <tpAmb>${environment === 'producao' ? '1' : '2'}</tpAmb>
-  <nRec>${receipt}</nRec>
-</consReciNFe>`;
+  const innerXml = `<consReciNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><tpAmb>${environment === 'producao' ? '1' : '2'}</tpAmb><nRec>${receipt}</nRec></consReciNFe>`;
 
   const serviceNamespace = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4';
   const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
@@ -225,11 +217,7 @@ export async function authorizeNfe(
   const loteId = String(Date.now()).slice(-15);
   const nfeXml = signedXml.replace(/^<\?xml[^>]*>\s*/i, '').trim();
 
-  const innerXml = `<enviNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-  <idLote>${loteId}</idLote>
-  <indSinc>1</indSinc>
-  ${nfeXml}
-</enviNFe>`;
+  const innerXml = `<enviNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><idLote>${loteId}</idLote><indSinc>1</indSinc>${nfeXml}</enviNFe>`;
 
   const serviceNamespace = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4';
   const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
@@ -267,11 +255,7 @@ export async function checkStatusServico(
     environment === 'producao' ? 'producao' : 'homologacao';
   const endpoint = SEFAZ_ENDPOINTS[normalizedEnvironment];
 
-  const innerXml = `<consStatServ versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-  <tpAmb>${normalizedEnvironment === 'producao' ? '1' : '2'}</tpAmb>
-  <cUF>14</cUF>
-  <xServ>STATUS</xServ>
-</consStatServ>`;
+  const innerXml = `<consStatServ versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><tpAmb>${normalizedEnvironment === 'producao' ? '1' : '2'}</tpAmb><cUF>14</cUF><xServ>STATUS</xServ></consStatServ>`;
 
   const serviceNamespace = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4';
   const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);

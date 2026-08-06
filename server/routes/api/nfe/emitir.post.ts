@@ -109,16 +109,17 @@ export default defineEventHandler(async (event) => {
 
     // Carregar certificado digital A1
     const certificate = await loadActiveCertificate();
+    const unsignedXml = generated.xml.replace(/>\s+</g, '><').trim();
 
     // Assinar o XML da NF-e com o certificado digital
     const { signedXml } = signNfeXml(
-      generated.xml,
+      unsignedXml,
       generated.accessKey,
       certificate.privateKeyPem,
       certificate.certificateBase64,
     );
 
-    // Enviar para a SEFAZ-RR e aguardar autorização
+    // Enviar para a SVRS e aguardar autorização
     const authorization = await authorizeNfe(signedXml, generated.accessKey, ambiente, certificate);
 
     if (!authorization.success) {
