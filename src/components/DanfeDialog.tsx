@@ -116,6 +116,7 @@ const formatCep = (cep: string = '') => {
 
 const splitAccessKey = (accessKey?: string) => {
   const blocks = digits(accessKey).match(/.{1,4}/g) || [];
+
   return {
     firstLine: blocks.slice(0, 8).join(' '),
     secondLine: blocks.slice(8).join(' '),
@@ -224,12 +225,6 @@ export function DanfeDialog({
                 <p className="text-[9px]">Folha 1/1</p>
               </div>
 
-              <canvas
-                ref={barcodeRef}
-                aria-label="Código de barras da chave de acesso"
-                className="mt-1 max-w-full"
-              />
-
               {isHomologation && (
                 <p className="mt-1 text-[8px] font-bold leading-tight text-red-700">
                   HOMOLOGAÇÃO — SEM VALOR FISCAL
@@ -246,6 +241,11 @@ export function DanfeDialog({
                 <p className="whitespace-nowrap font-mono text-[10px] leading-tight">
                   {accessKeyLines.secondLine}
                 </p>
+                <canvas
+                  ref={barcodeRef}
+                  aria-label="Código de barras da chave de acesso"
+                  className="mt-2 max-w-full"
+                />
               </div>
               <p className="mt-1">
                 Protocolo de Autorização: <strong>{nfeData?.protocol || '—'}</strong>
@@ -302,7 +302,7 @@ export function DanfeDialog({
 
           <div className="mt-2 border-2 border-black">
             <div className="border-b border-black bg-gray-100 px-2 py-0.5">
-              <p className="text-[11px] font-bold">FATURA / DUPLICATAS</p>
+              <p className="text-[11px] font-bold">FORMA DE PAGAMENTO</p>
             </div>
             <div className="p-2 text-xs">
               {payments.length > 0
