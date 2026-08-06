@@ -195,7 +195,7 @@ export function DanfeDialog({
             />
           </div>
 
-          <div className="grid grid-cols-[1.65fr_165px_1.65fr] gap-2 border-2 border-black p-2">
+          <div className="grid grid-cols-[1.35fr_165px_1.95fr] gap-2 border-2 border-black p-2">
             <div className="flex flex-col justify-center">
               <p className="text-lg font-bold leading-tight">
                 {companyConfig?.nome_fantasia || companyConfig?.razao_social || '—'}
