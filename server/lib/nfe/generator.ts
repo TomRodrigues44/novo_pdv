@@ -7,7 +7,7 @@ const UF_CODES: Record<string, string> = {
   SP: '35', SE: '28', TO: '17',
 };
 
-const HOMOLOGATION_RECIPIENT_NAME = 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL.';
+const HOMOLOGATION_RECIPIENT_NAME = 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL';
 
 const text = (value: unknown) => String(value ?? '').trim();
 const digits = (value: unknown) => text(value).replace(/\D/g, '');

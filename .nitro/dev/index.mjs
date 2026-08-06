@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2b471-yntwx8FXxJo/efXnUcOiJwlrDBk\"",
-    "mtime": "2026-08-06T14:42:55.944Z",
-    "size": 177265,
+    "etag": "\"2b53a-hjJalkq4EBAGhJPsYvZaRbgOhiA\"",
+    "mtime": "2026-08-06T14:43:47.261Z",
+    "size": 177466,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"a191a-HLc1/uuOW27OThT/ufA2rfn1FAE\"",
-    "mtime": "2026-08-06T14:42:55.975Z",
-    "size": 661786,
+    "etag": "\"a1d15-+UIcwDxTefpY4I+6VmQyaWBecNY\"",
+    "mtime": "2026-08-06T14:43:47.277Z",
+    "size": 662805,
     "path": "index.mjs.map"
   }
 };
@@ -4109,7 +4109,7 @@ const UF_CODES = {
   SE: "28",
   TO: "17"
 };
-const HOMOLOGATION_RECIPIENT_NAME = "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL.";
+const HOMOLOGATION_RECIPIENT_NAME = "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL";
 const text$1 = (value) => String(value != null ? value : "").trim();
 const digits$1 = (value) => text$1(value).replace(/\D/g, "");
 const xml = (value) => text$1(value).replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
