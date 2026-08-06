@@ -2,23 +2,23 @@ import crypto from 'node:crypto';
 
 const NFE_NAMESPACE = 'http://www.portalfiscal.inf.br/nfe';
 const DSIG_NAMESPACE = 'http://www.w3.org/2000/09/xmldsig#';
+const CANONICALIZATION_ALGORITHM = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
+const ENVELOPED_SIGNATURE_ALGORITHM = 'http://www.w3.org/2000/09/xmldsig#enveloped-signature';
+const RSA_SHA1_ALGORITHM = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
+const SHA1_ALGORITHM = 'http://www.w3.org/2000/09/xmldsig#sha1';
 
-/**
- * Extrai o elemento infNFe do XML e adiciona a declaração de namespace
- * canônica exigida pela Exclusive C14N. Para o XML da NF-e — que usa
- * apenas o namespace padrão sem elementos prefixados — isto produz a
- * forma canônica correta esperada pela SEFAZ.
- */
 function canonicalizeInfNFe(xml: string, accessKey: string): string {
   const id = `NFe${accessKey}`;
   const startMarker = `<infNFe Id="${id}"`;
   const startPos = xml.indexOf(startMarker);
+
   if (startPos === -1) {
     throw new Error('Elemento infNFe não encontrado no XML para assinatura.');
   }
 
   const endMarker = '</infNFe>';
   const endPos = xml.indexOf(endMarker, startPos);
+
   if (endPos === -1) {
     throw new Error('Fechamento do elemento infNFe não encontrado.');
   }
@@ -27,29 +27,23 @@ function canonicalizeInfNFe(xml: string, accessKey: string): string {
 
   return elementXml.replace(
     `<infNFe Id="${id}"`,
-    `<infNFe xmlns="${NFE_NAMESPACE}" Id="${id}"`
+    `<infNFe xmlns="${NFE_NAMESPACE}" Id="${id}"`,
   );
 }
 
-/**
- * Constrói o elemento SignedInfo em forma canônica (C14N Exclusive).
- * Cada elemento filho usa o namespace padrão do xmldsig declarado na raiz.
- */
-function buildCanonicalSignedInfo(
-  accessKey: string,
-  digestValue: string,
-): string {
+function buildCanonicalSignedInfo(accessKey: string, digestValue: string): string {
   const id = `NFe${accessKey}`;
+
   return (
     `<SignedInfo xmlns="${DSIG_NAMESPACE}">` +
-    `<CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></CanonicalizationMethod>` +
-    `<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"></SignatureMethod>` +
+    `<CanonicalizationMethod Algorithm="${CANONICALIZATION_ALGORITHM}"></CanonicalizationMethod>` +
+    `<SignatureMethod Algorithm="${RSA_SHA1_ALGORITHM}"></SignatureMethod>` +
     `<Reference URI="#${id}">` +
     `<Transforms>` +
-    `<Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"></Transform>` +
-    `<Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></Transform>` +
+    `<Transform Algorithm="${ENVELOPED_SIGNATURE_ALGORITHM}"></Transform>` +
+    `<Transform Algorithm="${CANONICALIZATION_ALGORITHM}"></Transform>` +
     `</Transforms>` +
-    `<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"></DigestMethod>` +
+    `<DigestMethod Algorithm="${SHA1_ALGORITHM}"></DigestMethod>` +
     `<DigestValue>${digestValue}</DigestValue>` +
     `</Reference>` +
     `</SignedInfo>`
@@ -62,16 +56,6 @@ export interface SignatureResult {
   signatureValue: string;
 }
 
-/**
- * Assina o XML da NF-e conforme o padrão XMLDSig (RSA-SHA1).
- *
- * Passos:
- * 1. Canonicaliza o elemento infNFe (C14N Exclusive)
- * 2. Calcula o digest SHA-1 do infNFe canonicalizado
- * 3. Constrói o SignedInfo e canonicaliza
- * 4. Assina o SignedInfo com RSA-SHA1
- * 5. Monta o bloco <Signature> e insere no XML
- */
 export function signNfeXml(
   xml: string,
   accessKey: string,
@@ -98,6 +82,7 @@ export function signNfeXml(
     `</Signature>`;
 
   const insertPos = xml.indexOf('</infNFe>');
+
   if (insertPos === -1) {
     throw new Error('Não foi possível inserir a assinatura: infNFe não encontrado.');
   }

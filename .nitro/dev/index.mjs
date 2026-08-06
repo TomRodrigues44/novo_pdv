@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2ae86-CUh9jqkYNdSWH8BHYKxFqvsI+Eg\"",
-    "mtime": "2026-08-06T14:37:32.518Z",
-    "size": 175750,
+    "etag": "\"2b1a3-lqUwpypIV2xXc1Nph+zQmnX7eC8\"",
+    "mtime": "2026-08-06T14:41:27.066Z",
+    "size": 176547,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"a041b-Mfzcfco08ylv7r4MqZJlDRXwriM\"",
-    "mtime": "2026-08-06T14:37:32.518Z",
-    "size": 656411,
+    "etag": "\"a0b01-l9fGWSZklXko9wo32JO0kr45Vi8\"",
+    "mtime": "2026-08-06T14:41:27.082Z",
+    "size": 658177,
     "path": "index.mjs.map"
   }
 };
@@ -4260,6 +4260,10 @@ function generateNfeXml(data, config, number, series) {
 
 const NFE_NAMESPACE = "http://www.portalfiscal.inf.br/nfe";
 const DSIG_NAMESPACE = "http://www.w3.org/2000/09/xmldsig#";
+const CANONICALIZATION_ALGORITHM = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315";
+const ENVELOPED_SIGNATURE_ALGORITHM = "http://www.w3.org/2000/09/xmldsig#enveloped-signature";
+const RSA_SHA1_ALGORITHM = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+const SHA1_ALGORITHM = "http://www.w3.org/2000/09/xmldsig#sha1";
 function canonicalizeInfNFe(xml, accessKey) {
   const id = `NFe${accessKey}`;
   const startMarker = `<infNFe Id="${id}"`;
@@ -4280,7 +4284,7 @@ function canonicalizeInfNFe(xml, accessKey) {
 }
 function buildCanonicalSignedInfo(accessKey, digestValue) {
   const id = `NFe${accessKey}`;
-  return `<SignedInfo xmlns="${DSIG_NAMESPACE}"><CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></CanonicalizationMethod><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"></SignatureMethod><Reference URI="#${id}"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"></Transform><Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></Transform></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"></DigestMethod><DigestValue>${digestValue}</DigestValue></Reference></SignedInfo>`;
+  return `<SignedInfo xmlns="${DSIG_NAMESPACE}"><CanonicalizationMethod Algorithm="${CANONICALIZATION_ALGORITHM}"></CanonicalizationMethod><SignatureMethod Algorithm="${RSA_SHA1_ALGORITHM}"></SignatureMethod><Reference URI="#${id}"><Transforms><Transform Algorithm="${ENVELOPED_SIGNATURE_ALGORITHM}"></Transform><Transform Algorithm="${CANONICALIZATION_ALGORITHM}"></Transform></Transforms><DigestMethod Algorithm="${SHA1_ALGORITHM}"></DigestMethod><DigestValue>${digestValue}</DigestValue></Reference></SignedInfo>`;
 }
 function signNfeXml(xml, accessKey, privateKeyPem, certificateBase64) {
   const canonicalizedInfNFe = canonicalizeInfNFe(xml, accessKey);
