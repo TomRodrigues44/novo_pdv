@@ -3,7 +3,7 @@ import { Server } from 'node:http';
 import { resolve, dirname, join } from 'node:path';
 import crypto from 'node:crypto';
 import { parentPort, threadId } from 'node:worker_threads';
-import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestURL, getRequestHeader, getResponseHeader, getRequestHeaders, setResponseHeaders, setResponseStatus, send, removeResponseHeader, appendResponseHeader, setResponseHeader, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, readBody, getQuery as getQuery$1, readFormData } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index.mjs';
+import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestURL, getRequestHeader, getResponseHeader, getRequestHeaders, setResponseHeaders, setResponseStatus, send, removeResponseHeader, appendResponseHeader, setResponseHeader, getCookie, setCookie, getRequestPath, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, readBody, getQuery as getQuery$1, readFormData } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index.mjs';
 import destr from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/destr@2.0.5/node_modules/destr/dist/index.mjs';
 import { createHooks } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/hookable@5.5.3/node_modules/hookable/dist/index.mjs';
 import { createFetch, Headers as Headers$1 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/ofetch@1.5.1/node_modules/ofetch/dist/node.mjs';
@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2bcb9-49s7EXAYV4ndW41t5tx8yEEBIJ4\"",
-    "mtime": "2026-08-06T16:01:54.823Z",
-    "size": 179385,
+    "etag": "\"2bfc5-f/N5d35pWF0LPLNrVbp90REUtr0\"",
+    "mtime": "2026-08-06T16:14:17.150Z",
+    "size": 180165,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"a3a7b-gIWngoc/EhLPR40vX8YRHvUlefI\"",
-    "mtime": "2026-08-06T16:01:54.823Z",
-    "size": 670331,
+    "etag": "\"a4197-m69Y5DYuxDlLEZKOHMNfmvBo+rA\"",
+    "mtime": "2026-08-06T16:14:17.166Z",
+    "size": 672151,
     "path": "index.mjs.map"
   }
 };
@@ -1041,6 +1041,240 @@ const _l6gOeV = eventHandler((event) => {
   return readAsset(id);
 });
 
+const databaseGlobal = globalThis;
+function getConnectionString() {
+  const connectionString = process.env.LOCAL_DATABASE_URL || process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("LOCAL_DATABASE_URL ou DATABASE_URL n\xE3o est\xE1 definida");
+  }
+  return connectionString;
+}
+function getPool() {
+  if (!databaseGlobal.__pdvPostgresPool) {
+    const connectionString = getConnectionString();
+    databaseGlobal.__pdvPostgresPool = new Pool({
+      connectionString,
+      max: 10,
+      connectionTimeoutMillis: 5e3,
+      idleTimeoutMillis: 3e4,
+      enableChannelBinding: connectionString.includes("channel_binding=require")
+    });
+    databaseGlobal.__pdvPostgresPool.on("error", (error) => {
+      console.error("Erro inesperado no pool PostgreSQL:", error);
+    });
+  }
+  return databaseGlobal.__pdvPostgresPool;
+}
+function createQueryClient(execute) {
+  let queryClient;
+  queryClient = ((strings, ...values) => {
+    if (!strings) {
+      return queryClient;
+    }
+    let text = strings[0];
+    for (let index = 0; index < values.length; index += 1) {
+      text += `$${index + 1}${strings[index + 1]}`;
+    }
+    return execute(text, values);
+  });
+  queryClient.query = execute;
+  return queryClient;
+}
+const executeQuery = async (text, values = []) => {
+  const result = await getPool().query(text, values);
+  return result.rows;
+};
+const sqlTag = createQueryClient(executeQuery);
+sqlTag.transaction = async (callback) => {
+  const client = await getPool().connect();
+  const transaction = createQueryClient(async (text, values = []) => {
+    const result = await client.query(text, values);
+    return result.rows;
+  });
+  try {
+    await client.query("BEGIN");
+    const result = await callback(transaction);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+const sql = sqlTag;
+function getDatabaseTarget() {
+  const url = new URL(getConnectionString());
+  const host = url.hostname;
+  return {
+    host,
+    port: url.port || "5432",
+    database: url.pathname.replace(/^\//, ""),
+    user: decodeURIComponent(url.username),
+    isLocal: host === "localhost" || host === "127.0.0.1" || host === "::1"
+  };
+}
+
+const SESSION_COOKIE = "pdv_session";
+const SESSION_DURATION_MS = 1e3 * 60 * 60 * 12;
+const roleLabels = {
+  admin: "Administrador",
+  manager: "Gerente",
+  cashier: "Caixa"
+};
+async function ensureAuthSchema() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS app_users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('admin', 'manager', 'cashier')),
+      active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS app_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+}
+function normalizeUsername(value) {
+  return String(value != null ? value : "").trim().toLowerCase();
+}
+function validatePassword(password) {
+  const value = String(password != null ? password : "");
+  if (value.length < 8) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "A senha precisa ter pelo menos 8 caracteres."
+    });
+  }
+  return value;
+}
+async function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const derivedKey = await new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, 64, (error, key) => {
+      if (error) reject(error);
+      else resolve(key);
+    });
+  });
+  return `${salt}:${derivedKey.toString("hex")}`;
+}
+async function verifyPassword(password, storedHash) {
+  const [salt, hash] = storedHash.split(":");
+  if (!salt || !hash) return false;
+  const derivedKey = await new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, 64, (error, key) => {
+      if (error) reject(error);
+      else resolve(key);
+    });
+  });
+  return crypto.timingSafeEqual(Buffer.from(hash, "hex"), derivedKey);
+}
+async function createSession(event, userId) {
+  const sessionId = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
+  await sql`
+    INSERT INTO app_sessions (id, user_id, expires_at)
+    VALUES (${sessionId}, ${userId}, ${expiresAt})
+  `;
+  setCookie(event, SESSION_COOKIE, sessionId, {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: false,
+    path: "/",
+    maxAge: SESSION_DURATION_MS / 1e3
+  });
+}
+async function getSessionUser(event) {
+  await ensureAuthSchema();
+  const sessionId = getCookie(event, SESSION_COOKIE);
+  if (!sessionId) return null;
+  const result = await sql`
+    SELECT u.id, u.name, u.username, u.role, u.active
+    FROM app_sessions s
+    INNER JOIN app_users u ON u.id = s.user_id
+    WHERE s.id = ${sessionId}
+      AND s.expires_at > CURRENT_TIMESTAMP
+      AND u.active = true
+    LIMIT 1
+  `;
+  return result[0] || null;
+}
+async function clearSession(event) {
+  const sessionId = getCookie(event, SESSION_COOKIE);
+  if (sessionId) {
+    await sql`DELETE FROM app_sessions WHERE id = ${sessionId}`;
+  }
+  setCookie(event, SESSION_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "strict",
+    path: "/",
+    maxAge: 0
+  });
+}
+function requireRole(user, roles) {
+  if (!user || !roles.includes(user.role)) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Voc\xEA n\xE3o tem permiss\xE3o para acessar este recurso."
+    });
+  }
+}
+
+const publicRoutes = /* @__PURE__ */ new Set([
+  "/api/auth/status",
+  "/api/auth/bootstrap",
+  "/api/auth/login",
+  "/api/auth/logout",
+  "/api/auth/me"
+]);
+const cashierRoutes = [
+  "/api/products",
+  "/api/categories",
+  "/api/customers",
+  "/api/motoboys",
+  "/api/cash-register",
+  "/api/cash-transactions",
+  "/api/sales",
+  "/api/nfce",
+  "/api/fiscal/company-config"
+];
+const managerRoutes = [
+  ...cashierRoutes,
+  "/api/contingency",
+  "/api/nfe",
+  "/api/fiscal/certificates",
+  "/api/fiscal/test-connection",
+  "/api/upload"
+];
+function isAllowed(path, role) {
+  if (role === "admin") return true;
+  const allowedRoutes = role === "manager" ? managerRoutes : cashierRoutes;
+  return allowedRoutes.some((route) => path === route || path.startsWith(`${route}/`));
+}
+const _MzNUUT = defineEventHandler(async (event) => {
+  const path = getRequestPath(event);
+  if (!path.startsWith("/api/") || publicRoutes.has(path)) return;
+  const user = await getSessionUser(event);
+  if (!user) {
+    throw createError({ statusCode: 401, statusMessage: "Fa\xE7a login para continuar." });
+  }
+  if (!isAllowed(path, user.role)) {
+    throw createError({ statusCode: 403, statusMessage: "Seu perfil n\xE3o possui acesso a este recurso." });
+  }
+  event.context.authUser = user;
+});
+
+const _lazy_QxOhU1 = () => Promise.resolve().then(function () { return _action_$1; });
 const _lazy_yxPaRJ = () => Promise.resolve().then(function () { return cashRegister_get$1; });
 const _lazy_kdJA4k = () => Promise.resolve().then(function () { return close_post$1; });
 const _lazy_rO_WFu = () => Promise.resolve().then(function () { return open_post$1; });
@@ -1094,6 +1328,8 @@ const _lazy_b9ys0L = () => Promise.resolve().then(function () { return upload_po
 
 const handlers = [
   { route: '', handler: _l6gOeV, lazy: false, middleware: true, method: undefined },
+  { route: '', handler: _MzNUUT, lazy: false, middleware: true, method: undefined },
+  { route: '/api/auth/:action', handler: _lazy_QxOhU1, lazy: true, middleware: false, method: undefined },
   { route: '/api/cash-register', handler: _lazy_yxPaRJ, lazy: true, middleware: false, method: "get" },
   { route: '/api/cash-register/close', handler: _lazy_kdJA4k, lazy: true, middleware: false, method: "post" },
   { route: '/api/cash-register/open', handler: _lazy_rO_WFu, lazy: true, middleware: false, method: "post" },
@@ -1410,80 +1646,128 @@ async function shutdown() {
   parentPort?.postMessage({ event: "exit" });
 }
 
-const databaseGlobal = globalThis;
-function getConnectionString() {
-  const connectionString = process.env.LOCAL_DATABASE_URL || process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("LOCAL_DATABASE_URL ou DATABASE_URL n\xE3o est\xE1 definida");
+const validRoles = ["admin", "manager", "cashier"];
+const publicUser = (user) => ({
+  id: user.id,
+  name: user.name,
+  username: user.username,
+  role: user.role,
+  roleLabel: roleLabels[user.role],
+  active: user.active,
+  created_at: user.created_at
+});
+const _action_ = defineEventHandler(async (event) => {
+  var _a, _b, _c, _d, _e;
+  await ensureAuthSchema();
+  const action = getRouterParam(event, "action");
+  if (action === "status") {
+    const users = await sql`SELECT COUNT(*)::int AS count FROM app_users`;
+    return { configured: Number(users[0].count) > 0 };
   }
-  return connectionString;
-}
-function getPool() {
-  if (!databaseGlobal.__pdvPostgresPool) {
-    const connectionString = getConnectionString();
-    databaseGlobal.__pdvPostgresPool = new Pool({
-      connectionString,
-      max: 10,
-      connectionTimeoutMillis: 5e3,
-      idleTimeoutMillis: 3e4,
-      enableChannelBinding: connectionString.includes("channel_binding=require")
-    });
-    databaseGlobal.__pdvPostgresPool.on("error", (error) => {
-      console.error("Erro inesperado no pool PostgreSQL:", error);
-    });
-  }
-  return databaseGlobal.__pdvPostgresPool;
-}
-function createQueryClient(execute) {
-  let queryClient;
-  queryClient = ((strings, ...values) => {
-    if (!strings) {
-      return queryClient;
+  if (action === "bootstrap") {
+    const users = await sql`SELECT COUNT(*)::int AS count FROM app_users`;
+    if (Number(users[0].count) > 0) {
+      throw createError({ statusCode: 403, statusMessage: "O administrador inicial j\xE1 foi configurado." });
     }
-    let text = strings[0];
-    for (let index = 0; index < values.length; index += 1) {
-      text += `$${index + 1}${strings[index + 1]}`;
+    const body = await readBody(event);
+    const name = String((_a = body.name) != null ? _a : "").trim();
+    const username = normalizeUsername(body.username);
+    const password = validatePassword(body.password);
+    if (!name || username.length < 3) {
+      throw createError({ statusCode: 400, statusMessage: "Informe nome e usu\xE1rio com pelo menos 3 caracteres." });
     }
-    return execute(text, values);
-  });
-  queryClient.query = execute;
-  return queryClient;
-}
-const executeQuery = async (text, values = []) => {
-  const result = await getPool().query(text, values);
-  return result.rows;
-};
-const sqlTag = createQueryClient(executeQuery);
-sqlTag.transaction = async (callback) => {
-  const client = await getPool().connect();
-  const transaction = createQueryClient(async (text, values = []) => {
-    const result = await client.query(text, values);
-    return result.rows;
-  });
-  try {
-    await client.query("BEGIN");
-    const result = await callback(transaction);
-    await client.query("COMMIT");
-    return result;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
+    const id = `user-${crypto.randomUUID()}`;
+    await sql`
+      INSERT INTO app_users (id, name, username, password_hash, role)
+      VALUES (${id}, ${name}, ${username}, ${await hashPassword(password)}, 'admin')
+    `;
+    await createSession(event, id);
+    return { user: { id, name, username, role: "admin", roleLabel: "Administrador", active: true } };
   }
-};
-const sql = sqlTag;
-function getDatabaseTarget() {
-  const url = new URL(getConnectionString());
-  const host = url.hostname;
-  return {
-    host,
-    port: url.port || "5432",
-    database: url.pathname.replace(/^\//, ""),
-    user: decodeURIComponent(url.username),
-    isLocal: host === "localhost" || host === "127.0.0.1" || host === "::1"
-  };
-}
+  if (action === "login") {
+    const body = await readBody(event);
+    const username = normalizeUsername(body.username);
+    const password = String((_b = body.password) != null ? _b : "");
+    const users = await sql`
+      SELECT * FROM app_users
+      WHERE username = ${username} AND active = true
+      LIMIT 1
+    `;
+    const user = users[0];
+    if (!user || !await verifyPassword(password, user.password_hash)) {
+      throw createError({ statusCode: 401, statusMessage: "Usu\xE1rio ou senha inv\xE1lidos." });
+    }
+    await createSession(event, user.id);
+    return { user: publicUser(user) };
+  }
+  if (action === "logout") {
+    await clearSession(event);
+    return { success: true };
+  }
+  const currentUser = await getSessionUser(event);
+  if (action === "me") return { user: currentUser };
+  requireRole(currentUser, ["admin"]);
+  if (action === "users" && event.method === "GET") {
+    const users = await sql`
+      SELECT id, name, username, role, active, created_at
+      FROM app_users
+      ORDER BY created_at ASC
+    `;
+    return users.map(publicUser);
+  }
+  if (action === "users" && event.method === "POST") {
+    const body = await readBody(event);
+    const name = String((_c = body.name) != null ? _c : "").trim();
+    const username = normalizeUsername(body.username);
+    const password = validatePassword(body.password);
+    const role = body.role;
+    if (!name || username.length < 3 || !validRoles.includes(role)) {
+      throw createError({ statusCode: 400, statusMessage: "Preencha os dados do usu\xE1rio corretamente." });
+    }
+    const id = `user-${crypto.randomUUID()}`;
+    const result = await sql`
+      INSERT INTO app_users (id, name, username, password_hash, role)
+      VALUES (${id}, ${name}, ${username}, ${await hashPassword(password)}, ${role})
+      RETURNING id, name, username, role, active, created_at
+    `;
+    return publicUser(result[0]);
+  }
+  if (action === "users" && event.method === "PUT") {
+    const body = await readBody(event);
+    const id = String((_d = body.id) != null ? _d : "");
+    const name = String((_e = body.name) != null ? _e : "").trim();
+    const role = body.role;
+    const active = Boolean(body.active);
+    if (!id || !name || !validRoles.includes(role)) {
+      throw createError({ statusCode: 400, statusMessage: "Dados inv\xE1lidos para atualiza\xE7\xE3o." });
+    }
+    if (id === (currentUser == null ? void 0 : currentUser.id) && !active) {
+      throw createError({ statusCode: 400, statusMessage: "Voc\xEA n\xE3o pode desativar seu pr\xF3prio acesso." });
+    }
+    if (body.password) {
+      await sql`
+        UPDATE app_users
+        SET name = ${name}, role = ${role}, active = ${active},
+            password_hash = ${await hashPassword(validatePassword(body.password))},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+      `;
+    } else {
+      await sql`
+        UPDATE app_users
+        SET name = ${name}, role = ${role}, active = ${active}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+      `;
+    }
+    return { success: true };
+  }
+  throw createError({ statusCode: 404, statusMessage: "A\xE7\xE3o n\xE3o encontrada." });
+});
+
+const _action_$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _action_
+});
 
 const cashRegister_get = defineEventHandler(async () => {
   try {
