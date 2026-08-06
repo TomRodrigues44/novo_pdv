@@ -10,18 +10,20 @@ const UF_CODES: Record<string, string> = {
 const text = (value: unknown) => String(value ?? '').trim();
 const digits = (value: unknown) => text(value).replace(/\D/g, '');
 const xml = (value: unknown) => text(value)
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;')
+  .replace(/&/g, '&')
+  .replace(/</g, '<')
+  .replace(/>/g, '>')
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&apos;');
 
 function accessKeyDigit(key: string) {
   const weights = [2, 3, 4, 5, 6, 7, 8, 9];
   let sum = 0;
+
   for (let index = key.length - 1; index >= 0; index -= 1) {
     sum += Number(key[index]) * weights[(key.length - 1 - index) % weights.length];
   }
+
   const remainder = sum % 11;
   return String(remainder < 2 ? 0 : 11 - remainder);
 }
@@ -30,6 +32,7 @@ function generateAccessKey(ufCode: string, issuedAt: Date, cnpj: string, series:
   const yearMonth = `${String(issuedAt.getFullYear()).slice(-2)}${String(issuedAt.getMonth() + 1).padStart(2, '0')}`;
   const numericCode = Math.floor(10000000 + Math.random() * 90000000).toString();
   const base = `${ufCode}${yearMonth}${digits(cnpj)}55${String(series).padStart(3, '0')}${String(number).padStart(9, '0')}1${numericCode}`;
+
   return `${base}${accessKeyDigit(base)}`;
 }
 
@@ -53,6 +56,7 @@ function paymentCode(type: string) {
   const codes: Record<string, string> = {
     cash: '01', credit: '03', debit: '04', pix: '17', boleto: '15', bank_transfer: '18', other: '99',
   };
+
   return codes[type] || '99';
 }
 
@@ -65,12 +69,17 @@ export interface NfeGenerationResult {
 export function generateNfeXml(data: any, config: any, number: number, series: number): NfeGenerationResult {
   const requiredConfig = ['cnpj', 'razao_social', 'inscricao_estadual', 'crt', 'cep', 'logradouro', 'numero', 'bairro', 'municipio', 'uf'];
   const missingConfig = requiredConfig.filter((field) => !text(config[field]));
+
   if (missingConfig.length > 0) {
-    throw createError({ statusCode: 400, statusMessage: 'Complete as Configurações Fiscais antes de emitir a NF-e.' });
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Complete as Configurações Fiscais antes de emitir a NF-e.',
+    });
   }
 
   const emitterUf = text(config.uf).toUpperCase();
   const ufCode = UF_CODES[emitterUf];
+
   if (!ufCode) {
     throw createError({ statusCode: 400, statusMessage: 'UF do emitente inválida.' });
   }
@@ -113,9 +122,28 @@ export function generateNfeXml(data: any, config: any, number: number, series: n
           <indTot>1</indTot>
         </prod>
         <imposto>
-          <ICMS><ICMSSN102><orig>${origin}</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS>
-          <PIS><PISSN><CST>49</CST></PISSN></PIS>
-          <COFINS><COFINSSN><CST>49</CST></COFINSSN></COFINS>
+          <ICMS>
+            <ICMSSN102>
+              <orig>${origin}</orig>
+              <CSOSN>102</CSOSN>
+            </ICMSSN102>
+          </ICMS>
+          <PIS>
+            <PISOutr>
+              <CST>49</CST>
+              <vBC>0.00</vBC>
+              <pPIS>0.0000</pPIS>
+              <vPIS>0.00</vPIS>
+            </PISOutr>
+          </PIS>
+          <COFINS>
+            <COFINSOutr>
+              <CST>49</CST>
+              <vBC>0.00</vBC>
+              <pCOFINS>0.0000</pCOFINS>
+              <vCOFINS>0.00</vCOFINS>
+            </COFINSOutr>
+          </COFINS>
         </imposto>
       </det>`;
   }).join('');

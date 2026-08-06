@@ -937,7 +937,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"2ae86-CUh9jqkYNdSWH8BHYKxFqvsI+Eg\"",
+    "mtime": "2026-08-06T14:37:32.518Z",
+    "size": 175750,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"a041b-Mfzcfco08ylv7r4MqZJlDRXwriM\"",
+    "mtime": "2026-08-06T14:37:32.518Z",
+    "size": 656411,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -4081,7 +4096,7 @@ const UF_CODES = {
 };
 const text$1 = (value) => String(value != null ? value : "").trim();
 const digits$1 = (value) => text$1(value).replace(/\D/g, "");
-const xml = (value) => text$1(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+const xml = (value) => text$1(value).replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 function accessKeyDigit(key) {
   const weights = [2, 3, 4, 5, 6, 7, 8, 9];
   let sum = 0;
@@ -4127,7 +4142,10 @@ function generateNfeXml(data, config, number, series) {
   const requiredConfig = ["cnpj", "razao_social", "inscricao_estadual", "crt", "cep", "logradouro", "numero", "bairro", "municipio", "uf"];
   const missingConfig = requiredConfig.filter((field) => !text$1(config[field]));
   if (missingConfig.length > 0) {
-    throw createError({ statusCode: 400, statusMessage: "Complete as Configura\xE7\xF5es Fiscais antes de emitir a NF-e." });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Complete as Configura\xE7\xF5es Fiscais antes de emitir a NF-e."
+    });
   }
   const emitterUf = text$1(config.uf).toUpperCase();
   const ufCode = UF_CODES[emitterUf];
@@ -4171,9 +4189,28 @@ function generateNfeXml(data, config, number, series) {
           <indTot>1</indTot>
         </prod>
         <imposto>
-          <ICMS><ICMSSN102><orig>${origin}</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS>
-          <PIS><PISSN><CST>49</CST></PISSN></PIS>
-          <COFINS><COFINSSN><CST>49</CST></COFINSSN></COFINS>
+          <ICMS>
+            <ICMSSN102>
+              <orig>${origin}</orig>
+              <CSOSN>102</CSOSN>
+            </ICMSSN102>
+          </ICMS>
+          <PIS>
+            <PISOutr>
+              <CST>49</CST>
+              <vBC>0.00</vBC>
+              <pPIS>0.0000</pPIS>
+              <vPIS>0.00</vPIS>
+            </PISOutr>
+          </PIS>
+          <COFINS>
+            <COFINSOutr>
+              <CST>49</CST>
+              <vBC>0.00</vBC>
+              <pCOFINS>0.0000</pCOFINS>
+              <vCOFINS>0.00</vCOFINS>
+            </COFINSOutr>
+          </COFINS>
         </imposto>
       </det>`;
   }).join("");
