@@ -114,6 +114,14 @@ const formatCep = (cep: string = '') => {
   return value.length === 8 ? value.replace(/^(\d{5})(\d{3})$/, '$1-$2') : cep;
 };
 
+const splitAccessKey = (accessKey?: string) => {
+  const blocks = digits(accessKey).match(/.{1,4}/g) || [];
+  return {
+    firstLine: blocks.slice(0, 8).join(' '),
+    secondLine: blocks.slice(8).join(' '),
+  };
+};
+
 export function DanfeDialog({
   open,
   onClose,
@@ -128,7 +136,7 @@ export function DanfeDialog({
 }: DanfeDialogProps) {
   const [companyConfig, setCompanyConfig] = useState<CompanyConfig | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
-  const barcodeRef = useRef<SVGSVGElement>(null);
+  const barcodeRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -149,9 +157,9 @@ export function DanfeDialog({
     JsBarcode(barcodeRef.current, accessKey, {
       format: 'CODE128',
       displayValue: false,
-      height: 34,
+      height: 32,
       margin: 0,
-      width: 1,
+      width: 0.9,
       background: '#ffffff',
       lineColor: '#000000',
     });
@@ -164,6 +172,7 @@ export function DanfeDialog({
 
   const issuedAt = new Date();
   const isHomologation = nfeData?.environment !== 'producao';
+  const accessKeyLines = splitAccessKey(nfeData?.accessKey);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -215,10 +224,10 @@ export function DanfeDialog({
                 <p className="text-[9px]">Folha 1/1</p>
               </div>
 
-              <svg
+              <canvas
                 ref={barcodeRef}
                 aria-label="Código de barras da chave de acesso"
-                className="mt-1 h-9 w-full max-w-[150px]"
+                className="mt-1 max-w-full"
               />
 
               {isHomologation && (
@@ -231,8 +240,11 @@ export function DanfeDialog({
             <div className="flex flex-col justify-center text-xs">
               <div className="border border-black p-1 text-center">
                 <p className="font-semibold text-[10px]">CHAVE DE ACESSO</p>
-                <p className="break-all font-mono text-[11px] leading-tight">
-                  {nfeData?.accessKey?.replace(/(.{4})/g, '$1 ').trim()}
+                <p className="mt-0.5 whitespace-nowrap font-mono text-[10px] leading-tight">
+                  {accessKeyLines.firstLine || '—'}
+                </p>
+                <p className="whitespace-nowrap font-mono text-[10px] leading-tight">
+                  {accessKeyLines.secondLine}
                 </p>
               </div>
               <p className="mt-1">
