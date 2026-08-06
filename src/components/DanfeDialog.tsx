@@ -140,7 +140,7 @@ export function DanfeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
+      <DialogContent className="max-h-[95vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>DANFE — Documento Auxiliar da NF-e</DialogTitle>
         </DialogHeader>
@@ -154,7 +154,7 @@ export function DanfeDialog({
             />
           </div>
 
-          <div className="grid grid-cols-[1fr_280px_1fr] gap-2 border-2 border-black p-2">
+          <div className="grid grid-cols-[1.35fr_210px_1.35fr] gap-2 border-2 border-black p-2">
             <div className="flex flex-col justify-center">
               <p className="text-lg font-bold leading-tight">{companyConfig?.nome_fantasia || companyConfig?.razao_social || '—'}</p>
               <p className="text-xs">
