@@ -1,5 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useEffect, useRef, useState } from 'react';
+import JsBarcode from 'jsbarcode';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useReactToPrint } from 'react-to-print';
 import { format } from 'date-fns';
@@ -95,15 +96,22 @@ const currency = (value: number) =>
 const digits = (value: unknown) => String(value ?? '').replace(/\D/g, '');
 
 const formatCnpj = (cnpj: string = '') => {
-  const d = digits(cnpj);
-  if (d.length === 14) return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-  if (d.length === 11) return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+  const value = digits(cnpj);
+
+  if (value.length === 14) {
+    return value.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  }
+
+  if (value.length === 11) {
+    return value.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+  }
+
   return cnpj;
 };
 
 const formatCep = (cep: string = '') => {
-  const d = digits(cep);
-  return d.length === 8 ? d.replace(/^(\d{5})(\d{3})$/, '$1-$2') : cep;
+  const value = digits(cep);
+  return value.length === 8 ? value.replace(/^(\d{5})(\d{3})$/, '$1-$2') : cep;
 };
 
 export function DanfeDialog({
@@ -120,15 +128,34 @@ export function DanfeDialog({
 }: DanfeDialogProps) {
   const [companyConfig, setCompanyConfig] = useState<CompanyConfig | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
+  const barcodeRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     if (open) {
       fetch('/api/fiscal/company-config')
-        .then((res) => res.json())
+        .then((response) => response.json())
         .then((data) => setCompanyConfig(data))
-        .catch((err) => console.error('Failed to fetch company config:', err));
+        .catch((error) => console.error('Failed to fetch company config:', error));
     }
   }, [open]);
+
+  useEffect(() => {
+    const accessKey = digits(nfeData?.accessKey);
+
+    if (!open || !barcodeRef.current || accessKey.length !== 44) {
+      return;
+    }
+
+    JsBarcode(barcodeRef.current, accessKey, {
+      format: 'CODE128',
+      displayValue: false,
+      height: 34,
+      margin: 0,
+      width: 1,
+      background: '#ffffff',
+      lineColor: '#000000',
+    });
+  }, [nfeData?.accessKey, open]);
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -145,7 +172,11 @@ export function DanfeDialog({
           <DialogTitle>DANFE — Documento Auxiliar da NF-e</DialogTitle>
         </DialogHeader>
 
-        <div ref={printRef} className="danfe-a4 mx-auto bg-white p-8 text-black" style={{ width: '210mm', minHeight: '297mm' }}>
+        <div
+          ref={printRef}
+          className="danfe-a4 mx-auto bg-white p-8 text-black"
+          style={{ width: '210mm', minHeight: '297mm' }}
+        >
           <div className="mb-3 flex justify-center border-2 border-black p-2">
             <img
               src="/products/logo-emporio.jpg"
@@ -154,9 +185,11 @@ export function DanfeDialog({
             />
           </div>
 
-          <div className="grid grid-cols-[1.35fr_210px_1.35fr] gap-2 border-2 border-black p-2">
+          <div className="grid grid-cols-[1.65fr_165px_1.65fr] gap-2 border-2 border-black p-2">
             <div className="flex flex-col justify-center">
-              <p className="text-lg font-bold leading-tight">{companyConfig?.nome_fantasia || companyConfig?.razao_social || '—'}</p>
+              <p className="text-lg font-bold leading-tight">
+                {companyConfig?.nome_fantasia || companyConfig?.razao_social || '—'}
+              </p>
               <p className="text-xs">
                 {companyConfig?.logradouro}, {companyConfig?.numero} — {companyConfig?.bairro}
               </p>
@@ -170,26 +203,41 @@ export function DanfeDialog({
               <p className="text-xs">CRT: {crtLabels[companyConfig?.crt || ''] || companyConfig?.crt || '—'}</p>
             </div>
 
-            <div className="flex flex-col items-center justify-center border-x-2 border-black">
-              <p className="text-2xl font-black tracking-tighter">DANFE</p>
-              <p className="text-[10px] font-bold">NFe Modelo 55 — Série 4.00</p>
-              <div className="my-1 border-2 border-black px-2 py-1 text-center">
-                <p className="text-[9px] font-semibold">Nº {String(nfeData?.number || 0).padStart(6, '0')}</p>
+            <div className="flex flex-col items-center justify-center border-x-2 border-black px-1 text-center">
+              <p className="text-xl font-black tracking-tighter">DANFE</p>
+              <p className="text-[9px] font-bold">NFe Modelo 55</p>
+              <p className="text-[9px] font-bold">Série 4.00</p>
+
+              <div className="my-1 border-2 border-black px-1 py-1 text-center">
+                <p className="text-[9px] font-semibold">
+                  Nº {String(nfeData?.number || 0).padStart(6, '0')}
+                </p>
                 <p className="text-[9px]">Folha 1/1</p>
               </div>
+
+              <svg
+                ref={barcodeRef}
+                aria-label="Código de barras da chave de acesso"
+                className="mt-1 h-9 w-full max-w-[150px]"
+              />
+
               {isHomologation && (
-                <p className="text-[9px] font-bold text-red-700">HOMOLOGAÇÃO — SEM VALOR FISCAL</p>
+                <p className="mt-1 text-[8px] font-bold leading-tight text-red-700">
+                  HOMOLOGAÇÃO — SEM VALOR FISCAL
+                </p>
               )}
             </div>
 
             <div className="flex flex-col justify-center text-xs">
               <div className="border border-black p-1 text-center">
                 <p className="font-semibold text-[10px]">CHAVE DE ACESSO</p>
-                <p className="font-mono text-[11px] break-all leading-tight">
+                <p className="break-all font-mono text-[11px] leading-tight">
                   {nfeData?.accessKey?.replace(/(.{4})/g, '$1 ').trim()}
                 </p>
               </div>
-              <p className="mt-1">Protocolo de Autorização: <strong>{nfeData?.protocol || '—'}</strong></p>
+              <p className="mt-1">
+                Protocolo de Autorização: <strong>{nfeData?.protocol || '—'}</strong>
+              </p>
               <p>Data de Emissão: {format(issuedAt, 'dd/MM/yyyy')}</p>
               <p>Tipo de Operação: <strong>SAÍDA</strong></p>
             </div>
@@ -201,13 +249,16 @@ export function DanfeDialog({
             </div>
             <div className="grid grid-cols-4 gap-x-2 gap-y-1 p-2 text-xs">
               <div className="col-span-2">
-                <span className="font-semibold">Nome / Razão Social: </span>{customer?.name || '—'}
+                <span className="font-semibold">Nome / Razão Social: </span>
+                {customer?.name || '—'}
               </div>
               <div>
-                <span className="font-semibold">CNPJ/CPF: </span>{formatCnpj(customer?.cpf_cnpj)}
+                <span className="font-semibold">CNPJ/CPF: </span>
+                {formatCnpj(customer?.cpf_cnpj)}
               </div>
               <div>
-                <span className="font-semibold">IE: </span>{customer?.inscricao_estadual || '—'}
+                <span className="font-semibold">IE: </span>
+                {customer?.inscricao_estadual || '—'}
               </div>
               <div className="col-span-3">
                 <span className="font-semibold">Endereço: </span>
@@ -215,19 +266,24 @@ export function DanfeDialog({
                 {customer?.complemento ? ` - ${customer.complemento}` : ''}
               </div>
               <div>
-                <span className="font-semibold">Bairro: </span>{customer?.bairro || '—'}
+                <span className="font-semibold">Bairro: </span>
+                {customer?.bairro || '—'}
               </div>
               <div>
-                <span className="font-semibold">CEP: </span>{formatCep(customer?.cep)}
+                <span className="font-semibold">CEP: </span>
+                {formatCep(customer?.cep)}
               </div>
               <div>
-                <span className="font-semibold">Município: </span>{customer?.municipio || '—'}
+                <span className="font-semibold">Município: </span>
+                {customer?.municipio || '—'}
               </div>
               <div>
-                <span className="font-semibold">Fone: </span>{customer?.phone || '—'}
+                <span className="font-semibold">Fone: </span>
+                {customer?.phone || '—'}
               </div>
               <div>
-                <span className="font-semibold">UF: </span>{customer?.uf || '—'}
+                <span className="font-semibold">UF: </span>
+                {customer?.uf || '—'}
               </div>
             </div>
           </div>
@@ -238,9 +294,9 @@ export function DanfeDialog({
             </div>
             <div className="p-2 text-xs">
               {payments.length > 0
-                ? payments.map((p, i) => (
-                    <span key={i} className="mr-4">
-                      {paymentLabels[p.type] || 'Outros'}: {currency(p.amount)}
+                ? payments.map((payment, index) => (
+                    <span key={index} className="mr-4">
+                      {paymentLabels[payment.type] || 'Outros'}: {currency(payment.amount)}
                     </span>
                   ))
                 : '—'}
@@ -276,11 +332,13 @@ export function DanfeDialog({
                 {freight > 0 ? 'Destinatário' : 'Sem frete'}
               </div>
               <div className="col-span-2">
-                <span className="font-semibold">Valor do Frete: </span>{currency(freight)}
+                <span className="font-semibold">Valor do Frete: </span>
+                {currency(freight)}
               </div>
               {motoboy && freight > 0 && (
                 <div className="col-span-4">
-                  <span className="font-semibold">Transportador: </span>{motoboy.name}
+                  <span className="font-semibold">Transportador: </span>
+                  {motoboy.name}
                 </div>
               )}
             </div>
@@ -304,10 +362,11 @@ export function DanfeDialog({
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, i) => {
+                {items.map((item, index) => {
                   const fiscal = item.fiscal || {};
+
                   return (
-                    <tr key={i} className="border-b border-gray-300 align-top">
+                    <tr key={index} className="border-b border-gray-300 align-top">
                       <td className="p-1">{item.id || '—'}</td>
                       <td className="p-1">
                         {item.product_name || item.name}
@@ -322,7 +381,9 @@ export function DanfeDialog({
                       <td className="p-1 text-center">{fiscal.unidade || 'UN'}</td>
                       <td className="p-1 text-right">{Number(item.quantity).toFixed(2)}</td>
                       <td className="p-1 text-right">{Number(item.price).toFixed(2)}</td>
-                      <td className="p-1 text-right">{(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
+                      <td className="p-1 text-right">
+                        {(Number(item.price) * Number(item.quantity)).toFixed(2)}
+                      </td>
                     </tr>
                   );
                 })}
