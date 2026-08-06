@@ -103,6 +103,7 @@ export function generateNfeXml(data: any, config: any, number: number, series: n
   const itemsXml = data.items.map((item: any, index: number) => {
     const fiscal = item.fiscal || {};
     const itemTotal = item.price * item.quantity;
+    const itemFreight = index === 0 ? freight : 0;
     const cfop = digits(fiscal.cfop) || (interstate ? '6102' : '5102');
     const ncm = digits(fiscal.ncm);
     const origin = Number(fiscal.origem ?? 0);
@@ -124,6 +125,7 @@ export function generateNfeXml(data: any, config: any, number: number, series: n
           <uTrib>${xml(fiscal.unidade || 'UN')}</uTrib>
           <qTrib>${Number(item.quantity).toFixed(4)}</qTrib>
           <vUnTrib>${Number(item.price).toFixed(10)}</vUnTrib>
+          ${itemFreight > 0 ? `<vFrete>${itemFreight.toFixed(2)}</vFrete>` : ''}
           <indTot>1</indTot>
         </prod>
         <imposto>

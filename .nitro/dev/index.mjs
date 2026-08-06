@@ -937,7 +937,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"2b2a8-1p0efhPFZtKrXLY7nZh4/M57Xes\"",
+    "mtime": "2026-08-06T14:50:45.905Z",
+    "size": 176808,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"a183f-cx+Tz2BrQ29klT1/jHG37+pBoNk\"",
+    "mtime": "2026-08-06T14:50:45.905Z",
+    "size": 661567,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -4160,6 +4175,7 @@ function generateNfeXml(data, config, number, series) {
     var _a;
     const fiscal = item.fiscal || {};
     const itemTotal = item.price * item.quantity;
+    const itemFreight = index === 0 ? freight : 0;
     const cfop = digits$1(fiscal.cfop) || (interstate ? "6102" : "5102");
     const ncm = digits$1(fiscal.ncm);
     const origin = Number((_a = fiscal.origem) != null ? _a : 0);
@@ -4180,6 +4196,7 @@ function generateNfeXml(data, config, number, series) {
           <uTrib>${xml(fiscal.unidade || "UN")}</uTrib>
           <qTrib>${Number(item.quantity).toFixed(4)}</qTrib>
           <vUnTrib>${Number(item.price).toFixed(10)}</vUnTrib>
+          ${itemFreight > 0 ? `<vFrete>${itemFreight.toFixed(2)}</vFrete>` : ""}
           <indTot>1</indTot>
         </prod>
         <imposto>
