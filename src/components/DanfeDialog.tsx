@@ -135,7 +135,7 @@ export function DanfeDialog({
     documentTitle: `DANFE-${nfeData?.number || 'NF-e'}`,
   });
 
-  const issuedAt = nfeData?.environment === 'producao' ? new Date() : new Date();
+  const issuedAt = new Date();
   const isHomologation = nfeData?.environment !== 'producao';
 
   return (
@@ -146,9 +146,15 @@ export function DanfeDialog({
         </DialogHeader>
 
         <div ref={printRef} className="danfe-a4 mx-auto bg-white p-8 text-black" style={{ width: '210mm', minHeight: '297mm' }}>
-          {/* Linha superior: Emitente + Identificação */}
+          <div className="mb-3 flex justify-center border-2 border-black p-2">
+            <img
+              src="/logo-emporio.jpg"
+              alt="Empório das Coxinhas"
+              className="h-auto max-h-24 w-auto max-w-[420px] object-contain"
+            />
+          </div>
+
           <div className="grid grid-cols-[1fr_280px_1fr] gap-2 border-2 border-black p-2">
-            {/* Emitente */}
             <div className="flex flex-col justify-center">
               <p className="text-lg font-bold leading-tight">{companyConfig?.nome_fantasia || companyConfig?.razao_social || '—'}</p>
               <p className="text-xs">
@@ -164,7 +170,6 @@ export function DanfeDialog({
               <p className="text-xs">CRT: {crtLabels[companyConfig?.crt || ''] || companyConfig?.crt || '—'}</p>
             </div>
 
-            {/* Identificação da NF-e */}
             <div className="flex flex-col items-center justify-center border-x-2 border-black">
               <p className="text-2xl font-black tracking-tighter">DANFE</p>
               <p className="text-[10px] font-bold">NFe Modelo 55 — Série 4.00</p>
@@ -177,7 +182,6 @@ export function DanfeDialog({
               )}
             </div>
 
-            {/* Chave de acesso + tipo de operação */}
             <div className="flex flex-col justify-center text-xs">
               <div className="border border-black p-1 text-center">
                 <p className="font-semibold text-[10px]">CHAVE DE ACESSO</p>
@@ -191,7 +195,6 @@ export function DanfeDialog({
             </div>
           </div>
 
-          {/* Destinatário */}
           <div className="mt-2 border-2 border-black">
             <div className="border-b border-black bg-gray-100 px-2 py-0.5">
               <p className="text-[11px] font-bold">DESTINATÁRIO / REMETENTE</p>
@@ -229,7 +232,6 @@ export function DanfeDialog({
             </div>
           </div>
 
-          {/* Itens */}
           <div className="mt-2 border-2 border-black">
             <div className="border-b border-black bg-gray-100 px-2 py-0.5">
               <p className="text-[11px] font-bold">FATURA / DUPLICATAS</p>
@@ -245,7 +247,6 @@ export function DanfeDialog({
             </div>
           </div>
 
-          {/* Cálculo do imposto */}
           <div className="mt-2 border-2 border-black">
             <div className="border-b border-black bg-gray-100 px-2 py-0.5">
               <p className="text-[11px] font-bold">CÁLCULO DO IMPOSTO</p>
@@ -265,7 +266,6 @@ export function DanfeDialog({
             </div>
           </div>
 
-          {/* Transportadora / Volume */}
           <div className="mt-2 border-2 border-black">
             <div className="border-b border-black bg-gray-100 px-2 py-0.5">
               <p className="text-[11px] font-bold">TRANSPORTADOR / VOLUMES TRANSPORTADOS</p>
@@ -286,7 +286,6 @@ export function DanfeDialog({
             </div>
           </div>
 
-          {/* Tabela de produtos */}
           <div className="mt-2 border-2 border-black">
             <div className="border-b border-black bg-gray-100 px-2 py-0.5">
               <p className="text-[11px] font-bold">DADOS DOS PRODUTOS / SERVIÇOS</p>
@@ -331,7 +330,6 @@ export function DanfeDialog({
             </table>
           </div>
 
-          {/* Informações adicionais */}
           <div className="mt-2 border-2 border-black">
             <div className="border-b border-black bg-gray-100 px-2 py-0.5">
               <p className="text-[11px] font-bold">INFORMAÇÕES COMPLEMENTARES</p>
@@ -346,7 +344,6 @@ export function DanfeDialog({
             </div>
           </div>
 
-          {/* Rodapé */}
           <div className="mt-4 text-center text-[10px] text-gray-600">
             <p>Consulte pela chave de acesso em {nfeData?.consultationUrl || 'http://www.nfe.fazenda.gov.br/portal'}</p>
             <p className="mt-1 font-semibold">

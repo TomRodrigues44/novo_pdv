@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import AdminSidebar from '@/components/AdminSidebar';
-import { EmporioLogo } from '@/components/EmporioLogo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -235,7 +234,7 @@ const AdminNfe = () => {
       <AdminSidebar />
       <main className="ml-64 min-h-screen flex-1 bg-gray-50 p-8">
         <div className="mx-auto max-w-6xl space-y-6">
-          <div className="flex flex-col justify-between gap-4 rounded-2xl border border-orange-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center">
+          <div className="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm">
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <FileCheck2 className="h-8 w-8 text-orange-600" />
@@ -251,7 +250,6 @@ const AdminNfe = () => {
                 A NF-e é assinada digitalmente e enviada para a SEFAZ. A venda só é registrada após a autorização.
               </p>
             </div>
-            <EmporioLogo className="self-start sm:self-auto" />
           </div>
 
           <Card>
