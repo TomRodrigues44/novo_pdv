@@ -91,11 +91,17 @@ declare module "nitropack/types" {
     '/api/nfce/xml/:id': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/nfce/xml/[id].get').default>>>>
     }
+    '/api/nfe': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/nfe.get').default>>>>
+    }
     '/api/nfe/:saleId': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/nfe/[saleId].get').default>>>>
     }
     '/api/nfe/emitir': {
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/nfe/emitir.post').default>>>>
+    }
+    '/api/nfe/xml/:id': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/nfe/xml/[id].get').default>>>>
     }
     '/api/products': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/products.get').default>>>>
