@@ -939,16 +939,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2ab63-tAphLj4mFsMlrxSHFVhdxfBf0MM\"",
-    "mtime": "2026-08-06T13:13:07.794Z",
-    "size": 174947,
+    "etag": "\"2ad44-YM7RwezzbBIGSKdlWqtizb50LqU\"",
+    "mtime": "2026-08-06T13:19:27.521Z",
+    "size": 175428,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"9fa05-Ob1uzEVtzcZHalDLAtlbpvbBi30\"",
-    "mtime": "2026-08-06T13:13:07.794Z",
-    "size": 653829,
+    "etag": "\"9face-JO+IW0FspZv/Kw6MtRmV7s9DOsA\"",
+    "mtime": "2026-08-06T13:19:27.521Z",
+    "size": 654030,
     "path": "index.mjs.map"
   }
 };
@@ -2826,14 +2826,14 @@ async function loadActiveCertificate() {
 
 const SEFAZ_ENDPOINTS = {
   homologacao: {
-    autorizacao: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeAutorizacao4",
-    retAutorizacao: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeRetAutorizacao4",
-    statusServico: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeStatusServico4"
+    autorizacao: "https://homologacao.sefaz.rr.gov.br/nfeweb/services/NfeAutorizacao4",
+    retAutorizacao: "https://homologacao.sefaz.rr.gov.br/nfeweb/services/NfeRetAutorizacao4",
+    statusServico: "https://homologacao.sefaz.rr.gov.br/nfeweb/services/NfeStatusServico4"
   },
   producao: {
-    autorizacao: "https://nfe.sefaz.rr.gov.br/nfe2/services/NfeAutorizacao4",
-    retAutorizacao: "https://nfe.sefaz.rr.gov.br/nfe2/services/NfeRetAutorizacao4",
-    statusServico: "https://nfe.sefaz.rr.gov.br/nfe2/services/NfeStatusServico4"
+    autorizacao: "https://nfe.sefaz.rr.gov.br/nfeweb/services/NfeAutorizacao4",
+    retAutorizacao: "https://nfe.sefaz.rr.gov.br/nfeweb/services/NfeRetAutorizacao4",
+    statusServico: "https://nfe.sefaz.rr.gov.br/nfeweb/services/NfeStatusServico4"
   }
 };
 function extractTag(xml, tag) {
