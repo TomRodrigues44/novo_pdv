@@ -15,6 +15,17 @@ export default defineEventHandler(async () => {
         s.xml_chave,
         s.xml_numero,
         s.xml_status,
+        CASE
+          WHEN EXISTS (
+            SELECT 1 FROM nfe n
+            WHERE n.sale_id::text = s.id::text AND n.status = 'autorizada'
+          ) THEN 'NFe'
+          WHEN EXISTS (
+            SELECT 1 FROM nfce n
+            WHERE n.sale_id::text = s.id::text AND n.status = 'autorizada'
+          ) THEN 'NFCe'
+          ELSE NULL
+        END AS fiscal_model,
         COALESCE(
           (SELECT json_agg(json_build_object(
             'id', si.id,

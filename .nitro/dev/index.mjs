@@ -937,7 +937,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"2bcb9-49s7EXAYV4ndW41t5tx8yEEBIJ4\"",
+    "mtime": "2026-08-06T16:01:54.823Z",
+    "size": 179385,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"a3a7b-gIWngoc/EhLPR40vX8YRHvUlefI\"",
+    "mtime": "2026-08-06T16:01:54.823Z",
+    "size": 670331,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -4838,6 +4853,17 @@ const sales_get = defineEventHandler(async () => {
         s.xml_chave,
         s.xml_numero,
         s.xml_status,
+        CASE
+          WHEN EXISTS (
+            SELECT 1 FROM nfe n
+            WHERE n.sale_id::text = s.id::text AND n.status = 'autorizada'
+          ) THEN 'NFe'
+          WHEN EXISTS (
+            SELECT 1 FROM nfce n
+            WHERE n.sale_id::text = s.id::text AND n.status = 'autorizada'
+          ) THEN 'NFCe'
+          ELSE NULL
+        END AS fiscal_model,
         COALESCE(
           (SELECT json_agg(json_build_object(
             'id', si.id,
