@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2b1a3-lqUwpypIV2xXc1Nph+zQmnX7eC8\"",
-    "mtime": "2026-08-06T14:41:27.066Z",
-    "size": 176547,
+    "etag": "\"2b28f-DubcZAcIELAVNs/uasPtt1r2aZo\"",
+    "mtime": "2026-08-06T14:42:09.139Z",
+    "size": 176783,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"a0b01-l9fGWSZklXko9wo32JO0kr45Vi8\"",
-    "mtime": "2026-08-06T14:41:27.082Z",
-    "size": 658177,
+    "etag": "\"a121a-pHH7CvoBXF29hKFtpQayJVf3XJI\"",
+    "mtime": "2026-08-06T14:42:09.155Z",
+    "size": 659994,
     "path": "index.mjs.map"
   }
 };
@@ -2852,6 +2852,16 @@ function extractTag(xml, tag) {
   const match = xml.match(expression);
   return ((_a = match == null ? void 0 : match[1]) == null ? void 0 : _a.trim()) || null;
 }
+function extractTags(xml, tag) {
+  const expression = new RegExp(
+    `<(?:[\\w.-]+:)?${tag}\\b[^>]*>([\\s\\S]*?)</(?:[\\w.-]+:)?${tag}>`,
+    "gi"
+  );
+  return [...xml.matchAll(expression)].map((match) => {
+    var _a;
+    return (_a = match[1]) == null ? void 0 : _a.trim();
+  }).filter((value) => Boolean(value));
+}
 function extractElement(xml, tag) {
   var _a;
   const expression = new RegExp(
@@ -2867,19 +2877,14 @@ function sendSoapRequest(url, soapBody, certificate, environment, soapAction) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const isProduction = environment === "producao";
-    console.log(
-      `[NFE] POST ${url} (${isProduction ? "produ\xE7\xE3o" : "homologa\xE7\xE3o"})`
-    );
-    const agentOptions = {
+    console.log(`[NFE] POST ${url} (${isProduction ? "produ\xE7\xE3o" : "homologa\xE7\xE3o"})`);
+    const agent = new https.Agent({
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
       ca: TRUSTED_CA_CERTIFICATES,
-      // A SVRS de homologação pode apresentar uma cadeia ICP-Brasil incompleta.
-      // Produção permanece estritamente validada.
       rejectUnauthorized: isProduction,
       keepAlive: false
-    };
-    const agent = new https.Agent(agentOptions);
+    });
     const request = https.request(urlObj, {
       agent,
       method: "POST",
@@ -2924,8 +2929,10 @@ function parseAuthorizationResponse(responseXml, httpStatus) {
       rawResponse: responseXml
     };
   }
-  const cStat = extractTag(responseXml, "cStat");
-  const xMotivo = extractTag(responseXml, "xMotivo");
+  const statusCodes = extractTags(responseXml, "cStat");
+  const messages = extractTags(responseXml, "xMotivo");
+  const cStat = statusCodes.at(-1) || null;
+  const xMotivo = messages.at(-1) || null;
   const protocol = extractTag(responseXml, "nProt");
   const authorizationDate = extractTag(responseXml, "dhRecbto");
   const receipt = extractTag(responseXml, "nRec");
@@ -2945,6 +2952,14 @@ function parseAuthorizationResponse(responseXml, httpStatus) {
       success: false,
       status: "processando",
       message: "Lote recebido pela SEFAZ e aguardando processamento.",
+      rawResponse: responseXml
+    };
+  }
+  if (cStat === "104") {
+    return {
+      success: false,
+      status: "rejeitada",
+      message: "Lote processado pela SEFAZ, mas a autoriza\xE7\xE3o individual da NF-e n\xE3o foi encontrada na resposta.",
       rawResponse: responseXml
     };
   }

@@ -47,6 +47,17 @@ function extractTag(xml: string, tag: string): string | null {
   return match?.[1]?.trim() || null;
 }
 
+function extractTags(xml: string, tag: string): string[] {
+  const expression = new RegExp(
+    `<(?:[\\w.-]+:)?${tag}\\b[^>]*>([\\s\\S]*?)</(?:[\\w.-]+:)?${tag}>`,
+    'gi',
+  );
+
+  return [...xml.matchAll(expression)]
+    .map((match) => match[1]?.trim())
+    .filter((value): value is string => Boolean(value));
+}
+
 function extractElement(xml: string, tag: string): string | null {
   const expression = new RegExp(
     `<(?:[\\w.-]+:)?${tag}\\b[^>]*>[\\s\\S]*?</(?:[\\w.-]+:)?${tag}>`,
@@ -70,21 +81,15 @@ function sendSoapRequest(
     const urlObj = new URL(url);
     const isProduction = environment === 'producao';
 
-    console.log(
-      `[NFE] POST ${url} (${isProduction ? 'produção' : 'homologação'})`,
-    );
+    console.log(`[NFE] POST ${url} (${isProduction ? 'produção' : 'homologação'})`);
 
-    const agentOptions: https.AgentOptions = {
+    const agent = new https.Agent({
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
       ca: TRUSTED_CA_CERTIFICATES,
-      // A SVRS de homologação pode apresentar uma cadeia ICP-Brasil incompleta.
-      // Produção permanece estritamente validada.
       rejectUnauthorized: isProduction,
       keepAlive: false,
-    };
-
-    const agent = new https.Agent(agentOptions);
+    });
 
     const request = https.request(urlObj, {
       agent,
@@ -137,8 +142,10 @@ function parseAuthorizationResponse(responseXml: string, httpStatus: number): Nf
     };
   }
 
-  const cStat = extractTag(responseXml, 'cStat');
-  const xMotivo = extractTag(responseXml, 'xMotivo');
+  const statusCodes = extractTags(responseXml, 'cStat');
+  const messages = extractTags(responseXml, 'xMotivo');
+  const cStat = statusCodes.at(-1) || null;
+  const xMotivo = messages.at(-1) || null;
   const protocol = extractTag(responseXml, 'nProt');
   const authorizationDate = extractTag(responseXml, 'dhRecbto');
   const receipt = extractTag(responseXml, 'nRec');
@@ -160,6 +167,15 @@ function parseAuthorizationResponse(responseXml: string, httpStatus: number): Nf
       success: false,
       status: 'processando',
       message: 'Lote recebido pela SEFAZ e aguardando processamento.',
+      rawResponse: responseXml,
+    };
+  }
+
+  if (cStat === '104') {
+    return {
+      success: false,
+      status: 'rejeitada',
+      message: 'Lote processado pela SEFAZ, mas a autorização individual da NF-e não foi encontrada na resposta.',
       rawResponse: responseXml,
     };
   }
@@ -218,7 +234,6 @@ export async function authorizeNfe(
   const nfeXml = signedXml.replace(/^<\?xml[^>]*>\s*/i, '').trim();
 
   const innerXml = `<enviNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><idLote>${loteId}</idLote><indSinc>1</indSinc>${nfeXml}</enviNFe>`;
-
   const serviceNamespace = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4';
   const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
 
@@ -256,7 +271,6 @@ export async function checkStatusServico(
   const endpoint = SEFAZ_ENDPOINTS[normalizedEnvironment];
 
   const innerXml = `<consStatServ versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><tpAmb>${normalizedEnvironment === 'producao' ? '1' : '2'}</tpAmb><cUF>14</cUF><xServ>STATUS</xServ></consStatServ>`;
-
   const serviceNamespace = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4';
   const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
 
