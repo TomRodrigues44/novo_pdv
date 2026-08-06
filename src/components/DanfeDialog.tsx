@@ -148,7 +148,7 @@ export function DanfeDialog({
         <div ref={printRef} className="danfe-a4 mx-auto bg-white p-8 text-black" style={{ width: '210mm', minHeight: '297mm' }}>
           <div className="mb-3 flex justify-center border-2 border-black p-2">
             <img
-              src="/logo-emporio.jpg"
+              src="/products/logo-emporio.jpg"
               alt="Empório das Coxinhas"
               className="h-auto max-h-24 w-auto max-w-[420px] object-contain"
             />
