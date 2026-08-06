@@ -52,7 +52,7 @@
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.4%;
     --ring: 212.7 26.8% 83.9%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -113,6 +113,33 @@
 
 .danfe-a4 > div:nth-of-type(9) {
   order: 9;
+}
+
+/* Destaque do quadro central do DANFE. */
+.danfe-a4 > div:nth-of-type(2) > div:nth-child(2) > p:first-child {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.danfe-a4 > div:nth-of-type(2) > div:nth-child(2) > p:nth-of-type(2),
+.danfe-a4 > div:nth-of-type(2) > div:nth-child(2) > p:nth-of-type(3) {
+  font-size: 0.72rem;
+  line-height: 1.15;
+}
+
+.danfe-a4 > div:nth-of-type(2) > div:nth-child(2) > div {
+  min-width: 130px;
+  padding: 0.35rem 0.5rem;
+}
+
+.danfe-a4 > div:nth-of-type(2) > div:nth-child(2) > div p {
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.danfe-a4 > div:nth-of-type(2) > div:nth-child(2) > div p:first-child {
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 /* Linha exclusiva do valor total na seção "Cálculo do Imposto" da DANFE. */
