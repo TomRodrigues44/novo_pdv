@@ -9,14 +9,14 @@ const SEFAZ_ENDPOINTS: Record<SefazEnvironment, {
   statusServico: string;
 }> = {
   homologacao: {
-    autorizacao: 'https://homologacao.sefaz.rr.gov.br/services/NfeAutorizacao4',
-    retAutorizacao: 'https://homologacao.sefaz.rr.gov.br/services/NfeRetAutorizacao4',
-    statusServico: 'https://homologacao.sefaz.rr.gov.br/services/NfeStatusServico4',
+    autorizacao: 'https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeAutorizacao4',
+    retAutorizacao: 'https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeRetAutorizacao4',
+    statusServico: 'https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeStatusServico4',
   },
   producao: {
-    autorizacao: 'https://nfe.sefaz.rr.gov.br/services/NfeAutorizacao4',
-    retAutorizacao: 'https://nfe.sefaz.rr.gov.br/services/NfeRetAutorizacao4',
-    statusServico: 'https://nfe.sefaz.rr.gov.br/services/NfeStatusServico4',
+    autorizacao: 'https://nfe.sefaz.rr.gov.br/nfe2/services/NfeAutorizacao4',
+    retAutorizacao: 'https://nfe.sefaz.rr.gov.br/nfe2/services/NfeRetAutorizacao4',
+    statusServico: 'https://nfe.sefaz.rr.gov.br/nfe2/services/NfeStatusServico4',
   },
 };
 
@@ -68,21 +68,20 @@ function sendSoapRequest(
   soapBody: string,
   certificate: LoadedCertificate,
   environment: SefazEnvironment,
+  soapAction: string,
 ): Promise<{ statusCode: number; body: string }> {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const isProduction = environment === 'producao';
 
     console.log(
-      `[NFE] TLS ${isProduction ? 'verificado' : 'de homologação'}: ${urlObj.hostname}`,
+      `[NFE] Requisição para ${urlObj.hostname}${urlObj.pathname} (${isProduction ? 'produção' : 'homologação'})`,
     );
 
     const agentOptions: https.AgentOptions = {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
-      // TEMPORARY: Disable certificate validation for testing
-      // In a production environment, this should be properly configured
-      // to validate the SEFAZ server certificate
+      // Aceitar certificado do servidor SEFAZ (a CA ICP-Brasil pode não estar no store do Node.js)
       rejectUnauthorized: false,
       keepAlive: false,
     };
@@ -95,7 +94,7 @@ function sendSoapRequest(
       timeout: 60000,
       headers: {
         Accept: 'application/soap+xml, text/xml, */*',
-        'Content-Type': `application/soap+xml; charset=utf-8; action="${serviceAction}"`,
+        'Content-Type': `application/soap+xml; charset=utf-8; action="${soapAction}"`,
         'Content-Length': Buffer.byteLength(soapBody),
         'User-Agent': 'PDV-NFe/1.0',
       },
@@ -208,6 +207,7 @@ async function pollForResult(
     soapBody,
     certificate,
     environment,
+    'nfeRetAutorizacaoLote4',
   );
 
   return parseAuthorizationResponse(response.body, response.statusCode);
@@ -244,6 +244,7 @@ export async function authorizeNfe(
     soapBody,
     certificate,
     normalizedEnvironment,
+    'nfeAutorizacaoLote4',
   );
 
   let result = parseAuthorizationResponse(response.body, response.statusCode);
@@ -286,6 +287,7 @@ export async function checkStatusServico(
     soapBody,
     certificate,
     normalizedEnvironment,
+    'nfeStatusServicoNF4',
   );
 
   return {

@@ -936,7 +936,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"2ab63-tAphLj4mFsMlrxSHFVhdxfBf0MM\"",
+    "mtime": "2026-08-06T13:13:07.794Z",
+    "size": 174947,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"9fa05-Ob1uzEVtzcZHalDLAtlbpvbBi30\"",
+    "mtime": "2026-08-06T13:13:07.794Z",
+    "size": 653829,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -2811,14 +2826,14 @@ async function loadActiveCertificate() {
 
 const SEFAZ_ENDPOINTS = {
   homologacao: {
-    autorizacao: "https://homologacao.sefaz.rr.gov.br/services/NfeAutorizacao4",
-    retAutorizacao: "https://homologacao.sefaz.rr.gov.br/services/NfeRetAutorizacao4",
-    statusServico: "https://homologacao.sefaz.rr.gov.br/services/NfeStatusServico4"
+    autorizacao: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeAutorizacao4",
+    retAutorizacao: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeRetAutorizacao4",
+    statusServico: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeStatusServico4"
   },
   producao: {
-    autorizacao: "https://nfe.sefaz.rr.gov.br/services/NfeAutorizacao4",
-    retAutorizacao: "https://nfe.sefaz.rr.gov.br/services/NfeRetAutorizacao4",
-    statusServico: "https://nfe.sefaz.rr.gov.br/services/NfeStatusServico4"
+    autorizacao: "https://nfe.sefaz.rr.gov.br/nfe2/services/NfeAutorizacao4",
+    retAutorizacao: "https://nfe.sefaz.rr.gov.br/nfe2/services/NfeRetAutorizacao4",
+    statusServico: "https://nfe.sefaz.rr.gov.br/nfe2/services/NfeStatusServico4"
   }
 };
 function extractTag(xml, tag) {
@@ -2838,34 +2853,32 @@ function extractElement(xml, tag) {
   );
   return ((_a = xml.match(expression)) == null ? void 0 : _a[0]) || null;
 }
-function buildSoapEnvelope(serviceAction2, serviceNamespace, innerXml) {
+function buildSoapEnvelope(serviceAction, serviceNamespace, innerXml) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <soap:Envelope
   xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <soap:Body>
-    <${serviceAction2} xmlns="${serviceNamespace}">
+    <${serviceAction} xmlns="${serviceNamespace}">
       <nfeDadosMsg>
 ${innerXml}
       </nfeDadosMsg>
-    </${serviceAction2}>
+    </${serviceAction}>
   </soap:Body>
 </soap:Envelope>`;
 }
-function sendSoapRequest(url, soapBody, certificate, environment) {
+function sendSoapRequest(url, soapBody, certificate, environment, soapAction) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const isProduction = environment === "producao";
     console.log(
-      `[NFE] TLS ${isProduction ? "verificado" : "de homologa\xE7\xE3o"}: ${urlObj.hostname}`
+      `[NFE] Requisi\xE7\xE3o para ${urlObj.hostname}${urlObj.pathname} (${isProduction ? "produ\xE7\xE3o" : "homologa\xE7\xE3o"})`
     );
     const agentOptions = {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
-      // TEMPORARY: Disable certificate validation for testing
-      // In a production environment, this should be properly configured
-      // to validate the SEFAZ server certificate
+      // Aceitar certificado do servidor SEFAZ (a CA ICP-Brasil pode não estar no store do Node.js)
       rejectUnauthorized: false,
       keepAlive: false
     };
@@ -2876,7 +2889,7 @@ function sendSoapRequest(url, soapBody, certificate, environment) {
       timeout: 6e4,
       headers: {
         Accept: "application/soap+xml, text/xml, */*",
-        "Content-Type": `application/soap+xml; charset=utf-8; action="${serviceAction}"`,
+        "Content-Type": `application/soap+xml; charset=utf-8; action="${soapAction}"`,
         "Content-Length": Buffer.byteLength(soapBody),
         "User-Agent": "PDV-NFe/1.0"
       }
@@ -2968,7 +2981,8 @@ async function pollForResult(receipt, environment, certificate) {
     endpoint.retAutorizacao,
     soapBody,
     certificate,
-    environment
+    environment,
+    "nfeRetAutorizacaoLote4"
   );
   return parseAuthorizationResponse(response.body, response.statusCode);
 }
@@ -2992,7 +3006,8 @@ async function authorizeNfe(signedXml, _accessKey, environment, certificate) {
     endpoint.autorizacao,
     soapBody,
     certificate,
-    normalizedEnvironment
+    normalizedEnvironment,
+    "nfeAutorizacaoLote4"
   );
   let result = parseAuthorizationResponse(response.body, response.statusCode);
   if (result.status === "processando") {
@@ -3022,7 +3037,8 @@ async function checkStatusServico(environment, certificate) {
     endpoint.statusServico,
     soapBody,
     certificate,
-    normalizedEnvironment
+    normalizedEnvironment,
+    "nfeStatusServicoNF4"
   );
   return {
     status: extractTag(response.body, "cStat") || `HTTP-${response.statusCode}`,
