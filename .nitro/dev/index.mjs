@@ -27,7 +27,6 @@ import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793
 import forge from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/node-forge@1.4.0/node_modules/node-forge/lib/index.js';
 import QRCode from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
 import https from 'node:https';
-import { getCACertificates } from 'node:tls';
 import { Pool } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pg@8.22.0/node_modules/pg/esm/index.mjs';
 import { v4 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
 
@@ -940,16 +939,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2b53a-hjJalkq4EBAGhJPsYvZaRbgOhiA\"",
-    "mtime": "2026-08-06T14:43:47.261Z",
-    "size": 177466,
+    "etag": "\"2b539-9Suupqk1oFrYajzkyi5BpLijFZE\"",
+    "mtime": "2026-08-06T14:44:35.934Z",
+    "size": 177465,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"a1d15-+UIcwDxTefpY4I+6VmQyaWBecNY\"",
-    "mtime": "2026-08-06T14:43:47.277Z",
-    "size": 662805,
+    "etag": "\"a1d10-aYvijny3fJ3EcpvgDDF2yZuKeWs\"",
+    "mtime": "2026-08-06T14:44:35.943Z",
+    "size": 662800,
     "path": "index.mjs.map"
   }
 };
@@ -2825,12 +2824,6 @@ async function loadActiveCertificate() {
   }
 }
 
-const TRUSTED_CA_CERTIFICATES = [
-  .../* @__PURE__ */ new Set([
-    ...getCACertificates("default"),
-    ...getCACertificates("system")
-  ])
-];
 const SEFAZ_ENDPOINTS = {
   homologacao: {
     autorizacao: "https://nfe-homologacao.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
@@ -2881,8 +2874,7 @@ function sendSoapRequest(url, soapBody, certificate, environment, soapAction) {
     const agent = new https.Agent({
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
-      ca: TRUSTED_CA_CERTIFICATES,
-      rejectUnauthorized: isProduction,
+      rejectUnauthorized: true,
       keepAlive: false
     });
     const request = https.request(urlObj, {
