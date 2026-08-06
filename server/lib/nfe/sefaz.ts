@@ -9,14 +9,14 @@ const SEFAZ_ENDPOINTS: Record<SefazEnvironment, {
   statusServico: string;
 }> = {
   homologacao: {
-    autorizacao: 'https://homologacao.sefaz.rr.gov.br/nfeweb/services/NfeAutorizacao4',
-    retAutorizacao: 'https://homologacao.sefaz.rr.gov.br/nfeweb/services/NfeRetAutorizacao4',
-    statusServico: 'https://homologacao.sefaz.rr.gov.br/nfeweb/services/NfeStatusServico4',
+    autorizacao: 'https://homologacao.sefaz.rr.gov.br/nfe2/services/NFeAutorizacao4',
+    retAutorizacao: 'https://homologacao.sefaz.rr.gov.br/nfe2/services/NFeRetAutorizacao4',
+    statusServico: 'https://homologacao.sefaz.rr.gov.br/nfe2/services/NFeStatusServico4',
   },
   producao: {
-    autorizacao: 'https://nfe.sefaz.rr.gov.br/nfeweb/services/NfeAutorizacao4',
-    retAutorizacao: 'https://nfe.sefaz.rr.gov.br/nfeweb/services/NfeRetAutorizacao4',
-    statusServico: 'https://nfe.sefaz.rr.gov.br/nfeweb/services/NfeStatusServico4',
+    autorizacao: 'https://nfe.sefaz.rr.gov.br/nfe2/services/NFeAutorizacao4',
+    retAutorizacao: 'https://nfe.sefaz.rr.gov.br/nfe2/services/NFeRetAutorizacao4',
+    statusServico: 'https://nfe.sefaz.rr.gov.br/nfe2/services/NFeStatusServico4',
   },
 };
 
@@ -75,7 +75,7 @@ function sendSoapRequest(
     const isProduction = environment === 'producao';
 
     console.log(
-      `[NFE] Requisição para ${urlObj.hostname}${urlObj.pathname} (${isProduction ? 'produção' : 'homologação'})`,
+      `[NFE] POST ${url} (${isProduction ? 'produção' : 'homologação'})`,
     );
 
     const agentOptions: https.AgentOptions = {
