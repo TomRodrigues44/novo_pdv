@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2b2a8-1p0efhPFZtKrXLY7nZh4/M57Xes\"",
-    "mtime": "2026-08-06T14:50:45.905Z",
-    "size": 176808,
+    "etag": "\"2b4c4-b0f9SOZXIejd0+6HN0TbqDZNa8o\"",
+    "mtime": "2026-08-06T14:52:15.456Z",
+    "size": 177348,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"a183f-cx+Tz2BrQ29klT1/jHG37+pBoNk\"",
-    "mtime": "2026-08-06T14:50:45.905Z",
-    "size": 661567,
+    "etag": "\"a1a17-s8VUXDSITM4+WRvJp/mcB0k/Byc\"",
+    "mtime": "2026-08-06T14:52:15.472Z",
+    "size": 662039,
     "path": "index.mjs.map"
   }
 };
@@ -1076,9 +1076,11 @@ const _lazy_o3Jy8Y = () => Promise.resolve().then(function () { return nfce_get$
 const _lazy_IbtS6o = () => Promise.resolve().then(function () { return qrCode_get$1; });
 const _lazy_jCpQHj = () => Promise.resolve().then(function () { return _sale_id__get$1; });
 const _lazy_MwmAsd = () => Promise.resolve().then(function () { return emitir_post$3; });
-const _lazy_9g6I2U = () => Promise.resolve().then(function () { return _id__get$1; });
+const _lazy_9g6I2U = () => Promise.resolve().then(function () { return _id__get$3; });
+const _lazy_ni6qrk = () => Promise.resolve().then(function () { return nfe_get$1; });
 const _lazy_VzYBUW = () => Promise.resolve().then(function () { return _saleId__get$1; });
 const _lazy_Ubuh2Q = () => Promise.resolve().then(function () { return emitir_post$1; });
+const _lazy_A87TZM = () => Promise.resolve().then(function () { return _id__get$1; });
 const _lazy_T_NEx7 = () => Promise.resolve().then(function () { return products_get$1; });
 const _lazy_dTrC0F = () => Promise.resolve().then(function () { return products_post$1; });
 const _lazy_gYdxNd = () => Promise.resolve().then(function () { return _id__delete$1; });
@@ -1128,8 +1130,10 @@ const handlers = [
   { route: '/api/nfce/:sale_id', handler: _lazy_jCpQHj, lazy: true, middleware: false, method: "get" },
   { route: '/api/nfce/emitir', handler: _lazy_MwmAsd, lazy: true, middleware: false, method: "post" },
   { route: '/api/nfce/xml/:id', handler: _lazy_9g6I2U, lazy: true, middleware: false, method: "get" },
+  { route: '/api/nfe', handler: _lazy_ni6qrk, lazy: true, middleware: false, method: "get" },
   { route: '/api/nfe/:saleId', handler: _lazy_VzYBUW, lazy: true, middleware: false, method: "get" },
   { route: '/api/nfe/emitir', handler: _lazy_Ubuh2Q, lazy: true, middleware: false, method: "post" },
+  { route: '/api/nfe/xml/:id', handler: _lazy_A87TZM, lazy: true, middleware: false, method: "get" },
   { route: '/api/products', handler: _lazy_T_NEx7, lazy: true, middleware: false, method: "get" },
   { route: '/api/products', handler: _lazy_dTrC0F, lazy: true, middleware: false, method: "post" },
   { route: '/api/products/:id', handler: _lazy_gYdxNd, lazy: true, middleware: false, method: "delete" },
@@ -3931,7 +3935,7 @@ const emitir_post$3 = /*#__PURE__*/Object.freeze({
   default: emitir_post$2
 });
 
-const _id__get = defineEventHandler(async (event) => {
+const _id__get$2 = defineEventHandler(async (event) => {
   const id = getRouterParam(event, "id");
   if (!id || !/^\d+$/.test(id)) {
     throw createError({
@@ -3972,9 +3976,42 @@ const _id__get = defineEventHandler(async (event) => {
   }
 });
 
-const _id__get$1 = /*#__PURE__*/Object.freeze({
+const _id__get$3 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: _id__get
+  default: _id__get$2
+});
+
+const nfe_get = defineEventHandler(async () => {
+  try {
+    const notes = await sql`
+      SELECT
+        n.id AS nfe_id,
+        n.sale_id::text AS id,
+        n.chave_acesso AS xml_chave,
+        n.numero AS xml_numero,
+        n.status AS xml_status,
+        COALESCE(n.data_autorizacao, n.data_emissao, n.created_at) AS created_at,
+        n.valor_total AS total_amount,
+        c.name AS customer_name
+      FROM nfe n
+      LEFT JOIN customers c ON c.id = n.customer_id
+      WHERE n.status = 'autorizada'
+        AND NULLIF(n.xml_envio, '') IS NOT NULL
+      ORDER BY COALESCE(n.data_autorizacao, n.data_emissao, n.created_at) DESC
+    `;
+    return notes;
+  } catch (error) {
+    console.error("Error fetching NFe XMLs:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Erro ao carregar XMLs de NF-e"
+    });
+  }
+});
+
+const nfe_get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: nfe_get
 });
 
 const _saleId__get = defineEventHandler(async (event) => {
@@ -4556,6 +4593,50 @@ const emitir_post = defineEventHandler(async (event) => {
 const emitir_post$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: emitir_post
+});
+
+const _id__get = defineEventHandler(async (event) => {
+  const id = getRouterParam(event, "id");
+  if (!id || !/^\d+$/.test(id)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "ID da NF-e inv\xE1lido"
+    });
+  }
+  try {
+    const result = await sql`
+      SELECT numero, xml_envio
+      FROM nfe
+      WHERE id = ${id}
+        AND status = 'autorizada'
+      LIMIT 1
+    `;
+    if (result.length === 0 || !result[0].xml_envio) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "XML da NF-e n\xE3o encontrado"
+      });
+    }
+    setResponseHeaders(event, {
+      "Content-Type": "application/xml; charset=utf-8",
+      "Content-Disposition": `attachment; filename="nfe-${result[0].numero || id}.xml"`
+    });
+    return result[0].xml_envio;
+  } catch (error) {
+    console.error("Error downloading NFe XML:", error);
+    if (error.statusCode) {
+      throw error;
+    }
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Erro ao baixar XML de NF-e"
+    });
+  }
+});
+
+const _id__get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: _id__get
 });
 
 const products_get = defineEventHandler(async () => {
