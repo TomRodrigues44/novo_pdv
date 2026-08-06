@@ -1,0 +1,11 @@
+<svg width="360" height="150" viewBox="0 0 360 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="360" height="150" rx="22" fill="#FFF7ED"/>
+  <path d="M36 112C37 76 57 44 91 33C126 22 163 40 175 74C185 103 169 124 150 130H55C44 130 36 122 36 112Z" fill="#EA580C"/>
+  <path d="M64 92C72 68 92 52 117 52C140 52 156 66 164 88C145 79 124 77 105 81C90 84 77 88 64 92Z" fill="#FBBF24"/>
+  <path d="M79 109C90 98 105 92 121 92C137 92 151 98 160 109" stroke="#7C2D12" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="93" cy="76" r="5" fill="#7C2D12"/>
+  <circle cx="137" cy="76" r="5" fill="#7C2D12"/>
+  <text x="196" y="67" fill="#9A3412" font-family="Arial, sans-serif" font-size="23" font-weight="700">EMPÓRIO DAS</text>
+  <text x="194" y="104" fill="#EA580C" font-family="Arial, sans-serif" font-size="31" font-weight="800">COXINHAS</text>
+  <text x="197" y="125" fill="#78716C" font-family="Arial, sans-serif" font-size="12" font-weight="600">SABOR EM CADA MOMENTO</text>
+</svg>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import AdminSidebar from '@/components/AdminSidebar';
+import { EmporioLogo } from '@/components/EmporioLogo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -131,8 +132,10 @@ const AdminNfe = () => {
       setCustomer(emptyCustomer);
       return;
     }
+
     const selected = customers.find((entry) => String(entry.id) === id);
     if (!selected) return;
+
     setCustomer({
       id: String(selected.id),
       name: selected.name || '',
@@ -182,8 +185,10 @@ const AdminNfe = () => {
       toast.error('Selecione um motoboy para a entrega com frete.');
       return;
     }
+
     setEmitting(true);
     setResult(null);
+
     try {
       const response = await fetch('/api/nfe/emitir', {
         method: 'POST',
@@ -199,9 +204,11 @@ const AdminNfe = () => {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.statusMessage || data.message || 'Erro ao emitir NF-e');
+
       setResult(data);
       setIsDanfeOpen(true);
       toast.success('NF-e autorizada e DANFE gerado!');
+
       if (data.sangriaCreated) {
         toast.info('Sangria de frete registrada no fluxo de caixa.');
       }
@@ -228,20 +235,23 @@ const AdminNfe = () => {
       <AdminSidebar />
       <main className="ml-64 min-h-screen flex-1 bg-gray-50 p-8">
         <div className="mx-auto max-w-6xl space-y-6">
-          <div>
-            <div className="flex items-center gap-3">
-              <FileCheck2 className="h-8 w-8 text-orange-600" />
-              <h1 className="text-3xl font-bold">Emissão de NF-e</h1>
-              <Badge variant="secondary">Modelo 55</Badge>
-              {fiscalEnv === 'producao' ? (
-                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Produção</Badge>
-              ) : (
-                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Homologação / Simulação</Badge>
-              )}
+          <div className="flex flex-col justify-between gap-4 rounded-2xl border border-orange-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center">
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <FileCheck2 className="h-8 w-8 text-orange-600" />
+                <h1 className="text-3xl font-bold">Emissão de NF-e</h1>
+                <Badge variant="secondary">Modelo 55</Badge>
+                {fiscalEnv === 'producao' ? (
+                  <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Produção</Badge>
+                ) : (
+                  <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Homologação / Simulação</Badge>
+                )}
+              </div>
+              <p className="mt-2 text-gray-600">
+                A NF-e é assinada digitalmente e enviada para a SEFAZ. A venda só é registrada após a autorização.
+              </p>
             </div>
-            <p className="mt-1 text-gray-600">
-              A NF-e é assinada digitalmente e enviada para a SEFAZ. A venda só é registrada após a autorização.
-            </p>
+            <EmporioLogo className="self-start sm:self-auto" />
           </div>
 
           <Card>
