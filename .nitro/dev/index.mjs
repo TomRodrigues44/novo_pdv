@@ -939,16 +939,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2ace4-XgM25kGyiz7Ru1vsBPnWxCDt+e4\"",
-    "mtime": "2026-08-06T12:45:39.284Z",
-    "size": 175332,
+    "etag": "\"2acfb-OXl0c56L89krvl7+bInfCgqnQzI\"",
+    "mtime": "2026-08-06T13:10:12.160Z",
+    "size": 175355,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"9fa9d-TGkgJhYHWfomPwaujQFmWaUdPBk\"",
-    "mtime": "2026-08-06T12:45:39.285Z",
-    "size": 653981,
+    "etag": "\"9fa14-3T+K+WThERoltoUAhHH3Eq+0tmI\"",
+    "mtime": "2026-08-06T13:10:12.192Z",
+    "size": 653844,
     "path": "index.mjs.map"
   }
 };
@@ -2826,14 +2826,14 @@ async function loadActiveCertificate() {
 
 const SEFAZ_ENDPOINTS = {
   homologacao: {
-    autorizacao: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeAutorizacao4",
-    retAutorizacao: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeRetAutorizacao4",
-    statusServico: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeStatusServico4"
+    autorizacao: "https://homologacao.sefaz.rr.gov.br/services/NfeAutorizacao4",
+    retAutorizacao: "https://homologacao.sefaz.rr.gov.br/services/NfeRetAutorizacao4",
+    statusServico: "https://homologacao.sefaz.rr.gov.br/services/NfeStatusServico4"
   },
   producao: {
-    autorizacao: "https://nfe.sefaz.rr.gov.br/nfe2/services/NfeAutorizacao4",
-    retAutorizacao: "https://nfe.sefaz.rr.gov.br/nfe2/services/NfeRetAutorizacao4",
-    statusServico: "https://nfe.sefaz.rr.gov.br/nfe2/services/NfeStatusServico4"
+    autorizacao: "https://nfe.sefaz.rr.gov.br/services/NfeAutorizacao4",
+    retAutorizacao: "https://nfe.sefaz.rr.gov.br/services/NfeRetAutorizacao4",
+    statusServico: "https://nfe.sefaz.rr.gov.br/services/NfeStatusServico4"
   }
 };
 function extractTag(xml, tag) {
@@ -2853,18 +2853,18 @@ function extractElement(xml, tag) {
   );
   return ((_a = xml.match(expression)) == null ? void 0 : _a[0]) || null;
 }
-function buildSoapEnvelope(serviceAction, serviceNamespace, innerXml) {
+function buildSoapEnvelope(serviceAction2, serviceNamespace, innerXml) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <soap:Envelope
   xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <soap:Body>
-    <${serviceAction} xmlns="${serviceNamespace}">
+    <${serviceAction2} xmlns="${serviceNamespace}">
       <nfeDadosMsg>
 ${innerXml}
       </nfeDadosMsg>
-    </${serviceAction}>
+    </${serviceAction2}>
   </soap:Body>
 </soap:Envelope>`;
 }
@@ -2878,9 +2878,10 @@ function sendSoapRequest(url, soapBody, certificate, environment) {
     const agentOptions = {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
-      // Em homologação (ambiente de teste), desativar validação de certificado
-      // pois o servidor SEFAZ usa certificado autoassinado para testes
-      rejectUnauthorized: isProduction,
+      // TEMPORARY: Disable certificate validation for testing
+      // In a production environment, this should be properly configured
+      // to validate the SEFAZ server certificate
+      rejectUnauthorized: false,
       keepAlive: false
     };
     const agent = new https.Agent(agentOptions);
@@ -2890,7 +2891,7 @@ function sendSoapRequest(url, soapBody, certificate, environment) {
       timeout: 6e4,
       headers: {
         Accept: "application/soap+xml, text/xml, */*",
-        "Content-Type": 'application/soap+xml; charset=utf-8; action="nfeAutorizacaoLote"',
+        "Content-Type": `application/soap+xml; charset=utf-8; action="${serviceAction}"`,
         "Content-Length": Buffer.byteLength(soapBody),
         "User-Agent": "PDV-NFe/1.0"
       }

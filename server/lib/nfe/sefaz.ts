@@ -9,14 +9,14 @@ const SEFAZ_ENDPOINTS: Record<SefazEnvironment, {
   statusServico: string;
 }> = {
   homologacao: {
-    autorizacao: 'https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeAutorizacao4',
-    retAutorizacao: 'https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeRetAutorizacao4',
-    statusServico: 'https://homologacao.sefaz.rr.gov.br/nfe2/services/NfeStatusServico4',
+    autorizacao: 'https://homologacao.sefaz.rr.gov.br/services/NfeAutorizacao4',
+    retAutorizacao: 'https://homologacao.sefaz.rr.gov.br/services/NfeRetAutorizacao4',
+    statusServico: 'https://homologacao.sefaz.rr.gov.br/services/NfeStatusServico4',
   },
   producao: {
-    autorizacao: 'https://nfe.sefaz.rr.gov.br/nfe2/services/NfeAutorizacao4',
-    retAutorizacao: 'https://nfe.sefaz.rr.gov.br/nfe2/services/NfeRetAutorizacao4',
-    statusServico: 'https://nfe.sefaz.rr.gov.br/nfe2/services/NfeStatusServico4',
+    autorizacao: 'https://nfe.sefaz.rr.gov.br/services/NfeAutorizacao4',
+    retAutorizacao: 'https://nfe.sefaz.rr.gov.br/services/NfeRetAutorizacao4',
+    statusServico: 'https://nfe.sefaz.rr.gov.br/services/NfeStatusServico4',
   },
 };
 
@@ -80,9 +80,10 @@ function sendSoapRequest(
     const agentOptions: https.AgentOptions = {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
-      // Em homologação (ambiente de teste), desativar validação de certificado
-      // pois o servidor SEFAZ usa certificado autoassinado para testes
-      rejectUnauthorized: isProduction,
+      // TEMPORARY: Disable certificate validation for testing
+      // In a production environment, this should be properly configured
+      // to validate the SEFAZ server certificate
+      rejectUnauthorized: false,
       keepAlive: false,
     };
 
@@ -94,7 +95,7 @@ function sendSoapRequest(
       timeout: 60000,
       headers: {
         Accept: 'application/soap+xml, text/xml, */*',
-        'Content-Type': 'application/soap+xml; charset=utf-8; action="nfeAutorizacaoLote"',
+        'Content-Type': `application/soap+xml; charset=utf-8; action="${serviceAction}"`,
         'Content-Length': Buffer.byteLength(soapBody),
         'User-Agent': 'PDV-NFe/1.0',
       },
