@@ -1,4 +1,5 @@
 import https from 'node:https';
+import { getCACertificates, rootCertificates } from 'node:tls';
 import type { LoadedCertificate } from './certificate';
 
 type SefazEnvironment = 'homologacao' | 'producao';
@@ -28,6 +29,11 @@ export interface NfeAuthorizationResult {
   authorizationDate?: string;
   authorizationXml?: string;
   rawResponse?: string;
+}
+
+function trustedCertificates() {
+  const systemCertificates = getCACertificates('system');
+  return [...new Set([...rootCertificates, ...systemCertificates])];
 }
 
 function extractTag(xml: string, tag: string): string | null {
@@ -71,13 +77,13 @@ function sendSoapRequest(
 ): Promise<{ statusCode: number; body: string }> {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
-    const isProduction = environment === 'producao';
 
-    console.log(`[NFE] POST ${url} (${isProduction ? 'produção' : 'homologação'})`);
+    console.log(`[NFE] POST ${url} (${environment === 'producao' ? 'produção' : 'homologação'})`);
 
     const agent = new https.Agent({
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
+      ca: trustedCertificates(),
       rejectUnauthorized: true,
       keepAlive: false,
     });
@@ -197,13 +203,11 @@ async function pollForResult(
 ): Promise<NfeAuthorizationResult> {
   const endpoint = SEFAZ_ENDPOINTS[environment];
   const innerXml = `<consReciNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><tpAmb>${environment === 'producao' ? '1' : '2'}</tpAmb><nRec>${receipt}</nRec></consReciNFe>`;
-
   const serviceNamespace = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4';
-  const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
 
   const response = await sendSoapRequest(
     endpoint.retAutorizacao,
-    soapBody,
+    buildSoapEnvelope(serviceNamespace, innerXml),
     certificate,
     environment,
     `${serviceNamespace}/nfeRetAutorizacaoLote`,
@@ -223,16 +227,12 @@ export async function authorizeNfe(
   const endpoint = SEFAZ_ENDPOINTS[normalizedEnvironment];
   const loteId = String(Date.now()).slice(-15);
   const nfeXml = signedXml.replace(/^<\?xml[^>]*>\s*/i, '').trim();
-
   const innerXml = `<enviNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><idLote>${loteId}</idLote><indSinc>1</indSinc>${nfeXml}</enviNFe>`;
   const serviceNamespace = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4';
-  const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
-
-  console.log(`[NFE] Enviando XML assinado para a SVRS (${normalizedEnvironment})...`);
 
   const response = await sendSoapRequest(
     endpoint.autorizacao,
-    soapBody,
+    buildSoapEnvelope(serviceNamespace, innerXml),
     certificate,
     normalizedEnvironment,
     `${serviceNamespace}/nfeAutorizacaoLote`,
@@ -244,7 +244,6 @@ export async function authorizeNfe(
     const receipt = extractTag(response.body, 'nRec');
 
     if (receipt) {
-      console.log(`[NFE] Lote recebido. Consultando recibo ${receipt}...`);
       await new Promise((resolve) => setTimeout(resolve, 3000));
       result = await pollForResult(receipt, normalizedEnvironment, certificate);
     }
@@ -260,14 +259,12 @@ export async function checkStatusServico(
   const normalizedEnvironment: SefazEnvironment =
     environment === 'producao' ? 'producao' : 'homologacao';
   const endpoint = SEFAZ_ENDPOINTS[normalizedEnvironment];
-
   const innerXml = `<consStatServ versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><tpAmb>${normalizedEnvironment === 'producao' ? '1' : '2'}</tpAmb><cUF>14</cUF><xServ>STATUS</xServ></consStatServ>`;
   const serviceNamespace = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4';
-  const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
 
   const response = await sendSoapRequest(
     endpoint.statusServico,
-    soapBody,
+    buildSoapEnvelope(serviceNamespace, innerXml),
     certificate,
     normalizedEnvironment,
     `${serviceNamespace}/nfeStatusServicoNF`,
