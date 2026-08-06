@@ -17,21 +17,21 @@ export async function ensureNfeSchema(client: SqlQueryClient = sql) {
   `);
 
   // Criar tabela digital_certificates se não existir
-  await client.query(`
-    CREATE TABLE IF NOT EXISTS digital_certificates (
-      id TEXT PRIMARY KEY,
-      nome TEXT NOT NULL,
-      arquivo BYTEA NOT NULL,
-      senha TEXT NOT NULL,
-      data_validade TIMESTAMPTZ NOT NULL,
-      ativo BOOLEAN DEFAULT false,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  await client.query(`
-    ALTER TABLE digital_certificates ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT false
-  `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS digital_certificates (
+        id TEXT PRIMARY KEY,
+        nome TEXT NOT NULL,
+        arquivo BYTEA NOT NULL,
+        senha TEXT NOT NULL,
+        data_validade TIMESTAMPTZ NOT NULL,
+        ativo BOOLEAN DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  
+    await client.query(`
+      ALTER TABLE digital_certificates ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT false
+    `);
 
   await client.query(`
     CREATE TABLE IF NOT EXISTS nfe (

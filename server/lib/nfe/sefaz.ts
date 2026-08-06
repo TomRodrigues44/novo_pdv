@@ -77,13 +77,16 @@ function sendSoapRequest(
       `[NFE] TLS ${isProduction ? 'verificado' : 'de homologação'}: ${urlObj.hostname}`,
     );
 
-    const agent = new https.Agent({
+    const agentOptions: https.AgentOptions = {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
+      // Em homologação (ambiente de teste), desativar validação de certificado
+      // pois o servidor SEFAZ usa certificado autoassinado para testes
       rejectUnauthorized: isProduction,
-      checkServerIdentity: isProduction ? undefined : () => undefined,
       keepAlive: false,
-    });
+    };
+
+    const agent = new https.Agent(agentOptions);
 
     const request = https.request(urlObj, {
       agent,

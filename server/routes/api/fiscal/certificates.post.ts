@@ -1,8 +1,10 @@
 import forge from 'node-forge';
 import { sql } from '../../../utils/db';
+import { ensureNfeSchema } from '../../../lib/nfe/schema';
 
 export default defineEventHandler(async (event) => {
   try {
+    await ensureNfeSchema();
     const formData = await readFormData(event);
 
     const file = formData.get('file') as File;
