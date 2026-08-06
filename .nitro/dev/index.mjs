@@ -27,6 +27,7 @@ import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793
 import forge from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/node-forge@1.4.0/node_modules/node-forge/lib/index.js';
 import QRCode from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
 import https from 'node:https';
+import { getCACertificates } from 'node:tls';
 import { Pool } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pg@8.22.0/node_modules/pg/esm/index.mjs';
 import { v4 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
 
@@ -939,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2b9f0-5cgteJbxEFIGlVeygsxnx3YFXN0\"",
-    "mtime": "2026-08-06T14:10:31.198Z",
-    "size": 178672,
+    "etag": "\"2ad1c-eyIoCfs4qioEux30PzengK8RtWM\"",
+    "mtime": "2026-08-06T14:16:08.384Z",
+    "size": 175388,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"a2a62-Y0DzDplOZ3GsHCmqf/9vB7FAeE4\"",
-    "mtime": "2026-08-06T14:10:31.198Z",
-    "size": 666210,
+    "etag": "\"9fa3f-DUzakSYmd1inR7PWxPq3OdGv0eU\"",
+    "mtime": "2026-08-06T14:16:08.384Z",
+    "size": 653887,
     "path": "index.mjs.map"
   }
 };
@@ -2824,6 +2825,12 @@ async function loadActiveCertificate() {
   }
 }
 
+const TRUSTED_CA_CERTIFICATES = [
+  .../* @__PURE__ */ new Set([
+    ...getCACertificates("default"),
+    ...getCACertificates("system")
+  ])
+];
 const SEFAZ_ENDPOINTS = {
   homologacao: {
     autorizacao: "https://nfe-homologacao.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
@@ -2871,6 +2878,7 @@ function sendSoapRequest(url, soapBody, certificate, environment, soapAction) {
     const agentOptions = {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
+      ca: TRUSTED_CA_CERTIFICATES,
       rejectUnauthorized: true,
       keepAlive: false
     };

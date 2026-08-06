@@ -1,7 +1,15 @@
 import https from 'node:https';
+import { getCACertificates } from 'node:tls';
 import type { LoadedCertificate } from './certificate';
 
 type SefazEnvironment = 'homologacao' | 'producao';
+
+const TRUSTED_CA_CERTIFICATES = [
+  ...new Set([
+    ...getCACertificates('default'),
+    ...getCACertificates('system'),
+  ]),
+];
 
 const SEFAZ_ENDPOINTS: Record<SefazEnvironment, {
   autorizacao: string;
@@ -74,6 +82,7 @@ function sendSoapRequest(
     const agentOptions: https.AgentOptions = {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
+      ca: TRUSTED_CA_CERTIFICATES,
       rejectUnauthorized: true,
       keepAlive: false,
     };
