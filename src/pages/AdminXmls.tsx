@@ -19,11 +19,14 @@ interface FiscalNote {
   customer_name: string | null;
 }
 
+type ModelFilter = "all" | "NF-e" | "NFC-e";
+
 const AdminXmls = () => {
   const [notes, setNotes] = useState<FiscalNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [modelFilter, setModelFilter] = useState<ModelFilter>("all");
 
   const fetchNotes = async () => {
     try {
@@ -73,6 +76,7 @@ const AdminXmls = () => {
   }, []);
 
   const filteredNotes = notes.filter((note) => {
+    const matchesModel = modelFilter === "all" || note.model === modelFilter;
     const matchesSearch = searchTerm === ""
       || note.id.includes(searchTerm)
       || note.model.toLowerCase().includes(searchTerm.toLowerCase())
@@ -80,7 +84,7 @@ const AdminXmls = () => {
 
     const matchesDate = dateFilter === "" || note.created_at.startsWith(dateFilter);
 
-    return matchesSearch && matchesDate;
+    return matchesModel && matchesSearch && matchesDate;
   });
 
   const downloadFile = (content: BlobPart, filename: string, type: string) => {
@@ -174,7 +178,34 @@ const AdminXmls = () => {
         </div>
 
         <Card className="mb-6">
-          <CardContent className="p-4">
+          <CardContent className="space-y-4 p-4">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant={modelFilter === "all" ? "default" : "outline"}
+                className={modelFilter === "all" ? "bg-orange-600 hover:bg-orange-700" : ""}
+                onClick={() => setModelFilter("all")}
+              >
+                Todas ({notes.length})
+              </Button>
+              <Button
+                type="button"
+                variant={modelFilter === "NF-e" ? "default" : "outline"}
+                className={modelFilter === "NF-e" ? "bg-blue-600 hover:bg-blue-700" : ""}
+                onClick={() => setModelFilter("NF-e")}
+              >
+                Apenas NF-e ({notes.filter((note) => note.model === "NF-e").length})
+              </Button>
+              <Button
+                type="button"
+                variant={modelFilter === "NFC-e" ? "default" : "outline"}
+                className={modelFilter === "NFC-e" ? "bg-amber-600 hover:bg-amber-700" : ""}
+                onClick={() => setModelFilter("NFC-e")}
+              >
+                Apenas NFC-e ({notes.filter((note) => note.model === "NFC-e").length})
+              </Button>
+            </div>
+
             <div className="flex flex-col gap-4 sm:flex-row">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -218,7 +249,7 @@ const AdminXmls = () => {
                 <FileText className="mx-auto mb-4 h-12 w-12 text-gray-300" />
                 <p className="text-lg">Nenhum XML encontrado</p>
                 <p className="mt-2 text-sm">
-                  {searchTerm || dateFilter
+                  {searchTerm || dateFilter || modelFilter !== "all"
                     ? 'Tente ajustar os filtros'
                     : 'As NF-e e NFC-e autorizadas aparecerão aqui'}
                 </p>
