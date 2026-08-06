@@ -56,9 +56,6 @@ declare module "nitropack/types" {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/company-config.get').default>>>>
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/company-config.post').default>>>>
     }
-    '/api/fiscal/diagnostic': {
-      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/diagnostic.get').default>>>>
-    }
     '/api/fiscal/test-connection': {
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/test-connection.post').default>>>>
     }

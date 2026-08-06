@@ -25,8 +25,8 @@ import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
 import forge from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/node-forge@1.4.0/node_modules/node-forge/lib/index.js';
-import https from 'node:https';
 import QRCode from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
+import https from 'node:https';
 import { Pool } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pg@8.22.0/node_modules/pg/esm/index.mjs';
 import { v4 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
 
@@ -936,7 +936,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"2b9f0-5cgteJbxEFIGlVeygsxnx3YFXN0\"",
+    "mtime": "2026-08-06T14:10:31.198Z",
+    "size": 178672,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"a2a62-Y0DzDplOZ3GsHCmqf/9vB7FAeE4\"",
+    "mtime": "2026-08-06T14:10:31.198Z",
+    "size": 666210,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1048,7 +1063,6 @@ const _lazy_YqQJx3 = () => Promise.resolve().then(function () { return _id__dele
 const _lazy_Y8c96g = () => Promise.resolve().then(function () { return _id__patch$1; });
 const _lazy_JuQZAj = () => Promise.resolve().then(function () { return companyConfig_get$1; });
 const _lazy_MgNWqb = () => Promise.resolve().then(function () { return companyConfig_post$1; });
-const _lazy_BMKTCk = () => Promise.resolve().then(function () { return diagnostic_get$1; });
 const _lazy_UUyT9J = () => Promise.resolve().then(function () { return testConnection_post$1; });
 const _lazy_y8kYmo = () => Promise.resolve().then(function () { return categories_post$1; });
 const _lazy_J_6_3Z = () => Promise.resolve().then(function () { return products_post$3; });
@@ -1100,7 +1114,6 @@ const handlers = [
   { route: '/api/fiscal/certificates/:id', handler: _lazy_Y8c96g, lazy: true, middleware: false, method: "patch" },
   { route: '/api/fiscal/company-config', handler: _lazy_JuQZAj, lazy: true, middleware: false, method: "get" },
   { route: '/api/fiscal/company-config', handler: _lazy_MgNWqb, lazy: true, middleware: false, method: "post" },
-  { route: '/api/fiscal/diagnostic', handler: _lazy_BMKTCk, lazy: true, middleware: false, method: "get" },
   { route: '/api/fiscal/test-connection', handler: _lazy_UUyT9J, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/categories', handler: _lazy_y8kYmo, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/products', handler: _lazy_J_6_3Z, lazy: true, middleware: false, method: "post" },
@@ -2811,118 +2824,16 @@ async function loadActiveCertificate() {
   }
 }
 
-function probeUrl(url, pfx, passphrase, method, contentType) {
-  return new Promise((resolve) => {
-    const urlObj = new URL(url);
-    const agent = new https.Agent({
-      pfx,
-      passphrase,
-      rejectUnauthorized: false
-    });
-    const headers = { "User-Agent": "PDV-Diag/1.0" };
-    if (contentType) {
-      headers["Content-Type"] = contentType;
-    }
-    const body = contentType ? '<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body/></soap:Envelope>' : "";
-    const req = https.request(urlObj, {
-      agent,
-      method,
-      timeout: 1e4,
-      headers: {
-        ...headers,
-        ...body ? { "Content-Length": Buffer.byteLength(body) } : {}
-      }
-    }, (res) => {
-      let respBody = "";
-      res.setEncoding("utf8");
-      res.on("data", (chunk) => {
-        respBody += chunk;
-      });
-      res.on("end", () => {
-        resolve({
-          url,
-          method,
-          statusCode: res.statusCode || 0,
-          snippet: respBody.slice(0, 300).replace(/\r?\n/g, " ")
-        });
-      });
-    });
-    req.on("error", (error) => {
-      resolve({
-        url,
-        method,
-        statusCode: -1,
-        snippet: `ERROR: ${error.message}`
-      });
-    });
-    req.on("timeout", () => {
-      req.destroy();
-      resolve({ url, method, statusCode: -1, snippet: "TIMEOUT" });
-    });
-    if (body) {
-      req.write(body);
-    }
-    req.end();
-  });
-}
-const diagnostic_get = defineEventHandler(async () => {
-  var _a;
-  try {
-    const configRows = await sql`
-      SELECT ambiente FROM company_fiscal_config
-      ORDER BY created_at DESC LIMIT 1
-    `;
-    const ambiente = ((_a = configRows[0]) == null ? void 0 : _a.ambiente) === "producao" ? "producao" : "homologacao";
-    const cert = await loadActiveCertificate();
-    const hosts = ambiente === "producao" ? ["https://nfe.sefaz.rr.gov.br", "https://www.sefaz.rr.gov.br"] : ["https://homologacao.sefaz.rr.gov.br", "https://hnfe.sefaz.rr.gov.br", "https://hom.sefaz.rr.gov.br"];
-    const paths = [
-      "/nfe2/services/NFeAutorizacao4",
-      "/nfe2/services/NfeAutorizacao4",
-      "/nfeweb/services/NFeAutorizacao4",
-      "/nfe/services/NFeAutorizacao4"
-    ];
-    const results = [];
-    for (const host of hosts) {
-      const result = await probeUrl(`${host}/`, cert.pfxBuffer, cert.password, "GET");
-      results.push(result);
-      console.log(`[DIAG] GET  ${result.statusCode}  ${result.url}  \u2192  ${result.snippet.slice(0, 80)}`);
-    }
-    for (const host of hosts) {
-      for (const path of paths) {
-        const url = `${host}${path}`;
-        const result = await probeUrl(url, cert.pfxBuffer, cert.password, "POST", "application/soap+xml; charset=utf-8");
-        results.push(result);
-        console.log(`[DIAG] POST ${result.statusCode}  ${result.url}  \u2192  ${result.snippet.slice(0, 80)}`);
-      }
-    }
-    return {
-      ambiente,
-      results
-    };
-  } catch (error) {
-    console.error("Diagnostic error:", error);
-    throw createError({
-      statusCode: 500,
-      statusMessage: error.message || "Diagnostic error"
-    });
-  }
-});
-
-const diagnostic_get$1 = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  default: diagnostic_get
-});
-
 const SEFAZ_ENDPOINTS = {
   homologacao: {
-    autorizacao: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NFeAutorizacao4",
-    retAutorizacao: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NFeRetAutorizacao4",
-    statusServico: "https://homologacao.sefaz.rr.gov.br/nfe2/services/NFeStatusServico4"
+    autorizacao: "https://nfe-homologacao.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
+    retAutorizacao: "https://nfe-homologacao.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
+    statusServico: "https://nfe-homologacao.svrs.rs.gov.br/ws/NfeStatusServico/NFeStatusServico4.asmx"
   },
   producao: {
-    autorizacao: "https://nfe.sefaz.rr.gov.br/nfe2/services/NFeAutorizacao4",
-    retAutorizacao: "https://nfe.sefaz.rr.gov.br/nfe2/services/NFeRetAutorizacao4",
-    statusServico: "https://nfe.sefaz.rr.gov.br/nfe2/services/NFeStatusServico4"
+    autorizacao: "https://nfe.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
+    retAutorizacao: "https://nfe.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
+    statusServico: "https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NFeStatusServico4.asmx"
   }
 };
 function extractTag(xml, tag) {
@@ -2942,18 +2853,11 @@ function extractElement(xml, tag) {
   );
   return ((_a = xml.match(expression)) == null ? void 0 : _a[0]) || null;
 }
-function buildSoapEnvelope(serviceAction, serviceNamespace, innerXml) {
+function buildSoapEnvelope(serviceNamespace, innerXml) {
   return `<?xml version="1.0" encoding="UTF-8"?>
-<soap:Envelope
-  xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
   <soap:Body>
-    <${serviceAction} xmlns="${serviceNamespace}">
-      <nfeDadosMsg>
-${innerXml}
-      </nfeDadosMsg>
-    </${serviceAction}>
+    <nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg>
   </soap:Body>
 </soap:Envelope>`;
 }
@@ -2967,8 +2871,7 @@ function sendSoapRequest(url, soapBody, certificate, environment, soapAction) {
     const agentOptions = {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
-      // Aceitar certificado do servidor SEFAZ (a CA ICP-Brasil pode não estar no store do Node.js)
-      rejectUnauthorized: false,
+      rejectUnauthorized: true,
       keepAlive: false
     };
     const agent = new https.Agent(agentOptions);
@@ -3061,17 +2964,14 @@ async function pollForResult(receipt, environment, certificate) {
   <tpAmb>${environment === "producao" ? "1" : "2"}</tpAmb>
   <nRec>${receipt}</nRec>
 </consReciNFe>`;
-  const soapBody = buildSoapEnvelope(
-    "nfeRetAutorizacaoLote4",
-    "http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4",
-    innerXml
-  );
+  const serviceNamespace = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4";
+  const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
   const response = await sendSoapRequest(
     endpoint.retAutorizacao,
     soapBody,
     certificate,
     environment,
-    "nfeRetAutorizacaoLote4"
+    `${serviceNamespace}/nfeRetAutorizacaoLote`
   );
   return parseAuthorizationResponse(response.body, response.statusCode);
 }
@@ -3083,20 +2983,17 @@ async function authorizeNfe(signedXml, _accessKey, environment, certificate) {
   const innerXml = `<enviNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
   <idLote>${loteId}</idLote>
   <indSinc>1</indSinc>
-  <NFe>${nfeXml}</NFe>
+  ${nfeXml}
 </enviNFe>`;
-  const soapBody = buildSoapEnvelope(
-    "nfeAutorizacaoLote4",
-    "http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4",
-    innerXml
-  );
-  console.log(`[NFE] Enviando XML assinado para a SEFAZ-RR (${normalizedEnvironment})...`);
+  const serviceNamespace = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4";
+  const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
+  console.log(`[NFE] Enviando XML assinado para a SVRS (${normalizedEnvironment})...`);
   const response = await sendSoapRequest(
     endpoint.autorizacao,
     soapBody,
     certificate,
     normalizedEnvironment,
-    "nfeAutorizacaoLote4"
+    `${serviceNamespace}/nfeAutorizacaoLote`
   );
   let result = parseAuthorizationResponse(response.body, response.statusCode);
   if (result.status === "processando") {
@@ -3117,17 +3014,14 @@ async function checkStatusServico(environment, certificate) {
   <cUF>14</cUF>
   <xServ>STATUS</xServ>
 </consStatServ>`;
-  const soapBody = buildSoapEnvelope(
-    "nfeStatusServicoNF4",
-    "http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4",
-    innerXml
-  );
+  const serviceNamespace = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4";
+  const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
   const response = await sendSoapRequest(
     endpoint.statusServico,
     soapBody,
     certificate,
     normalizedEnvironment,
-    "nfeStatusServicoNF4"
+    `${serviceNamespace}/nfeStatusServicoNF`
   );
   return {
     status: extractTag(response.body, "cStat") || `HTTP-${response.statusCode}`,

@@ -9,14 +9,14 @@ const SEFAZ_ENDPOINTS: Record<SefazEnvironment, {
   statusServico: string;
 }> = {
   homologacao: {
-    autorizacao: 'https://homologacao.sefaz.rr.gov.br/nfe2/services/NFeAutorizacao4',
-    retAutorizacao: 'https://homologacao.sefaz.rr.gov.br/nfe2/services/NFeRetAutorizacao4',
-    statusServico: 'https://homologacao.sefaz.rr.gov.br/nfe2/services/NFeStatusServico4',
+    autorizacao: 'https://nfe-homologacao.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx',
+    retAutorizacao: 'https://nfe-homologacao.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx',
+    statusServico: 'https://nfe-homologacao.svrs.rs.gov.br/ws/NfeStatusServico/NFeStatusServico4.asmx',
   },
   producao: {
-    autorizacao: 'https://nfe.sefaz.rr.gov.br/nfe2/services/NFeAutorizacao4',
-    retAutorizacao: 'https://nfe.sefaz.rr.gov.br/nfe2/services/NFeRetAutorizacao4',
-    statusServico: 'https://nfe.sefaz.rr.gov.br/nfe2/services/NFeStatusServico4',
+    autorizacao: 'https://nfe.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx',
+    retAutorizacao: 'https://nfe.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx',
+    statusServico: 'https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NFeStatusServico4.asmx',
   },
 };
 
@@ -47,18 +47,11 @@ function extractElement(xml: string, tag: string): string | null {
   return xml.match(expression)?.[0] || null;
 }
 
-function buildSoapEnvelope(serviceAction: string, serviceNamespace: string, innerXml: string): string {
+function buildSoapEnvelope(serviceNamespace: string, innerXml: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
-<soap:Envelope
-  xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
   <soap:Body>
-    <${serviceAction} xmlns="${serviceNamespace}">
-      <nfeDadosMsg>
-${innerXml}
-      </nfeDadosMsg>
-    </${serviceAction}>
+    <nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg>
   </soap:Body>
 </soap:Envelope>`;
 }
@@ -81,8 +74,7 @@ function sendSoapRequest(
     const agentOptions: https.AgentOptions = {
       pfx: certificate.pfxBuffer,
       passphrase: certificate.password,
-      // Aceitar certificado do servidor SEFAZ (a CA ICP-Brasil pode não estar no store do Node.js)
-      rejectUnauthorized: false,
+      rejectUnauthorized: true,
       keepAlive: false,
     };
 
@@ -196,18 +188,15 @@ async function pollForResult(
   <nRec>${receipt}</nRec>
 </consReciNFe>`;
 
-  const soapBody = buildSoapEnvelope(
-    'nfeRetAutorizacaoLote4',
-    'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4',
-    innerXml,
-  );
+  const serviceNamespace = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4';
+  const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
 
   const response = await sendSoapRequest(
     endpoint.retAutorizacao,
     soapBody,
     certificate,
     environment,
-    'nfeRetAutorizacaoLote4',
+    `${serviceNamespace}/nfeRetAutorizacaoLote`,
   );
 
   return parseAuthorizationResponse(response.body, response.statusCode);
@@ -228,23 +217,20 @@ export async function authorizeNfe(
   const innerXml = `<enviNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
   <idLote>${loteId}</idLote>
   <indSinc>1</indSinc>
-  <NFe>${nfeXml}</NFe>
+  ${nfeXml}
 </enviNFe>`;
 
-  const soapBody = buildSoapEnvelope(
-    'nfeAutorizacaoLote4',
-    'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4',
-    innerXml,
-  );
+  const serviceNamespace = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4';
+  const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
 
-  console.log(`[NFE] Enviando XML assinado para a SEFAZ-RR (${normalizedEnvironment})...`);
+  console.log(`[NFE] Enviando XML assinado para a SVRS (${normalizedEnvironment})...`);
 
   const response = await sendSoapRequest(
     endpoint.autorizacao,
     soapBody,
     certificate,
     normalizedEnvironment,
-    'nfeAutorizacaoLote4',
+    `${serviceNamespace}/nfeAutorizacaoLote`,
   );
 
   let result = parseAuthorizationResponse(response.body, response.statusCode);
@@ -276,18 +262,15 @@ export async function checkStatusServico(
   <xServ>STATUS</xServ>
 </consStatServ>`;
 
-  const soapBody = buildSoapEnvelope(
-    'nfeStatusServicoNF4',
-    'http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4',
-    innerXml,
-  );
+  const serviceNamespace = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4';
+  const soapBody = buildSoapEnvelope(serviceNamespace, innerXml);
 
   const response = await sendSoapRequest(
     endpoint.statusServico,
     soapBody,
     certificate,
     normalizedEnvironment,
-    'nfeStatusServicoNF4',
+    `${serviceNamespace}/nfeStatusServicoNF`,
   );
 
   return {
