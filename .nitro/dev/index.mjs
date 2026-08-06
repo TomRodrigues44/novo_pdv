@@ -25,8 +25,8 @@ import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
 import forge from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/node-forge@1.4.0/node_modules/node-forge/lib/index.js';
-import QRCode from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
 import https from 'node:https';
+import QRCode from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
 import { Pool } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pg@8.22.0/node_modules/pg/esm/index.mjs';
 import { v4 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
 
@@ -936,7 +936,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"2ab7d-64cm50CuKQy/e0jinnTlCmrovyY\"",
+    "mtime": "2026-08-06T13:29:53.765Z",
+    "size": 174973,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"9facb-wj5V8pYLyQ75guxXwQOtx2y7tOM\"",
+    "mtime": "2026-08-06T13:29:53.765Z",
+    "size": 654027,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1048,6 +1063,7 @@ const _lazy_YqQJx3 = () => Promise.resolve().then(function () { return _id__dele
 const _lazy_Y8c96g = () => Promise.resolve().then(function () { return _id__patch$1; });
 const _lazy_JuQZAj = () => Promise.resolve().then(function () { return companyConfig_get$1; });
 const _lazy_MgNWqb = () => Promise.resolve().then(function () { return companyConfig_post$1; });
+const _lazy_BMKTCk = () => Promise.resolve().then(function () { return diagnostic_get$1; });
 const _lazy_UUyT9J = () => Promise.resolve().then(function () { return testConnection_post$1; });
 const _lazy_y8kYmo = () => Promise.resolve().then(function () { return categories_post$1; });
 const _lazy_J_6_3Z = () => Promise.resolve().then(function () { return products_post$3; });
@@ -1099,6 +1115,7 @@ const handlers = [
   { route: '/api/fiscal/certificates/:id', handler: _lazy_Y8c96g, lazy: true, middleware: false, method: "patch" },
   { route: '/api/fiscal/company-config', handler: _lazy_JuQZAj, lazy: true, middleware: false, method: "get" },
   { route: '/api/fiscal/company-config', handler: _lazy_MgNWqb, lazy: true, middleware: false, method: "post" },
+  { route: '/api/fiscal/diagnostic', handler: _lazy_BMKTCk, lazy: true, middleware: false, method: "get" },
   { route: '/api/fiscal/test-connection', handler: _lazy_UUyT9J, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/categories', handler: _lazy_y8kYmo, lazy: true, middleware: false, method: "post" },
   { route: '/api/migrate/products', handler: _lazy_J_6_3Z, lazy: true, middleware: false, method: "post" },
@@ -2808,6 +2825,97 @@ async function loadActiveCertificate() {
     );
   }
 }
+
+function probeUrl(url, pfx, passphrase) {
+  return new Promise((resolve) => {
+    const urlObj = new URL(url);
+    const agent = new https.Agent({
+      pfx,
+      passphrase,
+      rejectUnauthorized: false
+    });
+    const req = https.request(urlObj, {
+      agent,
+      method: "GET",
+      timeout: 1e4,
+      headers: { "User-Agent": "PDV-Diag/1.0" }
+    }, (res) => {
+      let body = "";
+      res.setEncoding("utf8");
+      res.on("data", (chunk) => {
+        body += chunk;
+      });
+      res.on("end", () => {
+        resolve({
+          url,
+          statusCode: res.statusCode || 0,
+          snippet: body.slice(0, 200).replace(/\r?\n/g, " ")
+        });
+      });
+    });
+    req.on("error", (error) => {
+      resolve({
+        url,
+        statusCode: -1,
+        snippet: `ERROR: ${error.message}`
+      });
+    });
+    req.on("timeout", () => {
+      req.destroy();
+      resolve({ url, statusCode: -1, snippet: "TIMEOUT" });
+    });
+    req.end();
+  });
+}
+const diagnostic_get = defineEventHandler(async () => {
+  var _a;
+  try {
+    const configRows = await sql`
+      SELECT ambiente FROM company_fiscal_config
+      ORDER BY created_at DESC LIMIT 1
+    `;
+    const ambiente = ((_a = configRows[0]) == null ? void 0 : _a.ambiente) === "producao" ? "producao" : "homologacao";
+    const cert = await loadActiveCertificate();
+    const host = ambiente === "producao" ? "https://nfe.sefaz.rr.gov.br" : "https://homologacao.sefaz.rr.gov.br";
+    const paths = [
+      "/",
+      "/nfe2/services/NfeAutorizacao4",
+      "/nfe2/services/NFeAutorizacao4",
+      "/nfe/services/NfeAutorizacao4",
+      "/nfeweb/services/NfeAutorizacao4",
+      "/services/NfeAutorizacao4",
+      "/ws/NfeAutorizacao4",
+      "/ws/NfeAutorizacao/NfeAutorizacao4",
+      "/nfe2/services/NfeAutorizacao4?wsdl",
+      "/nfe2/services/NFeStatusServico4",
+      "/nfe2/services/NfeStatusServico4",
+      "/nfe/services/NfeStatusServico4"
+    ];
+    const urls = paths.map((p) => `${host}${p}`);
+    const results = [];
+    for (const url of urls) {
+      const result = await probeUrl(url, cert.pfxBuffer, cert.password);
+      results.push(result);
+      console.log(`[DIAG] ${result.statusCode}  ${result.url}  \u2192  ${result.snippet.slice(0, 80)}`);
+    }
+    return {
+      ambiente,
+      host,
+      results
+    };
+  } catch (error) {
+    console.error("Diagnostic error:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: error.message || "Diagnostic error"
+    });
+  }
+});
+
+const diagnostic_get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: diagnostic_get
+});
 
 const SEFAZ_ENDPOINTS = {
   homologacao: {
