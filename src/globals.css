@@ -142,6 +142,15 @@
   font-weight: 700;
 }
 
+/* Mantém o código de barras sempre visível no quadro da chave de acesso. */
+.danfe-a4 > div:nth-of-type(2) canvas[aria-label="Código de barras da chave de acesso"] {
+  display: block !important;
+  width: 100% !important;
+  height: 36px !important;
+  margin: 0.5rem auto 0 !important;
+  background: #ffffff;
+}
+
 /* Linha exclusiva do valor total na seção "Cálculo do Imposto" da DANFE. */
 .danfe-a4 > div:nth-of-type(5) > div:last-child > div:last-child {
   grid-column: 1 / -1;
