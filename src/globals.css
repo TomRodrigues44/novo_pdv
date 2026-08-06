@@ -73,6 +73,48 @@
   }
 }
 
+/* Ordem de impressão e visualização das seções da DANFE. */
+.danfe-a4 {
+  display: flex;
+  flex-direction: column;
+}
+
+.danfe-a4 > div:nth-of-type(1) {
+  order: 1;
+}
+
+.danfe-a4 > div:nth-of-type(2) {
+  order: 2;
+}
+
+.danfe-a4 > div:nth-of-type(3) {
+  order: 3;
+}
+
+.danfe-a4 > div:nth-of-type(7) {
+  order: 4;
+}
+
+.danfe-a4 > div:nth-of-type(6) {
+  order: 5;
+}
+
+.danfe-a4 > div:nth-of-type(4) {
+  order: 6;
+}
+
+.danfe-a4 > div:nth-of-type(5) {
+  order: 7;
+}
+
+.danfe-a4 > div:nth-of-type(8) {
+  order: 8;
+}
+
+.danfe-a4 > div:nth-of-type(9) {
+  order: 9;
+}
+
 /* Linha exclusiva do valor total na seção "Cálculo do Imposto" da DANFE. */
 .danfe-a4 > div:nth-of-type(5) > div:last-child > div:last-child {
   grid-column: 1 / -1;
