@@ -33,6 +33,22 @@ function generateAccessKey(ufCode: string, issuedAt: Date, cnpj: string, series:
   return `${base}${accessKeyDigit(base)}`;
 }
 
+function formatIssueDate(date: Date): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Boa_Vista',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}:${values.second}-04:00`;
+}
+
 function paymentCode(type: string) {
   const codes: Record<string, string> = {
     cash: '01', credit: '03', debit: '04', pix: '17', boleto: '15', bank_transfer: '18', other: '99',
@@ -60,6 +76,7 @@ export function generateNfeXml(data: any, config: any, number: number, series: n
   }
 
   const issuedAt = new Date();
+  const issuedAtNfe = formatIssueDate(issuedAt);
   const accessKey = generateAccessKey(ufCode, issuedAt, config.cnpj, series, number);
   const recipient = data.customer;
   const recipientDocument = digits(recipient.cpf_cnpj);
@@ -114,7 +131,7 @@ export function generateNfeXml(data: any, config: any, number: number, series: n
   <infNFe Id="NFe${accessKey}" versao="4.00">
     <ide>
       <cUF>${ufCode}</cUF><cNF>${accessKey.slice(35, 43)}</cNF><natOp>VENDA DE MERCADORIA</natOp>
-      <mod>55</mod><serie>${series}</serie><nNF>${number}</nNF><dhEmi>${issuedAt.toISOString()}</dhEmi>
+      <mod>55</mod><serie>${series}</serie><nNF>${number}</nNF><dhEmi>${issuedAtNfe}</dhEmi>
       <tpNF>1</tpNF><idDest>${interstate ? 2 : 1}</idDest><cMunFG>${emitterMunicipalityCode}</cMunFG>
       <tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>${accessKey.slice(-1)}</cDV>
       <tpAmb>${config.ambiente === 'producao' ? 1 : 2}</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal>

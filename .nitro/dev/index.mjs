@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2adc7-BoZApGM3oGS2CHLdk7+2QjrVroU\"",
-    "mtime": "2026-08-06T14:23:44.338Z",
-    "size": 175559,
+    "etag": "\"2b015-1G2jpNip8fouEB13B3sj62ZayZ4\"",
+    "mtime": "2026-08-06T14:29:06.608Z",
+    "size": 176149,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"9faa8-CN7E6RgLvJg8VvCwSYbQXsXQYu8\"",
-    "mtime": "2026-08-06T14:23:44.338Z",
-    "size": 653992,
+    "etag": "\"a0449-Rxb4SjRpexPjxmNaPB8H6WbcXE8\"",
+    "mtime": "2026-08-06T14:29:06.608Z",
+    "size": 656457,
     "path": "index.mjs.map"
   }
 };
@@ -4112,6 +4112,20 @@ function generateAccessKey(ufCode, issuedAt, cnpj, series, number) {
   const base = `${ufCode}${yearMonth}${digits$1(cnpj)}55${String(series).padStart(3, "0")}${String(number).padStart(9, "0")}1${numericCode}`;
   return `${base}${accessKeyDigit(base)}`;
 }
+function formatIssueDate(date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Boa_Vista",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}:${values.second}-04:00`;
+}
 function paymentCode(type) {
   const codes = {
     cash: "01",
@@ -4136,6 +4150,7 @@ function generateNfeXml(data, config, number, series) {
     throw createError({ statusCode: 400, statusMessage: "UF do emitente inv\xE1lida." });
   }
   const issuedAt = /* @__PURE__ */ new Date();
+  const issuedAtNfe = formatIssueDate(issuedAt);
   const accessKey = generateAccessKey(ufCode, issuedAt, config.cnpj, series, number);
   const recipient = data.customer;
   const recipientDocument = digits$1(recipient.cpf_cnpj);
@@ -4186,7 +4201,7 @@ function generateNfeXml(data, config, number, series) {
   <infNFe Id="NFe${accessKey}" versao="4.00">
     <ide>
       <cUF>${ufCode}</cUF><cNF>${accessKey.slice(35, 43)}</cNF><natOp>VENDA DE MERCADORIA</natOp>
-      <mod>55</mod><serie>${series}</serie><nNF>${number}</nNF><dhEmi>${issuedAt.toISOString()}</dhEmi>
+      <mod>55</mod><serie>${series}</serie><nNF>${number}</nNF><dhEmi>${issuedAtNfe}</dhEmi>
       <tpNF>1</tpNF><idDest>${interstate ? 2 : 1}</idDest><cMunFG>${emitterMunicipalityCode}</cMunFG>
       <tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>${accessKey.slice(-1)}</cDV>
       <tpAmb>${config.ambiente === "producao" ? 1 : 2}</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal>
