@@ -7,6 +7,8 @@ const UF_CODES: Record<string, string> = {
   SP: '35', SE: '28', TO: '17',
 };
 
+const HOMOLOGATION_RECIPIENT_NAME = 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL.';
+
 const text = (value: unknown) => String(value ?? '').trim();
 const digits = (value: unknown) => text(value).replace(/\D/g, '');
 const xml = (value: unknown) => text(value)
@@ -90,6 +92,9 @@ export function generateNfeXml(data: any, config: any, number: number, series: n
   const recipient = data.customer;
   const recipientDocument = digits(recipient.cpf_cnpj);
   const recipientUf = text(recipient.uf).toUpperCase();
+  const recipientName = config.ambiente === 'producao'
+    ? recipient.name
+    : HOMOLOGATION_RECIPIENT_NAME;
   const interstate = recipientUf !== emitterUf;
   const productsTotal = data.items.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
   const freight = Number(data.freight) || 0;
@@ -174,7 +179,7 @@ export function generateNfeXml(data: any, config: any, number: number, series: n
     </emit>
     <dest>
       <${recipientDocument.length === 14 ? 'CNPJ' : 'CPF'}>${recipientDocument}</${recipientDocument.length === 14 ? 'CNPJ' : 'CPF'}>
-      <xNome>${xml(recipient.name)}</xNome><enderDest><xLgr>${xml(recipient.logradouro)}</xLgr><nro>${xml(recipient.numero)}</nro>
+      <xNome>${xml(recipientName)}</xNome><enderDest><xLgr>${xml(recipient.logradouro)}</xLgr><nro>${xml(recipient.numero)}</nro>
         ${recipient.complemento ? `<xCpl>${xml(recipient.complemento)}</xCpl>` : ''}<xBairro>${xml(recipient.bairro)}</xBairro>
         <cMun>${digits(recipient.codigo_municipio)}</cMun><xMun>${xml(recipient.municipio)}</xMun><UF>${recipientUf}</UF>
         <CEP>${digits(recipient.cep)}</CEP><cPais>1058</cPais><xPais>BRASIL</xPais>${digits(recipient.phone) ? `<fone>${digits(recipient.phone)}</fone>` : ''}</enderDest>

@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2b28f-DubcZAcIELAVNs/uasPtt1r2aZo\"",
-    "mtime": "2026-08-06T14:42:09.139Z",
-    "size": 176783,
+    "etag": "\"2b471-yntwx8FXxJo/efXnUcOiJwlrDBk\"",
+    "mtime": "2026-08-06T14:42:55.944Z",
+    "size": 177265,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"a121a-pHH7CvoBXF29hKFtpQayJVf3XJI\"",
-    "mtime": "2026-08-06T14:42:09.155Z",
-    "size": 659994,
+    "etag": "\"a191a-HLc1/uuOW27OThT/ufA2rfn1FAE\"",
+    "mtime": "2026-08-06T14:42:55.975Z",
+    "size": 661786,
     "path": "index.mjs.map"
   }
 };
@@ -4109,6 +4109,7 @@ const UF_CODES = {
   SE: "28",
   TO: "17"
 };
+const HOMOLOGATION_RECIPIENT_NAME = "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL.";
 const text$1 = (value) => String(value != null ? value : "").trim();
 const digits$1 = (value) => text$1(value).replace(/\D/g, "");
 const xml = (value) => text$1(value).replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
@@ -4173,6 +4174,7 @@ function generateNfeXml(data, config, number, series) {
   const recipient = data.customer;
   const recipientDocument = digits$1(recipient.cpf_cnpj);
   const recipientUf = text$1(recipient.uf).toUpperCase();
+  const recipientName = config.ambiente === "producao" ? recipient.name : HOMOLOGATION_RECIPIENT_NAME;
   const interstate = recipientUf !== emitterUf;
   const productsTotal = data.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const freight = Number(data.freight) || 0;
@@ -4253,7 +4255,7 @@ function generateNfeXml(data, config, number, series) {
     </emit>
     <dest>
       <${recipientDocument.length === 14 ? "CNPJ" : "CPF"}>${recipientDocument}</${recipientDocument.length === 14 ? "CNPJ" : "CPF"}>
-      <xNome>${xml(recipient.name)}</xNome><enderDest><xLgr>${xml(recipient.logradouro)}</xLgr><nro>${xml(recipient.numero)}</nro>
+      <xNome>${xml(recipientName)}</xNome><enderDest><xLgr>${xml(recipient.logradouro)}</xLgr><nro>${xml(recipient.numero)}</nro>
         ${recipient.complemento ? `<xCpl>${xml(recipient.complemento)}</xCpl>` : ""}<xBairro>${xml(recipient.bairro)}</xBairro>
         <cMun>${digits$1(recipient.codigo_municipio)}</cMun><xMun>${xml(recipient.municipio)}</xMun><UF>${recipientUf}</UF>
         <CEP>${digits$1(recipient.cep)}</CEP><cPais>1058</cPais><xPais>BRASIL</xPais>${digits$1(recipient.phone) ? `<fone>${digits$1(recipient.phone)}</fone>` : ""}</enderDest>
