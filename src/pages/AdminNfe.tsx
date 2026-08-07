@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { FileCheck2, Loader2, PackagePlus, Plus, Search, Trash2, Truck, UserRound, Edit, Save } from 'lucide-react';
+import { FileCheck2, Loader2, PackagePlus, Plus, Search, Trash2, Truck, UserRound, Edit, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { DanfeDialog } from '@/components/DanfeDialog';
 
@@ -87,6 +87,7 @@ const AdminNfe = () => {
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isEditingCustomer, setIsEditingCustomer] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
 
   useEffect(() => {
     fetch('/api/fiscal/company-config')
@@ -135,21 +136,20 @@ const AdminNfe = () => {
     return term && `${product.name} ${product.category}`.toLowerCase().includes(term);
   }).slice(0, 8);
 
-  const filteredCustomers = customers.filter((entry) => {
+  const filteredCustomers = useMemo(() => {
     const term = customerSearch.trim().toLowerCase();
-    if (!term) return true;
-    return (
+    if (!term) return customers;
+    return customers.filter((entry) =>
       (entry.name || '').toLowerCase().includes(term) ||
       (entry.cpf_cnpj || '').toLowerCase().includes(term) ||
       (entry.phone || '').toLowerCase().includes(term)
     );
-  });
+  }, [customers, customerSearch]);
 
   const selectCustomer = (id: string) => {
-    if (id === 'new') {
+    setSelectedCustomerId(id);
+    if (!id) {
       setCustomer(emptyCustomer);
-      setIsEditingCustomer(false);
-      setIsCustomerDialogOpen(true);
       return;
     }
 
@@ -172,6 +172,13 @@ const AdminNfe = () => {
       uf: selected.uf || 'RR',
       codigo_municipio: selected.codigo_municipio || (selected.uf === 'RR' ? '1400100' : ''),
     });
+  };
+
+  const openNewCustomer = () => {
+    setCustomer(emptyCustomer);
+    setSelectedCustomerId('');
+    setIsEditingCustomer(false);
+    setIsCustomerDialogOpen(true);
   };
 
   const editCustomer = () => {
@@ -228,12 +235,20 @@ const AdminNfe = () => {
         return [...current, savedCustomer];
       });
 
+      // Selecionar o cliente salvo automaticamente
+      selectCustomer(String(savedCustomer.id));
       toast.success('Cliente salvo com sucesso!');
       setIsCustomerDialogOpen(false);
     } catch (error) {
       console.error('Error saving customer:', error);
       toast.error(error instanceof Error ? error.message : 'Erro ao salvar cliente.');
     }
+  };
+
+  const clearCustomerSelection = () => {
+    setCustomer(emptyCustomer);
+    setSelectedCustomerId('');
+    setCustomerSearch('');
   };
 
   const addProduct = (product: Product) => {
@@ -338,49 +353,103 @@ const AdminNfe = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><UserRound className="h-5 w-5" /> 1. Destinatário</CardTitle>
-              <CardDescription>Selecione um cliente ou preencha um novo cadastro fiscal completo.</CardDescription>
+              <CardDescription>Selecione um cliente ou cadastre um novo.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="max-w-xl space-y-2">
+              {/* Busca e Seleção de Cliente */}
+              <div className="space-y-3">
                 <Label>Buscar cliente</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
                     className="pl-9"
-                    placeholder="Buscar por nome, CPF/CNPJ ou telefone..."
+                    placeholder="Digite nome, CPF/CNPJ ou telefone para filtrar..."
                     value={customerSearch}
                     onChange={(e) => setCustomerSearch(e.target.value)}
                   />
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Select value={customer.id || 'new'} onValueChange={selectCustomer}>
-                  <SelectTrigger className="max-w-xl">
-                    <SelectValue placeholder="Selecione um cliente" />
+              <div className="flex flex-wrap items-center gap-3">
+                <Select
+                  value={selectedCustomerId}
+                  onValueChange={selectCustomer}
+                  className="flex-1 min-w-[280px] max-w-xl"
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um cliente da lista filtrada" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="new">
-                      <div className="flex items-center gap-2">
-                        <Plus className="h-4 w-4" />
-                        Novo cliente
+                    {filteredCustomers.length === 0 ? (
+                      <div className="py-4 text-center text-gray-500 text-sm">
+                        Nenhum cliente encontrado. Clique em "Novo Cliente" para cadastrar.
                       </div>
-                    </SelectItem>
-                    {filteredCustomers.map((entry) => (
-                      <SelectItem key={entry.id} value={String(entry.id)}>
-                        {entry.name} {entry.cpf_cnpj ? `— ${entry.cpf_cnpj}` : ''}
-                      </SelectItem>
-                    ))}
+                    ) : (
+                      filteredCustomers.map((entry) => (
+                        <SelectItem key={entry.id} value={String(entry.id)}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{entry.name}</span>
+                            <span className="text-xs text-gray-500">
+                              {entry.cpf_cnpj ? `CPF/CNPJ: ${entry.cpf_cnpj}` : ''}
+                              {entry.phone ? ` • Tel: ${entry.phone}` : ''}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
-                {customer.id && (
-                  <Button variant="outline" size="icon" onClick={editCustomer}>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={clearCustomerSelection}
+                    disabled={!selectedCustomerId && !customerSearch}
+                    title="Limpar seleção"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={editCustomer}
+                    disabled={!selectedCustomerId}
+                    title="Editar cliente selecionado"
+                  >
                     <Edit className="h-4 w-4" />
                   </Button>
-                )}
+                  <Button
+                    onClick={openNewCustomer}
+                    className="bg-orange-600 hover:bg-orange-700"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Novo Cliente
+                  </Button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {/* Cliente Selecionado - Mostrar dados */}
+              {selectedCustomerId && (
+                <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-green-800">Cliente selecionado:</span>
+                    <span className="text-sm text-green-600">{customer.name}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                    <span>CPF/CNPJ: {customer.cpf_cnpj || '—'}</span>
+                    <span>IE: {customer.inscricao_estadual || '—'}</span>
+                    <span>Tel: {customer.phone || '—'}</span>
+                    <span>Email: {customer.email || '—'}</span>
+                    <span className="col-span-2">End: {customer.logradouro}, {customer.numero} - {customer.bairro}, {customer.municipio}/{customer.uf}</span>
+                    <span>CEP: {customer.cep || '—'}</span>
+                    <span>Cód. IBGE: {customer.codigo_municipio || '—'}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Formulário completo (sempre visível para edição) */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 pt-4 border-t">
                 <div className="space-y-2 md:col-span-2"><Label>Nome / Razão Social *</Label><Input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} /></div>
                 <div className="space-y-2"><Label>CPF ou CNPJ *</Label><Input value={customer.cpf_cnpj} onChange={(e) => setCustomer({ ...customer, cpf_cnpj: e.target.value })} /></div>
                 <div className="space-y-2"><Label>Inscrição Estadual</Label><Input value={customer.inscricao_estadual} onChange={(e) => setCustomer({ ...customer, inscricao_estadual: e.target.value })} /></div>
