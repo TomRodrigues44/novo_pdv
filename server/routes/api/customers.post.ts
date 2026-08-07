@@ -5,7 +5,7 @@ export default defineEventHandler(async (event) => {
     const customer = await readBody(event);
     
     const result = await sql`
-          INSERT INTO customers (id, name, phone, address, email, points, total_spent)
+          INSERT INTO customers (id, name, phone, address, email, points, total_spent, cpf_cnpj, inscricao_estadual, cep, logradouro, numero, complemento, bairro, municipio, uf, codigo_municipio)
           VALUES (
             ${customer.id},
             ${customer.name},
@@ -13,7 +13,17 @@ export default defineEventHandler(async (event) => {
             ${customer.address || null},
             ${customer.email || null},
             ${customer.points || 0},
-            ${customer.total_spent || 0}
+            ${customer.total_spent || 0},
+            ${customer.cpf_cnpj || null},
+            ${customer.inscricao_estadual || null},
+            ${customer.cep || null},
+            ${customer.logradouro || null},
+            ${customer.numero || null},
+            ${customer.complemento || null},
+            ${customer.bairro || null},
+            ${customer.municipio || null},
+            ${customer.uf || null},
+            ${customer.codigo_municipio || null}
           )
           RETURNING *
         `;

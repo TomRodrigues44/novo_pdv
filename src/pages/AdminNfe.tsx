@@ -96,19 +96,24 @@ const AdminNfe = () => {
   }, []);
 
   useEffect(() => {
-    Promise.all([fetch('/api/products'), fetch('/api/customers'), fetch('/api/motoboys')])
-      .then(async ([productsResponse, customersResponse, motoboysResponse]) => {
-        if (!productsResponse.ok || !customersResponse.ok) throw new Error('Falha ao carregar dados');
-        const [productsData, customersData, motoboysData] = await Promise.all([
-          productsResponse.json(), customersResponse.json(),
-          motoboysResponse.ok ? motoboysResponse.json() : [],
-        ]);
-        setProducts(Array.isArray(productsData) ? productsData : []);
-        setCustomers(Array.isArray(customersData) ? customersData : []);
-        setMotoboys(Array.isArray(motoboysData) ? motoboysData : []);
-      })
-      .catch(() => toast.error('Não foi possível carregar clientes e produtos.'))
-      .finally(() => setLoading(false));
+    // Primeiro garantir que o schema existe
+    fetch('/api/customers/ensure-schema', { method: 'POST' })
+      .catch(() => console.warn('Não foi possível garantir schema de clientes'))
+      .finally(() => {
+        Promise.all([fetch('/api/products'), fetch('/api/customers'), fetch('/api/motoboys')])
+          .then(async ([productsResponse, customersResponse, motoboysResponse]) => {
+            if (!productsResponse.ok || !customersResponse.ok) throw new Error('Falha ao carregar dados');
+            const [productsData, customersData, motoboysData] = await Promise.all([
+              productsResponse.json(), customersResponse.json(),
+              motoboysResponse.ok ? motoboysResponse.json() : [],
+            ]);
+            setProducts(Array.isArray(productsData) ? productsData : []);
+            setCustomers(Array.isArray(customersData) ? customersData : []);
+            setMotoboys(Array.isArray(motoboysData) ? motoboysData : []);
+          })
+          .catch(() => toast.error('Não foi possível carregar clientes e produtos.'))
+          .finally(() => setLoading(false));
+      });
   }, []);
 
   const productsTotal = useMemo(
@@ -180,8 +185,11 @@ const AdminNfe = () => {
 
   const saveCustomer = async () => {
     try {
-      const response = await fetch('/api/customers', {
-        method: 'POST',
+      const url = customer.id ? `/api/customers/${customer.id}` : '/api/customers';
+      const method = customer.id ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: customer.id || `cust-${Date.now()}`,
@@ -199,10 +207,15 @@ const AdminNfe = () => {
           municipio: customer.municipio,
           uf: customer.uf,
           codigo_municipio: customer.codigo_municipio,
+          points: customer.points || 0,
+          total_spent: customer.total_spent || 0,
         }),
       });
 
-      if (!response.ok) throw new Error('Erro ao salvar cliente');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.statusMessage || 'Erro ao salvar cliente');
+      }
 
       const savedCustomer = await response.json();
       setCustomers((current) => {
@@ -219,7 +232,7 @@ const AdminNfe = () => {
       setIsCustomerDialogOpen(false);
     } catch (error) {
       console.error('Error saving customer:', error);
-      toast.error('Erro ao salvar cliente.');
+      toast.error(error instanceof Error ? error.message : 'Erro ao salvar cliente.');
     }
   };
 

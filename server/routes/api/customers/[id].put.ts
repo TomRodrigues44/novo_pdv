@@ -14,6 +14,16 @@ export default defineEventHandler(async (event) => {
             email = ${customer.email || null},
             points = ${customer.points || 0},
             total_spent = ${customer.total_spent || 0},
+            cpf_cnpj = ${customer.cpf_cnpj || null},
+            inscricao_estadual = ${customer.inscricao_estadual || null},
+            cep = ${customer.cep || null},
+            logradouro = ${customer.logradouro || null},
+            numero = ${customer.numero || null},
+            complemento = ${customer.complemento || null},
+            bairro = ${customer.bairro || null},
+            municipio = ${customer.municipio || null},
+            uf = ${customer.uf || null},
+            codigo_municipio = ${customer.codigo_municipio || null},
             updated_at = CURRENT_TIMESTAMP
           WHERE id = ${id}
           RETURNING *
