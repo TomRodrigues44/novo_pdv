@@ -21,7 +21,6 @@ import {
 import {
  AlertCircle,
  Loader2,
- X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -39,8 +38,7 @@ const AdminCancelSales = () => {
  const { getSalesReport } = useAdmin();
  const [password, setPassword] = useState("");
  const [confirmPassword, setConfirmPassword] = useState("");
- const [showForm, setShowForm] = useState(false);
- const [cancelingSaleId, setCancelingSaleId] = useState<number | null>(null);
+ const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
  const [isSubmitting, setIsSubmitting] = useState(false);
 
  const report = getSalesReport(90);
@@ -59,17 +57,18 @@ const AdminCancelSales = () => {
  );
  });
 
- const handleCancelSale = async (saleId: number) => {
+ const handleCancelSale = async () => {
+  if (!selectedSale) return;
+  
   if (password !== confirmPassword) {
    toast.error("As senhas não coincidem!");
    return;
   }
 
   setIsSubmitting(true);
-  setCancelingSaleId(saleId);
 
   try {
-   const response = await fetch(`/api/sales/${saleId}/cancel`, {
+   const response = await fetch(`/api/sales/${selectedSale.id}/cancel`, {
     method: "POST",
     headers: {
      "Content-Type": "application/json",
@@ -87,23 +86,22 @@ const AdminCancelSales = () => {
    toast.success("Venda cancelada com sucesso!");
    setPassword("");
    setConfirmPassword("");
-   setShowForm(false);
+   setSelectedSale(null);
   } catch (error) {
    toast.error(error instanceof Error ? error.message : "Erro ao cancelar a venda");
   } finally {
    setIsSubmitting(false);
-   setCancelingSaleId(null);
   }
  };
 
- const handleOpenCancelForm = () => {
-  setShowForm(true);
+ const handleOpenCancelForm = (sale: Sale) => {
+  setSelectedSale(sale);
   setPassword("");
   setConfirmPassword("");
  };
 
  const handleCloseForm = () => {
-  setShowForm(false);
+  setSelectedSale(null);
   setPassword("");
   setConfirmPassword("");
  };
@@ -160,7 +158,7 @@ const AdminCancelSales = () => {
               <Button
                variant="destructive"
                size="sm"
-               onClick={() => handleOpenCancelForm()}
+               onClick={() => handleOpenCancelForm(sale)}
               >
                Cancelar
               </Button>
@@ -177,11 +175,14 @@ const AdminCancelSales = () => {
    </div>
 
    {/* Modal de Cancelamento */}
-   {showForm && (
+   {selectedSale && (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
      <Card className="w-full max-w-md mx-4">
       <CardHeader>
        <CardTitle>Confirmar Cancelamento</CardTitle>
+       <p className="text-sm text-gray-500">
+        Venda #{selectedSale.daily_sale_number || String(selectedSale.id).slice(-6)}
+       </p>
       </CardHeader>
       <CardContent className="space-y-4">
        <div className="space-y-2">
@@ -212,7 +213,7 @@ const AdminCancelSales = () => {
         </Button>
         <Button
          variant="destructive"
-         onClick={() => handleCancelSale(cancelingSaleId || 0)}
+         onClick={handleCancelSale}
          disabled={isSubmitting}
         >
          {isSubmitting ? (
