@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { FileCheck2, Loader2, PackagePlus, Plus, Search, Trash2, Truck, UserRound } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { FileCheck2, Loader2, PackagePlus, Plus, Search, Trash2, Truck, UserRound, Edit, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { DanfeDialog } from '@/components/DanfeDialog';
 
@@ -83,6 +84,9 @@ const AdminNfe = () => {
   const [selectedMotoboy, setSelectedMotoboy] = useState<{ id: string; name: string } | null>(null);
   const [isDanfeOpen, setIsDanfeOpen] = useState(false);
   const [fiscalEnv, setFiscalEnv] = useState<string>('homologacao');
+  const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+  const [isEditingCustomer, setIsEditingCustomer] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState('');
 
   useEffect(() => {
     fetch('/api/fiscal/company-config')
@@ -126,9 +130,21 @@ const AdminNfe = () => {
     return term && `${product.name} ${product.category}`.toLowerCase().includes(term);
   }).slice(0, 8);
 
+  const filteredCustomers = customers.filter((entry) => {
+    const term = customerSearch.trim().toLowerCase();
+    if (!term) return true;
+    return (
+      (entry.name || '').toLowerCase().includes(term) ||
+      (entry.cpf_cnpj || '').toLowerCase().includes(term) ||
+      (entry.phone || '').toLowerCase().includes(term)
+    );
+  });
+
   const selectCustomer = (id: string) => {
     if (id === 'new') {
       setCustomer(emptyCustomer);
+      setIsEditingCustomer(false);
+      setIsCustomerDialogOpen(true);
       return;
     }
 
@@ -151,6 +167,60 @@ const AdminNfe = () => {
       uf: selected.uf || 'RR',
       codigo_municipio: selected.codigo_municipio || (selected.uf === 'RR' ? '1400100' : ''),
     });
+  };
+
+  const editCustomer = () => {
+    if (!customer.id) {
+      toast.error('Selecione um cliente para editar.');
+      return;
+    }
+    setIsEditingCustomer(true);
+    setIsCustomerDialogOpen(true);
+  };
+
+  const saveCustomer = async () => {
+    try {
+      const response = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: customer.id || `cust-${Date.now()}`,
+          name: customer.name,
+          phone: customer.phone,
+          address: `${customer.logradouro}, ${customer.numero}${customer.complemento ? ` - ${customer.complemento}` : ''}`,
+          email: customer.email,
+          cpf_cnpj: customer.cpf_cnpj,
+          inscricao_estadual: customer.inscricao_estadual,
+          cep: customer.cep,
+          logradouro: customer.logradouro,
+          numero: customer.numero,
+          complemento: customer.complemento,
+          bairro: customer.bairro,
+          municipio: customer.municipio,
+          uf: customer.uf,
+          codigo_municipio: customer.codigo_municipio,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Erro ao salvar cliente');
+
+      const savedCustomer = await response.json();
+      setCustomers((current) => {
+        const existingIndex = current.findIndex((entry) => String(entry.id) === String(savedCustomer.id));
+        if (existingIndex >= 0) {
+          const updated = [...current];
+          updated[existingIndex] = savedCustomer;
+          return updated;
+        }
+        return [...current, savedCustomer];
+      });
+
+      toast.success('Cliente salvo com sucesso!');
+      setIsCustomerDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving customer:', error);
+      toast.error('Erro ao salvar cliente.');
+    }
   };
 
   const addProduct = (product: Product) => {
@@ -259,16 +329,42 @@ const AdminNfe = () => {
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="max-w-xl space-y-2">
-                <Label>Cliente cadastrado</Label>
+                <Label>Buscar cliente</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Buscar por nome, CPF/CNPJ ou telefone..."
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
                 <Select value={customer.id || 'new'} onValueChange={selectCustomer}>
-                  <SelectTrigger><SelectValue placeholder="Novo cliente" /></SelectTrigger>
+                  <SelectTrigger className="max-w-xl">
+                    <SelectValue placeholder="Selecione um cliente" />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="new">+ Novo cliente</SelectItem>
-                    {customers.map((entry) => (
-                      <SelectItem key={entry.id} value={String(entry.id)}>{entry.name} {entry.cpf_cnpj ? `— ${entry.cpf_cnpj}` : ''}</SelectItem>
+                    <SelectItem value="new">
+                      <div className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Novo cliente
+                      </div>
+                    </SelectItem>
+                    {filteredCustomers.map((entry) => (
+                      <SelectItem key={entry.id} value={String(entry.id)}>
+                        {entry.name} {entry.cpf_cnpj ? `— ${entry.cpf_cnpj}` : ''}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {customer.id && (
+                  <Button variant="outline" size="icon" onClick={editCustomer}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -412,6 +508,36 @@ const AdminNfe = () => {
           </div>
         </div>
       </main>
+
+      <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{isEditingCustomer ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="space-y-2 md:col-span-2"><Label>Nome / Razão Social *</Label><Input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} /></div>
+            <div className="space-y-2"><Label>CPF ou CNPJ *</Label><Input value={customer.cpf_cnpj} onChange={(e) => setCustomer({ ...customer, cpf_cnpj: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Inscrição Estadual</Label><Input value={customer.inscricao_estadual} onChange={(e) => setCustomer({ ...customer, inscricao_estadual: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Telefone</Label><Input value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} /></div>
+            <div className="space-y-2"><Label>E-mail</Label><Input type="email" value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} /></div>
+            <div className="space-y-2"><Label>CEP *</Label><Input value={customer.cep} onChange={(e) => setCustomer({ ...customer, cep: e.target.value })} /></div>
+            <div className="space-y-2 md:col-span-2"><Label>Logradouro *</Label><Input value={customer.logradouro} onChange={(e) => setCustomer({ ...customer, logradouro: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Número *</Label><Input value={customer.numero} onChange={(e) => setCustomer({ ...customer, numero: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Complemento</Label><Input value={customer.complemento} onChange={(e) => setCustomer({ ...customer, complemento: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Bairro *</Label><Input value={customer.bairro} onChange={(e) => setCustomer({ ...customer, bairro: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Município *</Label><Input value={customer.municipio} onChange={(e) => setCustomer({ ...customer, municipio: e.target.value })} /></div>
+            <div className="space-y-2"><Label>UF *</Label><Input maxLength={2} value={customer.uf} onChange={(e) => setCustomer({ ...customer, uf: e.target.value.toUpperCase() })} /></div>
+            <div className="space-y-2"><Label>Código IBGE do município *</Label><Input value={customer.codigo_municipio} onChange={(e) => setCustomer({ ...customer, codigo_municipio: e.target.value })} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCustomerDialogOpen(false)}>Cancelar</Button>
+            <Button className="bg-orange-600 hover:bg-orange-700" onClick={saveCustomer}>
+              <Save className="mr-2 h-4 w-4" />
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {result && (
         <DanfeDialog
