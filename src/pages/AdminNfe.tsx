@@ -5,10 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { FileCheck2, Loader2, PackagePlus, Plus, Search, Trash2, Truck, UserRound, Edit, Save, X } from 'lucide-react';
+import { FileCheck2, Loader2, PackagePlus, Plus, Search, Trash2, Truck, UserRound, Edit, Save, X, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { DanfeDialog } from '@/components/DanfeDialog';
 
@@ -88,6 +86,7 @@ const AdminNfe = () => {
   const [isEditingCustomer, setIsEditingCustomer] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
 
   useEffect(() => {
     fetch('/api/fiscal/company-config')
@@ -138,16 +137,17 @@ const AdminNfe = () => {
 
   const filteredCustomers = useMemo(() => {
     const term = customerSearch.trim().toLowerCase();
-    if (!term) return customers;
+    if (!term) return [];
     return customers.filter((entry) =>
       (entry.name || '').toLowerCase().includes(term) ||
-      (entry.cpf_cnpj || '').toLowerCase().includes(term) ||
-      (entry.phone || '').toLowerCase().includes(term)
+      (entry.cpf_cnpj || '').toLowerCase().replace(/\D/g, '').includes(term.replace(/\D/g, '')) ||
+      (entry.phone || '').replace(/\D/g, '').includes(term.replace(/\D/g, ''))
     );
   }, [customers, customerSearch]);
 
   const selectCustomer = (id: string) => {
     setSelectedCustomerId(id);
+    setShowCustomerDropdown(false);
     if (!id) {
       setCustomer(emptyCustomer);
       return;
@@ -175,6 +175,7 @@ const AdminNfe = () => {
   };
 
   const openNewCustomer = () => {
+    setShowCustomerDropdown(false);
     setCustomer(emptyCustomer);
     setSelectedCustomerId('');
     setIsEditingCustomer(false);
@@ -249,6 +250,7 @@ const AdminNfe = () => {
     setCustomer(emptyCustomer);
     setSelectedCustomerId('');
     setCustomerSearch('');
+    setShowCustomerDropdown(false);
   };
 
   const addProduct = (product: Product) => {
@@ -356,78 +358,83 @@ const AdminNfe = () => {
               <CardDescription>Selecione um cliente ou cadastre um novo.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              {/* Busca e Seleção de Cliente - Tudo em uma linha */}
+              {/* Busca e Seleção de Cliente */}
               <div className="space-y-3">
                 <Label>Buscar cliente</Label>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative flex-1 min-w-[280px]">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    <Input
-                      className="pl-9"
-                      placeholder="Digite nome, CPF/CNPJ ou telefone para filtrar..."
-                      value={customerSearch}
-                      onChange={(e) => setCustomerSearch(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={clearCustomerSelection}
-                      disabled={!selectedCustomerId && !customerSearch}
-                      title="Limpar seleção"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="default"
-                      size="icon"
-                      onClick={editCustomer}
-                      disabled={!selectedCustomerId}
-                      title="Editar cliente selecionado"
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      onClick={openNewCustomer}
-                      className="bg-orange-600 hover:bg-orange-700 whitespace-nowrap"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Novo Cliente
-                    </Button>
-                  </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    className="pl-9 pr-12"
+                    placeholder="Digite nome, CPF/CNPJ ou telefone..."
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    onFocus={() => setShowCustomerDropdown(true)}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 px-2"
+                    onClick={() => setShowCustomerDropdown(!showCustomerDropdown)}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
                 </div>
-              </div>
 
-              <Select
-                value={selectedCustomerId}
-                onValueChange={selectCustomer}
-                className="w-full max-w-xl"
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um cliente da lista filtrada" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredCustomers.length === 0 ? (
-                    <div className="py-4 text-center text-gray-500 text-sm">
-                      Nenhum cliente encontrado. Clique em "Novo Cliente" para cadastrar.
-                    </div>
-                  ) : (
-                    filteredCustomers.map((entry) => (
-                      <SelectItem key={entry.id} value={String(entry.id)}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{entry.name}</span>
-                          <span className="text-xs text-gray-500">
+                {/* Dropdown de clientes filtrados */}
+                {showCustomerDropdown && (
+                  <div className="absolute z-50 mt-1 w-full max-w-md rounded-md border bg-white p-2 shadow-lg">
+                    {filteredCustomers.length === 0 ? (
+                      <div className="py-4 text-center text-gray-500 text-sm">
+                        Nenhum cliente encontrado.
+                      </div>
+                    ) : (
+                      filteredCustomers.map((entry) => (
+                        <button
+                          key={entry.id}
+                          className="w-full rounded p-2 text-left hover:bg-gray-100"
+                          onClick={() => selectCustomer(entry.id)}
+                        >
+                          <div className="font-medium">{entry.name}</div>
+                          <div className="text-xs text-gray-500">
                             {entry.cpf_cnpj ? `CPF/CNPJ: ${entry.cpf_cnpj}` : ''}
                             {entry.phone ? ` • Tel: ${entry.phone}` : ''}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex-1 justify-start"
+                        onClick={clearCustomerSelection}
+                        disabled={!selectedCustomerId && !customerSearch}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Limpar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex-1 justify-start"
+                        onClick={editCustomer}
+                        disabled={!selectedCustomerId}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-orange-600 hover:bg-orange-700"
+                        onClick={openNewCustomer}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Novo
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Cliente Selecionado - Mostrar dados */}
               {selectedCustomerId && (
