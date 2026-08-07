@@ -417,21 +417,60 @@ const AdminNfe = () => {
                 </div>
               )}
 
-              {/* Formulário completo (sempre visível para edição) */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 pt-4 border-t">
-                <div className="space-y-2 md:col-span-2"><Label>Nome / Razão Social *</Label><Input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} /></div>
-                <div className="space-y-2"><Label>CPF ou CNPJ *</Label><Input value={customer.cpf_cnpj} onChange={(e) => setCustomer({ ...customer, cpf_cnpj: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Inscrição Estadual</Label><Input value={customer.inscricao_estadual} onChange={(e) => setCustomer({ ...customer, inscricao_estadual: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Telefone</Label><Input value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} /></div>
-                <div className="space-y-2"><Label>E-mail</Label><Input type="email" value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} /></div>
-                <div className="space-y-2"><Label>CEP *</Label><Input value={customer.cep} onChange={(e) => setCustomer({ ...customer, cep: e.target.value })} /></div>
-                <div className="space-y-2 md:col-span-2"><Label>Logradouro *</Label><Input value={customer.logradouro} onChange={(e) => setCustomer({ ...customer, logradouro: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Número *</Label><Input value={customer.numero} onChange={(e) => setCustomer({ ...customer, numero: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Complemento</Label><Input value={customer.complemento} onChange={(e) => setCustomer({ ...customer, complemento: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Bairro *</Label><Input value={customer.bairro} onChange={(e) => setCustomer({ ...customer, bairro: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Município *</Label><Input value={customer.municipio} onChange={(e) => setCustomer({ ...customer, municipio: e.target.value })} /></div>
-                <div className="space-y-2"><Label>UF *</Label><Input maxLength={2} value={customer.uf} onChange={(e) => setCustomer({ ...customer, uf: e.target.value.toUpperCase() })} /></div>
-                <div className="space-y-2"><Label>Código IBGE do município *</Label><Input value={customer.codigo_municipio} onChange={(e) => setCustomer({ ...customer, codigo_municipio: e.target.value })} /></div>
+              {/* Formulário completo (APENAS VISUALIZAÇÃO - readonly) */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 pt-4 border-t bg-gray-50 rounded-lg p-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Nome / Razão Social *</Label>
+                  <Input value={customer.name} readOnly className="bg-white cursor-default" />
+                </div>
+                <div className="space-y-2">
+                  <Label>CPF ou CNPJ *</Label>
+                  <Input value={customer.cpf_cnpj} readOnly className="bg-white cursor-default" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Inscrição Estadual</Label>
+                  <Input value={customer.inscricao_estadual} readOnly className="bg-white cursor-default" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Telefone</Label>
+                  <Input value={customer.phone} readOnly className="bg-white cursor-default" />
+                </div>
+                <div className="space-y-2">
+                  <Label>E-mail</Label>
+                  <Input type="email" value={customer.email} readOnly className="bg-white cursor-default" />
+                </div>
+                <div className="space-y-2">
+                  <Label>CEP *</Label>
+                  <Input value={customer.cep} readOnly className="bg-white cursor-default" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Logradouro *</Label>
+                  <Input value={customer.logradouro} readOnly className="bg-white cursor-default" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Número *</Label>
+                  <Input value={customer.numero} readOnly className="bg-white cursor-default" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Complemento</Label>
+                  <Input value={customer.complemento} readOnly className="bg-white cursor-default" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Bairro *</Label>
+                  <Input value={customer.bairro} readOnly className="bg-white cursor-default" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Município *</Label>
+                  <Input value={customer.municipio} readOnly className="bg-white cursor-default" />
+                </div>
+                <div className="space-y-2">
+                  <Label>UF *</Label>
+                  <Input maxLength={2} value={customer.uf} readOnly className="bg-white cursor-default" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Código IBGE do município *</Label>
+                  <Input value={customer.codigo_municipio} readOnly className="bg-white cursor-default" />
+                </div>
               </div>
             </CardContent>
           </Card>
