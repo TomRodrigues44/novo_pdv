@@ -43,7 +43,7 @@ const AdminCancelSales = () => {
 
  const report = getSalesReport(90);
 
- // Filtrar vendas que podem ser canceladas (abertas, orçamentos, etc.)
+ // Filtrar vendas que podem ser canceladas (abertas, orçamentos, concluídas, etc.)
  const cancellableSales = report.sales.filter((sale: Sale) => {
  const status = sale.status?.toLowerCase() || "";
  const model = sale.fiscal_model?.toLowerCase() || "";
@@ -52,6 +52,10 @@ const AdminCancelSales = () => {
   status === "aberta (orçamento)" ||
   status === "aberta (nfce)" ||
   status === "aberta (nfe)" ||
+  status === "concluída" ||
+  status === "concluida" ||
+  status === "finalizada" ||
+  status === "finalizado" ||
   model.includes("orçamento") ||
   model.includes("orcamento")
  );
@@ -68,6 +72,25 @@ const AdminCancelSales = () => {
   setIsSubmitting(true);
 
   try {
+   // Primeiro, tentar cancelamento fiscal se for NFe ou NFCe
+   if (selectedSale.fiscal_model === "NFe" || selectedSale.fiscal_model === "NFCe") {
+    const cancelFiscalResponse = await fetch(`/api/fiscal/${selectedSale.id}/cancel`, {
+     method: "POST",
+     headers: {
+      "Content-Type": "application/json",
+     },
+     body: JSON.stringify({
+      password: password,
+     }),
+    });
+
+    if (!cancelFiscalResponse.ok) {
+     const error = await cancelFiscalResponse.json();
+     throw new Error(error.message || "Falha ao cancelar fiscalmente");
+    }
+   }
+
+   // Depois, cancelar a venda no sistema
    const response = await fetch(`/api/sales/${selectedSale.id}/cancel`, {
     method: "POST",
     headers: {
@@ -114,7 +137,7 @@ const AdminCancelSales = () => {
      <div className="mb-8">
       <h1 className="text-3xl font-bold">Cancelar Vendas</h1>
       <p className="text-gray-600 mt-2">
-       Selecione uma venda para cancelar. Apenas vendas em status "aberta" podem ser canceladas.
+       Selecione uma venda para cancelar. Apenas vendas em status "aberta" ou "concluída" podem ser canceladas.
       </p>
      </div>
 
@@ -137,6 +160,7 @@ const AdminCancelSales = () => {
             <TableHead>ID</TableHead>
             <TableHead>Tipo</TableHead>
             <TableHead>Total</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead className="text-right">Ações</TableHead>
            </TableRow>
           </TableHeader>
@@ -153,6 +177,11 @@ const AdminCancelSales = () => {
              </td>
              <td className="font-bold text-green-600">
               R$ {parseFloat(sale.total_amount || 0).toFixed(2)}
+             </td>
+             <td>
+              <span className={`px-2 py-1 rounded text-xs font-medium ${sale.status?.toLowerCase().includes("aberta") ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>
+               {sale.status || "Concluída"}
+              </span>
              </td>
              <td className="text-right">
               <Button
