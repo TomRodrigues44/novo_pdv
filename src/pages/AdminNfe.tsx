@@ -359,14 +359,23 @@ const AdminNfe = () => {
               {/* Busca e Seleção de Cliente */}
               <div className="space-y-3">
                 <Label>Buscar cliente</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <Input
-                    className="pl-9"
-                    placeholder="Digite nome, CPF/CNPJ ou telefone para filtrar..."
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                  />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      className="pl-9"
+                      placeholder="Digite nome, CPF/CNPJ ou telefone para filtrar..."
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    onClick={openNewCustomer}
+                    className="bg-orange-600 hover:bg-orange-700 whitespace-nowrap"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Novo Cliente
+                  </Button>
                 </div>
               </div>
 
@@ -411,20 +420,14 @@ const AdminNfe = () => {
                     <X className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="icon"
                     onClick={editCustomer}
                     disabled={!selectedCustomerId}
                     title="Editar cliente selecionado"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    onClick={openNewCustomer}
-                    className="bg-orange-600 hover:bg-orange-700"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Novo Cliente
                   </Button>
                 </div>
               </div>
