@@ -1,17 +1,25 @@
-import { NextApiRequest, NextApiResponse } from "next";
+import { getCookie } from 'h3';
+import { createError } from 'h3';
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    // Verificar se o usuário está autenticado (exemplo básico)
-    const isAuthenticated = req.cookies?.authToken || false;
-
-    if (isAuthenticated) {
-      return res.status(200).json({ status: "autenticado", user: { id: 1, name: "Admin" } });
-    }
-
-    return res.status(401).json({ status: "não autenticado" });
-  } catch (error) {
-    console.error("Erro ao verificar status de autenticação:", error);
-    return res.status(500).json({ error: "Erro interno do servidor" });
+export default async function handler(req: any, res: any) {
+  const token = getCookie(req, 'authToken');
+  if (!token) {
+    return res.status(401).json({ status: 'not authenticated' });
   }
+
+  // In a real app you would verify the token against a DB.
+  // For this demo we return a dummy user.
+  const user = {
+    id: '1',
+    name: 'John Doe',
+    username: 'john.doe',
+    role: 'cashier' as const,
+    roleLabel: 'Administrador',
+    active: true,
+  };
+
+  return res.status(200).json({
+    status: 'authenticated',
+    user,
+  });
 }

@@ -1,37 +1,33 @@
-import { NextApiRequest, NextApiResponse } from "next";
-import { db } from "../../lib/db";
+import { createError } from 'h3';
+import { sql } from '../../utils/db';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+export default async function handler(req: any, res: any) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    const { id } = req.query;
-    const { password } = req.body;
-
-    // Verificar se a venda existe
-    const sale = await db.sales.findOne({ where: { id: Number(id) } });
-    if (!sale) {
-      return res.status(404).json({ error: "Venda não encontrada" });
-    }
-
-    // Verificar se a venda pode ser cancelada
-    if (sale.status !== "aberta" && sale.status !== "concluida") {
-      return res.status(400).json({ error: "Venda não pode ser cancelada" });
-    }
-
-    // Atualizar status da venda
-    await db.sales.update({ id: Number(id) }, { status: "cancelada" });
-
-    // Se for venda fiscal, atualizar status fiscal
-    if (sale.fiscal_model === "NFe" || sale.fiscal_model === "NFCe") {
-      await db.fiscal.update({ id: Number(id) }, { status: "cancelada" });
-    }
-
-    return res.status(200).json({ message: "Venda cancelada com sucesso" });
-  } catch (error) {
-    console.error("Erro ao cancelar venda:", error);
-    return res.status(500).json({ error: "Erro interno do servidor" });
+  const { id, password } = req.body as { id: string; password: string };
+  if (!id || !password) {
+    return res.status(400).json({ error: 'Missing id or password' });
   }
+
+  // Fetch the sale
+  const sale = await sql`SELECT * FROM sales WHERE id = ${id}`;
+  if (!sale) {
+    return res.status(404).json({ error: 'Sale not found' });
+  }
+
+  // Simple password check (replace with real verification)
+  const expectedPassword = '123456'; // TODO: replace with real password verification
+  if (password !== expectedPassword) {
+    return res.status(401).json({ error: 'Invalid password' });
+  }
+
+  // Update sale status
+  await sql`UPDATE sales SET status = 'cancelada' WHERE id = ${id}`;
+
+  // If the sale is linked to a fiscal note, mark that note as cancelled too
+  await sql`UPDATE nfce SET status = 'cancelada' WHERE sale_id = ${id}`;
+
+  return res.status(200).json({ message: 'Cancellation successful' });
 }

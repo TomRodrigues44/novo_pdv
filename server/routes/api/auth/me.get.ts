@@ -1,14 +1,21 @@
-import { readCookie } from '../../utils/cookies';
+import { getCookie } from 'h3';
+import { createError } from 'h3';
 
-export default async function me(req, res) {
-  const authToken = readCookie(req, 'authToken');
-
-  if (!authToken) {
-    return res.status(401).json({ status: 'não autenticado' });
+export default async function handler(req: any, res: any) {
+  const token = getCookie(req, 'authToken');
+  if (!token) {
+    return res.status(401).json({ message: 'Not authenticated' });
   }
 
-  // In a real app, this would query the database to get user data
-  const user = { id: '123', name: 'John Doe' };
+  // Dummy user data – replace with real lookup in production
+  const user = {
+    id: '1',
+    name: 'John Doe',
+    username: 'john.doe',
+    role: 'cashier' as const,
+    roleLabel: 'Caixa',
+    active: true,
+  };
 
-  res.json({ status: 'autenticado', user });
+  return res.status(200).json({ user });
 }
