@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2bfc5-f/N5d35pWF0LPLNrVbp90REUtr0\"",
-    "mtime": "2026-08-06T16:14:17.150Z",
-    "size": 180165,
+    "etag": "\"2e68a-qYKsSGAJ4/cphgnXV+MESEft1QE\"",
+    "mtime": "2026-08-06T16:19:44.757Z",
+    "size": 190090,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"a4197-m69Y5DYuxDlLEZKOHMNfmvBo+rA\"",
-    "mtime": "2026-08-06T16:14:17.166Z",
-    "size": 672151,
+    "etag": "\"adc15-AsTCcmkj0xVyrKL75GQSeKjc19c\"",
+    "mtime": "2026-08-06T16:19:44.773Z",
+    "size": 711701,
     "path": "index.mjs.map"
   }
 };
@@ -1292,6 +1292,7 @@ const _lazy_Pnfsz0 = () => Promise.resolve().then(function () { return customers
 const _lazy_jbGOcG = () => Promise.resolve().then(function () { return _id__delete$7; });
 const _lazy_EFm9MF = () => Promise.resolve().then(function () { return _id__put$5; });
 const _lazy_vMNP2g = () => Promise.resolve().then(function () { return sales_get$3; });
+const _lazy_m3Hq09 = () => Promise.resolve().then(function () { return ensureSchema_post$1; });
 const _lazy_xe7acr = () => Promise.resolve().then(function () { return certificates_get$1; });
 const _lazy_AbKrHi = () => Promise.resolve().then(function () { return certificates_post$1; });
 const _lazy_YqQJx3 = () => Promise.resolve().then(function () { return _id__delete$5; });
@@ -1347,6 +1348,7 @@ const handlers = [
   { route: '/api/customers/:id', handler: _lazy_jbGOcG, lazy: true, middleware: false, method: "delete" },
   { route: '/api/customers/:id', handler: _lazy_EFm9MF, lazy: true, middleware: false, method: "put" },
   { route: '/api/customers/:id/sales', handler: _lazy_vMNP2g, lazy: true, middleware: false, method: "get" },
+  { route: '/api/customers/ensure-schema', handler: _lazy_m3Hq09, lazy: true, middleware: false, method: "post" },
   { route: '/api/fiscal/certificates', handler: _lazy_xe7acr, lazy: true, middleware: false, method: "get" },
   { route: '/api/fiscal/certificates', handler: _lazy_AbKrHi, lazy: true, middleware: false, method: "post" },
   { route: '/api/fiscal/certificates/:id', handler: _lazy_YqQJx3, lazy: true, middleware: false, method: "delete" },
@@ -2510,7 +2512,7 @@ const customers_post = defineEventHandler(async (event) => {
   try {
     const customer = await readBody(event);
     const result = await sql`
-          INSERT INTO customers (id, name, phone, address, email, points, total_spent)
+          INSERT INTO customers (id, name, phone, address, email, points, total_spent, cpf_cnpj, inscricao_estadual, cep, logradouro, numero, complemento, bairro, municipio, uf, codigo_municipio)
           VALUES (
             ${customer.id},
             ${customer.name},
@@ -2518,7 +2520,17 @@ const customers_post = defineEventHandler(async (event) => {
             ${customer.address || null},
             ${customer.email || null},
             ${customer.points || 0},
-            ${customer.total_spent || 0}
+            ${customer.total_spent || 0},
+            ${customer.cpf_cnpj || null},
+            ${customer.inscricao_estadual || null},
+            ${customer.cep || null},
+            ${customer.logradouro || null},
+            ${customer.numero || null},
+            ${customer.complemento || null},
+            ${customer.bairro || null},
+            ${customer.municipio || null},
+            ${customer.uf || null},
+            ${customer.codigo_municipio || null}
           )
           RETURNING *
         `;
@@ -2580,6 +2592,16 @@ const _id__put$4 = defineEventHandler(async (event) => {
             email = ${customer.email || null},
             points = ${customer.points || 0},
             total_spent = ${customer.total_spent || 0},
+            cpf_cnpj = ${customer.cpf_cnpj || null},
+            inscricao_estadual = ${customer.inscricao_estadual || null},
+            cep = ${customer.cep || null},
+            logradouro = ${customer.logradouro || null},
+            numero = ${customer.numero || null},
+            complemento = ${customer.complemento || null},
+            bairro = ${customer.bairro || null},
+            municipio = ${customer.municipio || null},
+            uf = ${customer.uf || null},
+            codigo_municipio = ${customer.codigo_municipio || null},
             updated_at = CURRENT_TIMESTAMP
           WHERE id = ${id}
           RETURNING *
@@ -2641,6 +2663,36 @@ const sales_get$2 = defineEventHandler(async (event) => {
 const sales_get$3 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: sales_get$2
+});
+
+const ensureSchema_post = defineEventHandler(async () => {
+  try {
+    await sql`
+      ALTER TABLE customers
+      ADD COLUMN IF NOT EXISTS cpf_cnpj TEXT,
+      ADD COLUMN IF NOT EXISTS inscricao_estadual TEXT,
+      ADD COLUMN IF NOT EXISTS cep TEXT,
+      ADD COLUMN IF NOT EXISTS logradouro TEXT,
+      ADD COLUMN IF NOT EXISTS numero TEXT,
+      ADD COLUMN IF NOT EXISTS complemento TEXT,
+      ADD COLUMN IF NOT EXISTS bairro TEXT,
+      ADD COLUMN IF NOT EXISTS municipio TEXT,
+      ADD COLUMN IF NOT EXISTS uf TEXT,
+      ADD COLUMN IF NOT EXISTS codigo_municipio TEXT
+    `;
+    return { success: true, message: "Schema atualizado com sucesso" };
+  } catch (error) {
+    console.error("Error ensuring customer schema:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error ensuring customer schema"
+    });
+  }
+});
+
+const ensureSchema_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: ensureSchema_post
 });
 
 const certificates_get = defineEventHandler(async () => {
