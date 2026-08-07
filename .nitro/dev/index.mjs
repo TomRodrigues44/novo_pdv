@@ -937,7 +937,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"2edc9-SPWrKRZ/988gvFcb80hZpiqmt4E\"",
+    "mtime": "2026-08-07T15:19:34.129Z",
+    "size": 191945,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"afd3c-4JkWJHj3xbWTzjd/bMBMbuQyuwA\"",
+    "mtime": "2026-08-07T15:19:34.129Z",
+    "size": 720188,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -5277,6 +5292,17 @@ const sales_post = defineEventHandler(async (event) => {
         SET stock = stock - ${item.quantity}
         WHERE id = ${item.id};
       `;
+    }
+    if (customerId) {
+      const pointsToAdd = Math.floor(parseFloat(String(total)) || 0);
+      if (pointsToAdd > 0) {
+        await sql`
+          UPDATE customers
+          SET points = COALESCE(points, 0) + ${pointsToAdd},
+              total_spent = COALESCE(total_spent, 0) + ${parseFloat(String(total)) || 0}
+          WHERE id = ${customerId};
+        `;
+      }
     }
     return { id: saleId, daily_sale_number: dailySaleNumber, message: "Venda registrada com sucesso" };
   } catch (error) {

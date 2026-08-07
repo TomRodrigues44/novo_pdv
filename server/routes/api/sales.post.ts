@@ -67,6 +67,19 @@ export default defineEventHandler(async (event) => {
       `;
     }
 
+    // 6. Atribuir pontos ao cliente (1 real = 1 ponto)
+    if (customerId) {
+      const pointsToAdd = Math.floor(parseFloat(String(total)) || 0);
+      if (pointsToAdd > 0) {
+        await sql`
+          UPDATE customers
+          SET points = COALESCE(points, 0) + ${pointsToAdd},
+              total_spent = COALESCE(total_spent, 0) + ${parseFloat(String(total)) || 0}
+          WHERE id = ${customerId};
+        `;
+      }
+    }
+
     return { id: saleId, daily_sale_number: dailySaleNumber, message: 'Venda registrada com sucesso' };
 
   } catch (error: any) {
