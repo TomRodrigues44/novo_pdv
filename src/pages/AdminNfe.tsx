@@ -398,25 +398,6 @@ const AdminNfe = () => {
                 </div>
               </div>
 
-              {/* Cliente Selecionado - Mostrar dados */}
-              {selectedCustomerId && (
-                <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-green-800">Cliente selecionado:</span>
-                    <span className="text-sm text-green-600">{customer.name}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
-                    <span>CPF/CNPJ: {customer.cpf_cnpj || '—'}</span>
-                    <span>IE: {customer.inscricao_estadual || '—'}</span>
-                    <span>Tel: {customer.phone || '—'}</span>
-                    <span>Email: {customer.email || '—'}</span>
-                    <span className="col-span-2">End: {customer.logradouro}, {customer.numero} - {customer.bairro}, {customer.municipio}/{customer.uf}</span>
-                    <span>CEP: {customer.cep || '—'}</span>
-                    <span>Cód. IBGE: {customer.codigo_municipio || '—'}</span>
-                  </div>
-                </div>
-              )}
-
               {/* Formulário completo (APENAS VISUALIZAÇÃO - readonly) */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3 pt-4 border-t bg-gray-50 rounded-lg p-4">
                 <div className="space-y-2 md:col-span-2">
