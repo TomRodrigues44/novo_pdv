@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AdminSidebar from "@/components/AdminSidebar";
 import {
   Card,
@@ -13,7 +13,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -34,8 +34,11 @@ import {
   Mail,
   Star,
   History,
+  Save,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { FilterableDropdown } from "@/components/FilterableDropdown";
 
 interface Customer {
   id: string;
@@ -47,21 +50,51 @@ interface Customer {
   total_spent: number;
   total_orders: number;
   created_at: string;
+  // Campos fiscais/endereço
+  cpf_cnpj?: string;
+  inscricao_estadual?: string;
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  municipio?: string;
+  uf?: string;
+  codigo_municipio?: string;
 }
+
+interface CustomerForm {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  email: string;
+  cpf_cnpj: string;
+  inscricao_estadual: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  municipio: string;
+  uf: string;
+  codigo_municipio: string;
+}
+
+const emptyCustomerForm: CustomerForm = {
+  id: '', name: '', phone: '', address: '', email: '', cpf_cnpj: '', inscricao_estadual: '',
+  cep: '', logradouro: '', numero: '', complemento: '', bairro: '', municipio: '', uf: 'RR', codigo_municipio: '1400100',
+};
 
 const AdminCustomers = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [isEditingCustomer, setIsEditingCustomer] = useState(false);
+  const [formData, setFormData] = useState<CustomerForm>(emptyCustomerForm);
   const [searchTerm, setSearchTerm] = useState("");
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
   const [selectedCustomerHistory, setSelectedCustomerHistory] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    phone: "",
-    address: "",
-    email: "",
-  });
+  const [loading, setLoading] = useState(true);
 
   const fetchCustomers = async () => {
     try {
@@ -72,64 +105,102 @@ const AdminCustomers = () => {
       }
     } catch (error) {
       console.error('Error fetching customers:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  useState(() => {
-    fetchCustomers();
-  });
+  useEffect(() => {
+    // Garantir schema antes de buscar
+    fetch('/api/customers/ensure-schema', { method: 'POST' })
+      .catch(() => console.warn('Não foi possível garantir schema'))
+      .finally(() => {
+        fetchCustomers();
+      });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      if (editingCustomer) {
-        const response = await fetch(`/api/customers/${editingCustomer.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...formData,
-            points: editingCustomer.points,
-            total_spent: editingCustomer.total_spent,
-          }),
-        });
-
-        if (response.ok) {
-          toast.success('Cliente atualizado com sucesso!');
-          fetchCustomers();
-        }
-      } else {
-        const response = await fetch('/api/customers', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: `cust-${Date.now()}`,
-            ...formData,
-          }),
-        });
-
-        if (response.ok) {
-          toast.success('Cliente cadastrado com sucesso!');
-          fetchCustomers();
-        }
-      }
+      const url = formData.id ? `/api/customers/${formData.id}` : '/api/customers';
+      const method = formData.id ? 'PUT' : 'POST';
       
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: formData.id || `cust-${Date.now()}`,
+          name: formData.name,
+          phone: formData.phone,
+          address: `${formData.logradouro}, ${formData.numero}${formData.complemento ? ` - ${formData.complemento}` : ''}`,
+          email: formData.email,
+          cpf_cnpj: formData.cpf_cnpj,
+          inscricao_estadual: formData.inscricao_estadual,
+          cep: formData.cep,
+          logradouro: formData.logradouro,
+          numero: formData.numero,
+          complemento: formData.complemento,
+          bairro: formData.bairro,
+          municipio: formData.municipio,
+          uf: formData.uf,
+          codigo_municipio: formData.codigo_municipio,
+          points: 0,
+          total_spent: 0,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.statusMessage || 'Erro ao salvar cliente');
+      }
+
+      const savedCustomer = await response.json();
+      setCustomers((current) => {
+        const existingIndex = current.findIndex((entry) => String(entry.id) === String(savedCustomer.id));
+        if (existingIndex >= 0) {
+          const updated = [...current];
+          updated[existingIndex] = savedCustomer;
+          return updated;
+        }
+        return [...current, savedCustomer];
+      });
+
+      toast.success(formData.id ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!');
       setIsDialogOpen(false);
-      setEditingCustomer(null);
-      setFormData({ name: "", phone: "", address: "", email: "" });
+      setFormData(emptyCustomerForm);
+      setIsEditingCustomer(false);
     } catch (error) {
-      toast.error('Erro ao salvar cliente');
+      console.error('Error saving customer:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao salvar cliente.');
     }
   };
 
   const handleEdit = (customer: Customer) => {
-    setEditingCustomer(customer);
     setFormData({
+      id: customer.id,
       name: customer.name,
-      phone: customer.phone,
-      address: customer.address,
-      email: customer.email,
+      phone: customer.phone || '',
+      address: customer.address || '',
+      email: customer.email || '',
+      cpf_cnpj: customer.cpf_cnpj || '',
+      inscricao_estadual: customer.inscricao_estadual || '',
+      cep: customer.cep || '',
+      logradouro: customer.logradouro || '',
+      numero: customer.numero || '',
+      complemento: customer.complemento || '',
+      bairro: customer.bairro || '',
+      municipio: customer.municipio || '',
+      uf: customer.uf || 'RR',
+      codigo_municipio: customer.codigo_municipio || (customer.uf === 'RR' ? '1400100' : ''),
     });
+    setIsEditingCustomer(true);
+    setIsDialogOpen(true);
+  };
+
+  const handleNewCustomer = () => {
+    setFormData(emptyCustomerForm);
+    setIsEditingCustomer(false);
     setIsDialogOpen(true);
   };
 
@@ -188,66 +259,14 @@ const AdminCustomers = () => {
                 className="pl-10 w-full sm:w-64"
               />
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  onClick={() => {
-                    setEditingCustomer(null);
-                    setFormData({ name: "", phone: "", address: "", email: "" });
-                  }}
-                  className="bg-orange-600 hover:bg-orange-700 whitespace-nowrap"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Novo Cliente
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingCustomer ? "Editar Cliente" : "Novo Cliente"}
-                  </DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Nome *</label>
-                    <Input
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Nome completo"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Telefone</label>
-                    <Input
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="(00) 00000-0000"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Endereço</label>
-                    <Input
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      placeholder="Rua, número, bairro"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Email</label>
-                    <Input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="cliente@email.com"
-                    />
-                  </div>
-                  <Button type="submit" className="w-full bg-orange-600">
-                    {editingCustomer ? "Atualizar" : "Cadastrar"}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
+            {/* Botão igual ao do AdminNfe - laranja com Plus */}
+            <Button
+              onClick={handleNewCustomer}
+              className="bg-orange-600 hover:bg-orange-700 whitespace-nowrap"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Cliente
+            </Button>
           </div>
         </div>
 
@@ -304,7 +323,9 @@ const AdminCustomers = () => {
             <CardTitle>Lista de Clientes</CardTitle>
           </CardHeader>
           <CardContent>
-            {filteredCustomers.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-12 text-gray-500">Carregando...</div>
+            ) : filteredCustomers.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <p className="text-lg">Nenhum cliente encontrado</p>
                 {searchTerm && (
@@ -319,6 +340,7 @@ const AdminCustomers = () => {
                       <TableHead>Nome</TableHead>
                       <TableHead>Telefone</TableHead>
                       <TableHead>Endereço</TableHead>
+                      <TableHead>CPF/CNPJ</TableHead>
                       <TableHead>Pontos</TableHead>
                       <TableHead>Total Gasto</TableHead>
                       <TableHead>Pedidos</TableHead>
@@ -341,6 +363,7 @@ const AdminCustomers = () => {
                             {customer.address || "-"}
                           </div>
                         </TableCell>
+                        <TableCell>{customer.cpf_cnpj || "-"}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Star className="h-4 w-4 text-yellow-500" />
@@ -361,9 +384,11 @@ const AdminCustomers = () => {
                               <History className="h-4 w-4" />
                             </Button>
                             <Button
-                              variant="outline"
-                              size="sm"
+                              variant="default"
+                              size="icon"
                               onClick={() => handleEdit(customer)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                              title="Editar cliente"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -435,6 +460,128 @@ const AdminCustomers = () => {
                 </div>
               )}
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Customer Form Dialog - Igual ao AdminNfe */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{isEditingCustomer ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="space-y-2 md:col-span-2">
+                <label className="block text-sm font-medium mb-2">Nome / Razão Social *</label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">CPF ou CNPJ *</label>
+                <Input
+                  value={formData.cpf_cnpj}
+                  onChange={(e) => setFormData({ ...formData, cpf_cnpj: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">Inscrição Estadual</label>
+                <Input
+                  value={formData.inscricao_estadual}
+                  onChange={(e) => setFormData({ ...formData, inscricao_estadual: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">Telefone</label>
+                <Input
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">E-mail</label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">CEP *</label>
+                <Input
+                  value={formData.cep}
+                  onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="block text-sm font-medium mb-2">Logradouro *</label>
+                <Input
+                  value={formData.logradouro}
+                  onChange={(e) => setFormData({ ...formData, logradouro: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">Número *</label>
+                <Input
+                  value={formData.numero}
+                  onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">Complemento</label>
+                <Input
+                  value={formData.complemento}
+                  onChange={(e) => setFormData({ ...formData, complemento: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">Bairro *</label>
+                <Input
+                  value={formData.bairro}
+                  onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">Município *</label>
+                <Input
+                  value={formData.municipio}
+                  onChange={(e) => setFormData({ ...formData, municipio: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">UF *</label>
+                <Input
+                  maxLength={2}
+                  value={formData.uf}
+                  onChange={(e) => setFormData({ ...formData, uf: e.target.value.toUpperCase() })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">Código IBGE do município *</label>
+                <Input
+                  value={formData.codigo_municipio}
+                  onChange={(e) => setFormData({ ...formData, codigo_municipio: e.target.value })}
+                  required
+                />
+              </div>
+            </form>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button className="bg-orange-600 hover:bg-orange-700" type="submit" form={undefined} onClick={handleSubmit}>
+                <Save className="mr-2 h-4 w-4" />
+                Salvar
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
