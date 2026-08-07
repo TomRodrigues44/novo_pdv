@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { FileCheck2, Loader2, PackagePlus, Plus, Search, Trash2, Truck, UserRound } from 'lucide-react';
+import { FileCheck2, Loader2, PackagePlus, Plus, Search, Trash2, Truck, UserRound, UserPlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { DanfeDialog } from '@/components/DanfeDialog';
 
@@ -253,41 +253,88 @@ const AdminNfe = () => {
           </div>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><UserRound className="h-5 w-5" /> 1. Destinatário</CardTitle>
-              <CardDescription>Selecione um cliente ou preencha um novo cadastro fiscal completo.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="max-w-xl space-y-2">
-                <Label>Cliente cadastrado</Label>
-                <Select value={customer.id || 'new'} onValueChange={selectCustomer}>
-                  <SelectTrigger><SelectValue placeholder="Novo cliente" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">+ Novo cliente</SelectItem>
-                    {customers.map((entry) => (
-                      <SelectItem key={entry.id} value={String(entry.id)}>{entry.name} {entry.cpf_cnpj ? `— ${entry.cpf_cnpj}` : ''}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="space-y-2 md:col-span-2"><Label>Nome / Razão Social *</Label><Input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} /></div>
-                <div className="space-y-2"><Label>CPF ou CNPJ *</Label><Input value={customer.cpf_cnpj} onChange={(e) => setCustomer({ ...customer, cpf_cnpj: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Inscrição Estadual</Label><Input value={customer.inscricao_estadual} onChange={(e) => setCustomer({ ...customer, inscricao_estadual: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Telefone</Label><Input value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} /></div>
-                <div className="space-y-2"><Label>E-mail</Label><Input type="email" value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} /></div>
-                <div className="space-y-2"><Label>CEP *</Label><Input value={customer.cep} onChange={(e) => setCustomer({ ...customer, cep: e.target.value })} /></div>
-                <div className="space-y-2 md:col-span-2"><Label>Logradouro *</Label><Input value={customer.logradouro} onChange={(e) => setCustomer({ ...customer, logradouro: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Número *</Label><Input value={customer.numero} onChange={(e) => setCustomer({ ...customer, numero: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Complemento</Label><Input value={customer.complemento} onChange={(e) => setCustomer({ ...customer, complemento: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Bairro *</Label><Input value={customer.bairro} onChange={(e) => setCustomer({ ...customer, bairro: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Município *</Label><Input value={customer.municipio} onChange={(e) => setCustomer({ ...customer, municipio: e.target.value })} /></div>
-                <div className="space-y-2"><Label>UF *</Label><Input maxLength={2} value={customer.uf} onChange={(e) => setCustomer({ ...customer, uf: e.target.value.toUpperCase() })} /></div>
-                <div className="space-y-2"><Label>Código IBGE do município *</Label><Input value={customer.codigo_municipio} onChange={(e) => setCustomer({ ...customer, codigo_municipio: e.target.value })} /></div>
-              </div>
-            </CardContent>
-          </Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><UserRound className="h-5 w-5" /> 1. Destinatário</CardTitle>
+                        <CardDescription>Selecione um cliente ou preencha um novo cadastro fiscal completo.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-5">
+                        <div className="max-w-xl space-y-2">
+                                                  <Label>Cliente cadastrado</Label>
+                                                  <div className="flex gap-2">
+                                                    <div className="relative flex-1">
+                                                      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                                      <Input
+                                                        className="pl-9"
+                                                        placeholder="Buscar cliente por nome ou CPF/CNPJ..."
+                                                        value={search}
+                                                        onChange={(e) => setSearch(e.target.value)}
+                                                      />
+                                                    </div>
+                                                    <Button
+                                                      variant="outline"
+                                                      onClick={() => {
+                                                        setCustomer(emptyCustomer);
+                                                        setSearch('');
+                                                      }}
+                                                    >
+                                                      <UserPlus className="mr-2 h-4 w-4" />{customer.id ? 'CADASTRAR' : '+ Novo Cliente'}
+                                                    </Button>
+                                                  </div>
+                                                  {search && (
+                                                    <div className="relative z-20 mt-1 w-full rounded-md border bg-white p-2 shadow-lg">
+                                                      {customers
+                                                        .filter((entry) =>
+                                                          entry.name.toLowerCase().includes(search.toLowerCase()) ||
+                                                          entry.cpf_cnpj?.includes(search)
+                                                        )
+                                                        .slice(0, 8)
+                                                        .map((entry) => (
+                                                          <div
+                                                            key={entry.id}
+                                                            className="flex items-center justify-between gap-4 rounded p-2 hover:bg-gray-50 cursor-pointer"
+                                                            onClick={() => {
+                                                              selectCustomer(String(entry.id));
+                                                              setSearch('');
+                                                            }}
+                                                          >
+                                                            <div>
+                                                              <p className="font-medium">{entry.name}</p>
+                                                              <p className="text-xs text-gray-500">{entry.cpf_cnpj ? `— ${entry.cpf_cnpj}` : ''}</p>
+                                                            </div>
+                                                            <Button size="sm" variant="ghost">
+                                                              Selecionar
+                                                            </Button>
+                                                          </div>
+                                                        ))}
+                                                      {customers.filter((entry) =>
+                                                        entry.name.toLowerCase().includes(search.toLowerCase()) ||
+                                                        entry.cpf_cnpj?.includes(search)
+                                                      ).length === 0 && (
+                                                        <div className="p-2 text-sm text-gray-500">
+                                                          Nenhum cliente encontrado.
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  )}
+                                                </div>
+          
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                          <div className="space-y-2 md:col-span-2"><Label>Nome / Razão Social *</Label><Input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} /></div>
+                          <div className="space-y-2"><Label>CPF ou CNPJ *</Label><Input value={customer.cpf_cnpj} onChange={(e) => setCustomer({ ...customer, cpf_cnpj: e.target.value })} /></div>
+                          <div className="space-y-2"><Label>Inscrição Estadual</Label><Input value={customer.inscricao_estadual} onChange={(e) => setCustomer({ ...customer, inscricao_estadual: e.target.value })} /></div>
+                          <div className="space-y-2"><Label>Telefone</Label><Input value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} /></div>
+                          <div className="space-y-2"><Label>E-mail</Label><Input type="email" value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} /></div>
+                          <div className="space-y-2"><Label>CEP *</Label><Input value={customer.cep} onChange={(e) => setCustomer({ ...customer, cep: e.target.value })} /></div>
+                          <div className="space-y-2 md:col-span-2"><Label>Logradouro *</Label><Input value={customer.logradouro} onChange={(e) => setCustomer({ ...customer, logradouro: e.target.value })} /></div>
+                          <div className="space-y-2"><Label>Número *</Label><Input value={customer.numero} onChange={(e) => setCustomer({ ...customer, numero: e.target.value })} /></div>
+                          <div className="space-y-2"><Label>Complemento</Label><Input value={customer.complemento} onChange={(e) => setCustomer({ ...customer, complemento: e.target.value })} /></div>
+                          <div className="space-y-2"><Label>Bairro *</Label><Input value={customer.bairro} onChange={(e) => setCustomer({ ...customer, bairro: e.target.value })} /></div>
+                          <div className="space-y-2"><Label>Município *</Label><Input value={customer.municipio} onChange={(e) => setCustomer({ ...customer, municipio: e.target.value })} /></div>
+                          <div className="space-y-2"><Label>UF *</Label><Input maxLength={2} value={customer.uf} onChange={(e) => setCustomer({ ...customer, uf: e.target.value.toUpperCase() })} /></div>
+                          <div className="space-y-2"><Label>Código IBGE do município *</Label><Input value={customer.codigo_municipio} onChange={(e) => setCustomer({ ...customer, codigo_municipio: e.target.value })} /></div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
           <Card>
             <CardHeader>
