@@ -356,11 +356,11 @@ const AdminNfe = () => {
               <CardDescription>Selecione um cliente ou cadastre um novo.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              {/* Busca e Seleção de Cliente */}
+              {/* Busca e Seleção de Cliente - Tudo em uma linha */}
               <div className="space-y-3">
                 <Label>Buscar cliente</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative flex-1 min-w-[280px]">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <Input
                       className="pl-9"
@@ -369,68 +369,65 @@ const AdminNfe = () => {
                       onChange={(e) => setCustomerSearch(e.target.value)}
                     />
                   </div>
-                  <Button
-                    onClick={openNewCustomer}
-                    className="bg-orange-600 hover:bg-orange-700 whitespace-nowrap"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Novo Cliente
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={clearCustomerSelection}
+                      disabled={!selectedCustomerId && !customerSearch}
+                      title="Limpar seleção"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="icon"
+                      onClick={editCustomer}
+                      disabled={!selectedCustomerId}
+                      title="Editar cliente selecionado"
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      onClick={openNewCustomer}
+                      className="bg-orange-600 hover:bg-orange-700 whitespace-nowrap"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Novo Cliente
+                    </Button>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <Select
-                  value={selectedCustomerId}
-                  onValueChange={selectCustomer}
-                  className="flex-1 min-w-[280px] max-w-xl"
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um cliente da lista filtrada" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredCustomers.length === 0 ? (
-                      <div className="py-4 text-center text-gray-500 text-sm">
-                        Nenhum cliente encontrado. Clique em "Novo Cliente" para cadastrar.
-                      </div>
-                    ) : (
-                      filteredCustomers.map((entry) => (
-                        <SelectItem key={entry.id} value={String(entry.id)}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{entry.name}</span>
-                            <span className="text-xs text-gray-500">
-                              {entry.cpf_cnpj ? `CPF/CNPJ: ${entry.cpf_cnpj}` : ''}
-                              {entry.phone ? ` • Tel: ${entry.phone}` : ''}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={clearCustomerSelection}
-                    disabled={!selectedCustomerId && !customerSearch}
-                    title="Limpar seleção"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="icon"
-                    onClick={editCustomer}
-                    disabled={!selectedCustomerId}
-                    title="Editar cliente selecionado"
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+              <Select
+                value={selectedCustomerId}
+                onValueChange={selectCustomer}
+                className="w-full max-w-xl"
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um cliente da lista filtrada" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredCustomers.length === 0 ? (
+                    <div className="py-4 text-center text-gray-500 text-sm">
+                      Nenhum cliente encontrado. Clique em "Novo Cliente" para cadastrar.
+                    </div>
+                  ) : (
+                    filteredCustomers.map((entry) => (
+                      <SelectItem key={entry.id} value={String(entry.id)}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{entry.name}</span>
+                          <span className="text-xs text-gray-500">
+                            {entry.cpf_cnpj ? `CPF/CNPJ: ${entry.cpf_cnpj}` : ''}
+                            {entry.phone ? ` • Tel: ${entry.phone}` : ''}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
 
               {/* Cliente Selecionado - Mostrar dados */}
               {selectedCustomerId && (
