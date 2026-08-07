@@ -6,6 +6,9 @@ declare module "nitropack/types" {
     '/api/auth/:action': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/auth/[action]').default>>>>
     }
+    '/api/auth/me': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/auth/me.get').default>>>>
+    }
     '/api/auth/status': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/auth/status.get').default>>>>
     }
