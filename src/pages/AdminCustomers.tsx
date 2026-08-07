@@ -79,14 +79,11 @@ interface CustomerForm {
   municipio: string;
   uf: string;
   codigo_municipio: string;
-  points: number;
-  total_spent: number;
 }
 
 const emptyCustomerForm: CustomerForm = {
   id: '', name: '', phone: '', address: '', email: '', cpf_cnpj: '', inscricao_estadual: '',
   cep: '', logradouro: '', numero: '', complemento: '', bairro: '', municipio: '', uf: 'RR', codigo_municipio: '1400100',
-  points: 0, total_spent: 0,
 };
 
 const AdminCustomers = () => {
@@ -148,8 +145,8 @@ const AdminCustomers = () => {
           municipio: formData.municipio,
           uf: formData.uf,
           codigo_municipio: formData.codigo_municipio,
-          points: formData.points || 0,
-          total_spent: formData.total_spent || 0,
+          points: 0,
+          total_spent: 0,
         }),
       });
 
@@ -196,8 +193,6 @@ const AdminCustomers = () => {
       municipio: customer.municipio || '',
       uf: customer.uf || 'RR',
       codigo_municipio: customer.codigo_municipio || (customer.uf === 'RR' ? '1400100' : ''),
-      points: customer.points || 0,
-      total_spent: customer.total_spent || 0,
     });
     setIsEditingCustomer(true);
     setIsDialogOpen(true);
@@ -577,30 +572,6 @@ const AdminCustomers = () => {
                   required
                 />
               </div>
-              {/* Campos de pontuação - visíveis apenas em edição */}
-              {isEditingCustomer && (
-                <>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium mb-2">Pontos</label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={formData.points}
-                      onChange={(e) => setFormData({ ...formData, points: parseInt(e.target.value) || 0 })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium mb-2">Total Gasto</label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.total_spent}
-                      onChange={(e) => setFormData({ ...formData, total_spent: parseFloat(e.target.value) || 0 })}
-                    />
-                  </div>
-                </>
-              )}
             </form>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
