@@ -20,6 +20,8 @@ export default defineEventHandler(async (event) => {
           FROM sales s
           LEFT JOIN sale_items si ON s.id = si.sale_id
           WHERE s.customer_id = ${id}
+            AND s.status != 'cancelled'
+            AND s.xml_status != 'cancelled'
           GROUP BY s.id
           ORDER BY s.created_at DESC
           LIMIT 50

@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"3168b-JnyXg0bu9Aa+Tyky63u3pcuvZRs\"",
-    "mtime": "2026-08-10T14:33:52.615Z",
-    "size": 202379,
+    "etag": "\"31abd-VXd8T+Ilmm/ptqmhxIu/YjSMAT4\"",
+    "mtime": "2026-08-10T14:36:37.504Z",
+    "size": 203453,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"b9373-UKEu3AgQ6QDskEvxrcoRAilE1zg\"",
-    "mtime": "2026-08-10T14:33:52.635Z",
-    "size": 758643,
+    "etag": "\"ba4fd-GdijgFlZNxD1E3ULTrbi5yGgFDs\"",
+    "mtime": "2026-08-10T14:36:37.518Z",
+    "size": 763133,
     "path": "index.mjs.map"
   }
 };
@@ -2738,6 +2738,8 @@ const sales_get$2 = defineEventHandler(async (event) => {
           FROM sales s
           LEFT JOIN sale_items si ON s.id = si.sale_id
           WHERE s.customer_id = ${id}
+            AND s.status != 'cancelled'
+            AND s.xml_status != 'cancelled'
           GROUP BY s.id
           ORDER BY s.created_at DESC
           LIMIT 50
