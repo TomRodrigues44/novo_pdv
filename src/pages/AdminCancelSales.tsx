@@ -36,7 +36,7 @@ interface Sale {
 }
 
 const AdminCancelSales = () => {
- const { getSalesReport } = useAdmin();
+ const { getSalesReport, refreshData } = useAdmin();
  const [password, setPassword] = useState("");
  const [confirmPassword, setConfirmPassword] = useState("");
  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
@@ -138,6 +138,9 @@ const AdminCancelSales = () => {
    setPassword("");
    setConfirmPassword("");
    setSelectedSale(null);
+   
+   // Atualizar os dados após cancelamento
+   await refreshData();
   } catch (error) {
    toast.error(error instanceof Error ? error.message : "Erro ao cancelar a venda");
   } finally {

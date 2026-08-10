@@ -38,6 +38,11 @@ export const useAdmin = () => {
     }
   }, []);
 
+  // Função pública para forçar refresh dos dados
+  const refreshData = useCallback(async () => {
+    await fetchData();
+  }, [fetchData]);
+
   // Carregar dados ao montar
   useEffect(() => {
     fetchData();
@@ -64,7 +69,7 @@ export const useAdmin = () => {
 
     if (response.ok) {
       setCategories((prev) => [...prev, newCategory]);
-      invalidateCache(); // Invalidar cache do PDV
+      invalidateCache();
     }
   }, [invalidateCache]);
 
@@ -79,7 +84,7 @@ export const useAdmin = () => {
       setCategories((prev) =>
         prev.map((cat) => (cat.id === id ? { ...cat, ...updates } : cat))
       );
-      invalidateCache(); // Invalidar cache do PDV
+      invalidateCache();
     }
   }, [invalidateCache]);
 
@@ -91,7 +96,7 @@ export const useAdmin = () => {
     if (response.ok) {
       setCategories((prev) => prev.filter((cat) => cat.id !== id));
       setProducts((prev) => prev.filter((prod) => prod.category !== id));
-      invalidateCache(); // Invalidar cache do PDV
+      invalidateCache();
     }
   }, [invalidateCache]);
 
@@ -110,7 +115,7 @@ export const useAdmin = () => {
 
     if (response.ok) {
       setProducts((prev) => [...prev, newProduct]);
-      invalidateCache(); // Invalidar cache do PDV
+      invalidateCache();
     }
   }, [invalidateCache]);
 
@@ -125,7 +130,7 @@ export const useAdmin = () => {
       setProducts((prev) =>
         prev.map((prod) => (prod.id === id ? { ...prod, ...updates } : prod))
       );
-      invalidateCache(); // Invalidar cache do PDV
+      invalidateCache();
     }
   }, [invalidateCache]);
 
@@ -136,7 +141,7 @@ export const useAdmin = () => {
 
     if (response.ok) {
       setProducts((prev) => prev.filter((prod) => prod.id !== id));
-      invalidateCache(); // Invalidar cache do PDV
+      invalidateCache();
     }
   }, [invalidateCache]);
 
@@ -153,7 +158,7 @@ export const useAdmin = () => {
           prod.id === id ? { ...prod, stock: quantity, available: quantity > 0 } : prod
         )
       );
-      invalidateCache(); // Invalidar cache do PDV
+      invalidateCache();
     }
   }, [invalidateCache]);
 
@@ -240,5 +245,6 @@ export const useAdmin = () => {
     recordSale,
     getSalesReport,
     getLowStockProducts,
+    refreshData, // Exportar função de refresh
   };
 };

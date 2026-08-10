@@ -43,7 +43,7 @@ import {
 import { toast } from "sonner";
 
 const AdminReports = () => {
- const { getSalesReport } = useAdmin();
+ const { getSalesReport, refreshData } = useAdmin();
  const [days, setDays] = useState(7);
  const [selectedSale, setSelectedSale] = useState<any>(null);
  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
@@ -180,6 +180,9 @@ const AdminReports = () => {
 
    toast.success("Venda cancelada com sucesso!");
    setCancelDialogOpen(false);
+   
+   // Atualizar os dados após cancelamento
+   await refreshData();
   } catch (error) {
    toast.error(error instanceof Error ? error.message : "Erro ao cancelar a venda");
   } finally {
