@@ -9,14 +9,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
- Table,
- TableBody,
- TableCell,
- TableHead,
- TableHeader,
- TableRow,
-} from "@/components/ui/table";
-import {
  Dialog,
  DialogContent,
  DialogHeader,
@@ -33,64 +25,128 @@ import {
  AlertCircle,
  Loader2,
  Lock,
-  RefreshCw,
-  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 
 const AdminCancelSales = () => {
  const { getSalesReport, refreshData } = useAdmin();
  const [selectedSale, setSelectedSale] = useState<any>(null);
- const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
- const [cancelledSales, setCancelledSales] = useState<any[]>([]);
- const [loading, setLoading] = useState(true);
+ const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+ const [cancelPassword, setCancelPassword] = useState("");
+ const [cancelJustificativa, setCancelJustificativa] = useState("");
+ const [cancelLoading, setCancelLoading] = useState(false);
+ const [cancelPasswordConfigured, setCancelPasswordConfigured] = useState(false);
 
- // Buscar vendas canceladas
- const fetchCancelledSales = async () => {
-  try {
-   setLoading(true);
-   const response = await fetch('/api/sales');
-   if (response.ok) {
-    const sales = await response.json();
-    // Filtrar apenas vendas canceladas
-    const cancelled = sales.filter((sale: any) => 
-     sale.status === 'cancelled' || sale.xml_status === 'cancelled'
-    );
-    setCancelledSales(cancelled);
-   }
-  } catch (error) {
-   console.error('Error fetching cancelled sales:', error);
-   toast.error('Erro ao carregar notas canceladas');
-  } finally {
-   setLoading(false);
-  }
- };
+ const report = getSalesReport(90);
 
+ // Verificar se a senha de cancelamento está configurada
  useEffect(() => {
-  fetchCancelledSales();
+  const checkCancelPassword = async () => {
+   try {
+    const response = await fetch('/api/cancel-password');
+    if (response.ok) {
+     const data = await response.json();
+     setCancelPasswordConfigured(data.configured);
+    }
+   } catch (error) {
+    console.error('Error checking cancel password:', error);
+   }
+  };
+  checkCancelPassword();
  }, []);
 
- const handleViewDetails = (sale: any) => {
+ const cancellableSales = report.sales.filter((sale: any) => {
+  const status = sale.status?.toLowerCase() || "";
+  const model = sale.fiscal_model?.toLowerCase() || "";
+  const isCancelled = sale.status === 'cancelled' || sale.xml_status === 'cancelled';
+  
+  if (isCancelled) return false;
+  
+  return (
+   status === "aberta" ||
+   status === "aberta (orçamento)" ||
+   status === "aberta (nfce)" ||
+   status === "aberta (nfe)" ||
+   status === "concluída" ||
+   status === "concluida" ||
+   status === "finalizada" ||
+   status === "finalizado" ||
+   model.includes("orçamento") ||
+   model.includes("orcamento")
+  );
+ });
+
+ const handleCancelClick = (sale: any) => {
   setSelectedSale(sale);
-  setIsDetailDialogOpen(true);
+  setIsCancelDialogOpen(true);
+  setCancelPassword("");
+  setCancelJustificativa("");
  };
 
- const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('pt-BR', {
-   style: 'currency',
-   currency: 'BRL',
-  }).format(value);
- };
-
- const getStatusBadge = (sale: any) => {
-  if (sale.xml_status === 'cancelled' || sale.status === 'cancelled') {
-   return <Badge variant="destructive">Cancelada</Badge>;
+ const handleCancelSale = async () => {
+  if (!cancelPassword) {
+   toast.error("Senha de cancelamento é obrigatória!");
+   return;
   }
-  if (sale.fiscal_model === 'NFe') return <Badge variant="secondary">NF-e</Badge>;
-  if (sale.fiscal_model === 'NFCe') return <Badge variant="default">NFC-e</Badge>;
-  if (sale.fiscal_model === 'Orcamento') return <Badge variant="outline">Orçamento</Badge>;
-  return <Badge variant="outline">Venda</Badge>;
+
+  if (!cancelJustificativa || cancelJustificativa.trim().length < 15) {
+   toast.error("Justificativa é obrigatória e deve ter pelo menos 15 caracteres!");
+   return;
+  }
+
+  if (!cancelPasswordConfigured) {
+   toast.error("Senha de cancelamento não configurada. Configure uma senha de cancelamento em Configurações Fiscais.");
+   return;
+  }
+
+  setCancelLoading(true);
+
+  try {
+   // Primeiro, tentar cancelamento fiscal se for NFe ou NFCe
+   if (selectedSale.fiscal_model === "NFe" || selectedSale.fiscal_model === "NFCe") {
+    const cancelFiscalResponse = await fetch(`/api/fiscal/${selectedSale.id}/cancel`, {
+     method: "POST",
+     headers: {
+      "Content-Type": "application/json",
+     },
+     body: JSON.stringify({
+      password: cancelPassword,
+      justificativa: cancelJustificativa,
+     }),
+    });
+
+    if (!cancelFiscalResponse.ok) {
+     const error = await cancelFiscalResponse.json();
+     throw new Error(error.statusMessage || error.message || "Falha ao cancelar fiscalmente");
+    }
+   }
+
+   // Depois, cancelar a venda no sistema
+   const response = await fetch(`/api/sales/${selectedSale.id}/cancel`, {
+    method: "POST",
+    headers: {
+     "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+     password: cancelPassword,
+    }),
+   });
+
+   if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.statusMessage || error.message || "Falha ao cancelar a venda");
+   }
+
+   toast.success("Venda cancelada com sucesso!");
+   setIsCancelDialogOpen(false);
+   
+   // Atualizar os dados após cancelamento
+   await refreshData();
+  } catch (error) {
+   toast.error(error instanceof Error ? error.message : "Erro ao cancelar a venda");
+  } finally {
+   setCancelLoading(false);
+  }
  };
 
  return (
@@ -98,237 +154,137 @@ const AdminCancelSales = () => {
    <div className="flex">
     <AdminSidebar />
     <div className="flex-1 ml-64 min-h-screen bg-gray-50 p-8">
-      <div className="mb-8 flex items-center justify-between">
-       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-         <AlertCircle className="h-8 w-8 text-red-600" />
-         Notas Canceladas
-        </h1>
-        <p className="text-gray-600 mt-2">
-         Lista de todas as vendas e notas fiscais que foram canceladas
-        </p>
-       </div>
-       <Button
-        variant="outline"
-        onClick={fetchCancelledSales}
-        disabled={loading}
-        className="gap-2"
-       >
-        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-        Atualizar
-       </Button>
+      <div className="mb-8">
+       <h1 className="text-3xl font-bold">Cancelar Vendas</h1>
+       <p className="text-gray-600 mt-2">
+        Selecione uma venda para cancelar. Apenas vendas em status "aberta" ou "concluída" podem ser canceladas.
+       </p>
+       {!cancelPasswordConfigured && (
+        <div className="mt-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
+         <div className="flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+          <div>
+           <h4 className="font-semibold text-yellow-900">Atenção</h4>
+           <p className="text-sm text-yellow-800 mt-1">
+            Configure uma senha de cancelamento em <span className="font-medium">Configurações Fiscais → Senha de Cancelamento</span> antes de cancelar vendas.
+           </p>
+          </div>
+         </div>
+        </div>
+       )}
       </div>
 
       <Card>
        <CardHeader>
-        <CardTitle>Notas Fiscais e Vendas Canceladas ({cancelledSales.length})</CardTitle>
+        <CardTitle>Vendas Pendentes de Cancelamento</CardTitle>
        </CardHeader>
        <CardContent>
-        {loading ? (
-         <div className="py-12 text-center text-gray-500">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-          Carregando notas canceladas...
-         </div>
-        ) : cancelledSales.length === 0 ? (
-         <div className="py-12 text-center text-gray-500">
-          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-          <p className="text-lg">Nenhuma nota cancelada encontrada</p>
-          <p className="mt-2 text-sm">As notas canceladas aparecerão aqui automaticamente</p>
-         </div>
+        {cancellableSales.length === 0 ? (
+         <p className="py-8 text-center text-gray-500">Nenhuma venda pendente de cancelamento encontrada.</p>
         ) : (
          <div className="overflow-x-auto">
-          <Table>
-           <TableHeader>
-            <TableRow>
-             <TableHead>Data</TableHead>
-             <TableHead>ID / Senha</TableHead>
-             <TableHead>Tipo</TableHead>
-             <TableHead>Status</TableHead>
-             <TableHead>Cliente</TableHead>
-             <TableHead className="text-right">Total</TableHead>
-             <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-           </TableHeader>
-           <TableBody>
-            {cancelledSales.map((sale) => (
-             <TableRow key={sale.id} className="hover:bg-red-50">
-              <TableCell className="whitespace-nowrap">
-               {new Date(sale.created_at).toLocaleString('pt-BR')}
-              </TableCell>
-              <TableCell className="font-medium font-mono">
-               #{sale.daily_sale_number || String(sale.id).slice(-6)}
-              </TableCell>
-              <TableCell>{getStatusBadge(sale)}</TableCell>
-              <TableCell>
-               <Badge variant="destructive">Cancelada</Badge>
-              </TableCell>
-              <TableCell>{sale.customer_name || 'Consumidor não identificado'}</TableCell>
-              <TableCell className="text-right font-bold text-red-600">
-               {formatCurrency(parseFloat(sale.total_amount || sale.total || 0))}
-              </TableCell>
-              <TableCell className="text-right">
+          <table className="w-full">
+           <thead>
+            <tr className="border-b">
+             <th className="p-3 text-left">Data</th>
+             <th className="p-3 text-left">ID</th>
+             <th className="p-3 text-left">Tipo</th>
+             <th className="p-3 text-right">Total</th>
+             <th className="p-3 text-right">Ações</th>
+            </tr>
+           </thead>
+           <tbody>
+            {cancellableSales.map((sale: any) => (
+             <tr key={sale.id} className="border-b hover:bg-gray-50">
+              <td className="p-3">{new Date(sale.created_at).toLocaleString("pt-BR")}</td>
+              <td className="p-3 font-medium">#{sale.daily_sale_number || String(sale.id).slice(-6)}</td>
+              <td>
+               {sale.fiscal_model === "NFCe" ? "NFC-e" :
+                sale.fiscal_model === "NFe" ? "NF-e" :
+                sale.fiscal_model === "Orcamento" ? "Orçamento" :
+                sale.fiscal_model || "Venda"}
+              </td>
+              <td className="p-3 text-right font-bold text-green-600">
+               R$ {parseFloat(sale.total_amount || 0).toFixed(2)}
+              </td>
+              <td className="p-3 text-right">
                <Button
-                variant="ghost"
+                variant="destructive"
                 size="sm"
-                onClick={() => handleViewDetails(sale)}
-                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                onClick={() => handleCancelClick(sale)}
                >
-                <Eye className="h-4 w-4" />
-                Ver detalhes
+                Cancelar
                </Button>
-              </TableCell>
-             </TableRow>
+              </td>
+             </tr>
             ))}
-           </TableBody          </Table>
+           </tbody>
+          </table>
          </div>
         )}
-       </CardContent>
-      </Card>
-
-      {/* Info card */}
-      <Card className="mt-6 border-blue-200 bg-blue-50">
-       <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-         <AlertCircle className="mt-0.5 h-5 w-5 text-blue-600" />
-         <div>
-          <h4 className="font-semibold text-blue-900">Informações sobre cancelamento</h4>
-          <ul className="mt-2 space-y-1 text-sm text-blue-700">
-           <li>• Esta lista mostra todas as vendas com status "cancelled" ou "xml_status = cancelled"</li>
-           <li>• Notas fiscais (NF-e/NFC-e) canceladas na SEFAZ aparecem aqui automaticamente</li>
-           <li>• Vendas de orçamento canceladas localmente também são exibidas</li>
-           <li>• Use "Ver detalhes" para ver os itens, pagamentos e informações fiscais</li>
-          </ul>
-         </div>
-        </div>
        </CardContent>
       </Card>
      </div>
     </div>
 
-    {/* Dialog de Detalhes da Venda Cancelada */}
-    <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+    {/* Diálogo de Cancelamento com Justificativa */}
+    <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+     <DialogContent>
       <DialogHeader>
-       <DialogTitle className="flex items-center gap-2">
-        <AlertCircle className="h-5 w-5 text-red-600" />
-        Detalhes da Venda Cancelada
-       </DialogTitle>
+       <DialogTitle>Confirmar Cancelamento</DialogTitle>
        <DialogDescription>
-        Venda #{selectedSale?.daily_sale_number || String(selectedSale?.id)?.slice(-6)} • 
-        {new Date(selectedSale?.created_at).toLocaleString('pt-BR')}
+        Venda #{selectedSale?.daily_sale_number || String(selectedSale?.id)?.slice(-6)}
        </DialogDescription>
       </DialogHeader>
-      <div className="space-y-6 py-4">
-       {/* Info geral */}
-       <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-lg p-4">
-        <div>
-         <p className="text-sm text-gray-500">Status</p>
-         <p className="font-semibold text-red-600">
-          <Badge variant="destructive">Cancelada</Badge>
-         </p>
-        </div>
-        <div>
-         <p className="text-sm text-gray-500">Tipo</p>
-         <p className="font-semibold">{getStatusBadge(selectedSale)}</p>
-        </div>
-        <div>
-         <p className="text-sm text-gray-500">Cliente</p>
-         <p className="font-semibold">{selectedSale?.customer_name || 'Consumidor não identificado'}</p>
-        </div>
-        <div>
-         <p className="text-sm text-gray-500">Forma Pagamento</p>
-         <p className="font-semibold">{selectedSale?.payment_method || 'Não informado'}</p>
-        </div>
-        <div className="col-span-2">
-         <p className="text-sm text-gray-500">Total</p>
-         <p className="text-2xl font-bold text-red-600">
-          {formatCurrency(parseFloat(selectedSale?.total_amount || selectedSale?.total || 0))}
-         </p>
-        </div>
-        {selectedSale?.freight > 0 && (
-         <div className="col-span-2">
-          <p className="text-sm text-gray-500">Frete</p>
-          <p className="font-semibold text-blue-600">
-           {formatCurrency(parseFloat(selectedSale?.freight || 0))}
-          </p>
-         </div>
-        )}
-       </div>
-
-       {/* Itens */}
-       <div>
-        <h4 className="font-semibold mb-3">Itens da Venda</h4>
-        <div className="space-y-2">
-         {selectedSale?.items?.map((item: any, idx: number) => (
-          <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-           <div className="flex-1">
-            <p className="font-medium">{item.quantity}x {item.product_name || item.name}</p>
-            {item.flavors && item.flavors.length > 0 && (
-             <p className="text-sm text-gray-500 mt-1">
-              Sabores: {item.flavors.join(', ')}
-             </p>
-            )}
-           </div>
-           <p className="font-semibold text-gray-800">
-            {formatCurrency(parseFloat(item.price || 0) * item.quantity)}
-           </p>
-          </div>
-         ))}
+      <div className="space-y-4">
+       <div className="space-y-2">
+        <Label htmlFor="cancel-password">Senha de Cancelamento</Label>
+        <div className="relative">
+         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+         <Input
+          type="password"
+          id="cancel-password"
+          value={cancelPassword}
+          onChange={(e) => setCancelPassword(e.target.value)}
+          placeholder="Digite a senha de cancelamento"
+          autoComplete="off"
+          className="pl-10"
+         />
         </div>
        </div>
-
-       {/* Pagamentos */}
-       {selectedSale?.payments && selectedSale.payments.length > 0 && (
-        <div>
-         <h4 className="font-semibold mb-3">Formas de Pagamento</h4>
-         <div className="space-y-2">
-          {selectedSale.payments.map((payment: any, idx: number) => (
-           <div key={idx} className="flex justify-between p-3 bg-gray-50 rounded-lg">
-            <span className="capitalize">{payment.type}</span>
-            <span className="font-semibold">{formatCurrency(parseFloat(payment.amount || 0))}</span>
-           </div>
-          ))}
-         </div>
-        </div>
-       )}
-
-       {/* Info fiscal se houver */}
-       {(selectedSale?.xml_chave || selectedSale?.xml_numero) && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-         <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-          <Lock className="h-4 w-4" />
-          Informações Fiscais
-         </h4>
-         <div className="grid grid-cols-2 gap-3 text-sm">
-          {selectedSale?.xml_chave && (
-           <div className="col-span-2">
-            <p className="text-blue-700">Chave de Acesso:</p>
-            <p className="font-mono text-xs break-all">{selectedSale.xml_chave}</p>
-           </div>
-          )}
-          {selectedSale?.xml_numero && (
-           <div>
-            <p className="text-blue-700">Número:</p>
-            <p className="font-semibold">{selectedSale.xml_numero}</p>
-           </div>
-          )}
-          {selectedSale?.xml_status && (
-           <div>
-            <p className="text-blue-700">Status XML:</p>
-            <p className="font-semibold">
-             <Badge variant="destructive">{selectedSale.xml_status}</Badge>
-            </p>
-           </div>
-          )}
-         </div>
-        </div>
-       )}
+       <div className="space-y-2">
+        <Label htmlFor="cancel-justificativa">Justificativa do Cancelamento</Label>
+        <Textarea
+          id="cancel-justificativa"
+          value={cancelJustificativa}
+          onChange={(e) => setCancelJustificativa(e.target.value)}
+          placeholder="Digite a justificativa para o cancelamento (mínimo 15 caracteres)"
+          rows={3}
+        />
+        <p className="text-xs text-gray-500">
+         A justificativa será enviada à SEFAZ para autorizar o cancelamento da nota fiscal.
+        </p>
+       </div>
+       <div className="flex gap-2 justify-end">
+        <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>
+         Cancelar
+        </Button>
+        <Button
+         variant="destructive"
+         onClick={handleCancelSale}
+         disabled={cancelLoading}
+        >
+         {cancelLoading ? (
+          <>
+           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+           Cancelando...
+          </>
+         ) : (
+          "Confirmar Cancelamento"
+         )}
+        </Button>
+       </div>
       </div>
-      <DialogFooter>
-       <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
-        Fechar
-       </Button>
-      </DialogFooter>
      </DialogContent>
     </Dialog>
    </>
