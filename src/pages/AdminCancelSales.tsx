@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
  Table,
  TableBody,
@@ -38,7 +37,6 @@ interface Sale {
 const AdminCancelSales = () => {
  const { getSalesReport, refreshData } = useAdmin();
  const [password, setPassword] = useState("");
- const [confirmPassword, setConfirmPassword] = useState("");
  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [cancelPasswordConfigured, setCancelPasswordConfigured] = useState(false);
@@ -87,13 +85,13 @@ const AdminCancelSales = () => {
  const handleCancelSale = async () => {
   if (!selectedSale) return;
   
-  if (password !== confirmPassword) {
-   toast.error("As senhas não coincidem!");
+  if (!cancelPasswordConfigured) {
+   toast.error("Senha de cancelamento não configurada. Configure uma senha de cancelamento em Configurações Fiscais.");
    return;
   }
 
-  if (!cancelPasswordConfigured) {
-   toast.error("Senha de cancelamento não configurada. Configure uma senha de cancelamento em Configurações Fiscais.");
+  if (!password) {
+   toast.error("Digite a senha de cancelamento");
    return;
   }
 
@@ -126,7 +124,7 @@ const AdminCancelSales = () => {
     },
     body: JSON.stringify({
      password: password,
-     }),
+    }),
    });
 
    if (!response.ok) {
@@ -136,7 +134,6 @@ const AdminCancelSales = () => {
 
    toast.success("Venda cancelada com sucesso!");
    setPassword("");
-   setConfirmPassword("");
    setSelectedSale(null);
    
    // Atualizar os dados após cancelamento
@@ -151,13 +148,11 @@ const AdminCancelSales = () => {
  const handleOpenCancelForm = (sale: Sale) => {
   setSelectedSale(sale);
   setPassword("");
-  setConfirmPassword("");
  };
 
  const handleCloseForm = () => {
   setSelectedSale(null);
   setPassword("");
-  setConfirmPassword("");
  };
 
  return (
@@ -260,30 +255,14 @@ const AdminCancelSales = () => {
       </CardHeader>
       <CardContent className="space-y-4">
        <div className="space-y-2">
-        <Label htmlFor="password">Senha de Cancelamento</Label>
+        <label className="block text-sm font-medium mb-2">Senha de Cancelamento</label>
         <div className="relative">
          <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
          <Input
           type="password"
-          id="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Digite a senha de cancelamento"
-          autoComplete="off"
-          className="pl-10"
-         />
-        </div>
-       </div>
-       <div className="space-y-2">
-        <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-        <div className="relative">
-         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-         <Input
-          type="password"
-          id="confirmPassword"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          placeholder="Confirme a senha de cancelamento"
           autoComplete="off"
           className="pl-10"
          />
@@ -317,3 +296,4 @@ const AdminCancelSales = () => {
 };
 
 export default AdminCancelSales;
+</arg_value>

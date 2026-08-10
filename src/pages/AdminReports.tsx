@@ -53,7 +53,6 @@ const AdminReports = () => {
  const [isDanfeOpen, setIsDanfeOpen] = useState(false);
  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
  const [cancelPassword, setCancelPassword] = useState("");
- const [cancelConfirmPassword, setCancelConfirmPassword] = useState("");
  const [cancelLoading, setCancelLoading] = useState(false);
  const [cancelPasswordConfigured, setCancelPasswordConfigured] = useState(false);
 
@@ -125,12 +124,11 @@ const AdminReports = () => {
   setSelectedSale(sale);
   setCancelDialogOpen(true);
   setCancelPassword("");
-  setCancelConfirmPassword("");
  };
 
  const handleCancelSale = async () => {
-  if (cancelPassword !== cancelConfirmPassword) {
-   toast.error("As senhas não coincidem!");
+  if (!cancelPassword) {
+   toast.error("Digite a senha de cancelamento");
    return;
   }
 
@@ -393,21 +391,6 @@ const AdminReports = () => {
          />
         </div>
        </div>
-       <div className="space-y-2">
-        <Label htmlFor="cancel-confirm-password">Confirmar Senha</Label>
-        <div className="relative">
-         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-         <Input
-          type="password"
-          id="cancel-confirm-password"
-          value={cancelConfirmPassword}
-          onChange={(e) => setCancelConfirmPassword(e.target.value)}
-          placeholder="Confirme a senha de cancelamento"
-          autoComplete="off"
-          className="pl-10"
-         />
-        </div>
-       </div>
        {!cancelPasswordConfigured && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
          <div className="flex items-start gap-2">
@@ -445,3 +428,4 @@ const AdminReports = () => {
 };
 
 export default AdminReports;
+</arg_value>
