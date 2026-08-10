@@ -20,21 +20,41 @@ export default defineEventHandler(async (event) => {
       )
     `;
     
-    // Deletar senhas anteriores e inserir a nova
-    await sql`DELETE FROM cancel_password`;
-    
-    const result = await sql`
-      INSERT INTO cancel_password (id, password)
-      VALUES (${`cancel-${Date.now()}`}, ${password})
-      RETURNING id, created_at
+    // Verificar se a senha já está configurada
+    const existing = await sql`
+      SELECT password FROM cancel_password
+      ORDER BY created_at DESC
+      LIMIT 1
     `;
     
-    return { 
-      success: true, 
-      message: 'Senha de cancelamento configurada com sucesso',
-      id: result[0].id
+    if (existing.length > 0) {
+      // Se já existe uma senha, verificar se a nova senha bate com a antiga
+      if (password !== existing[0].password) {
+        throw createError({
+          statusCode: 403,
+          statusMessage: 'A senha de cancelamento está incorreta. Verifique e tente novamente.',
+        });
+      }
+    } else {
+      // Se não existe, salvar a senha
+      const result = await sql`
+        INSERT INTO cancel_password (id, password)
+        VALUES (${`cancel-${Date.now()}`}, ${password})
+        RETURNING id, created_at
+      `;
+      
+      return {
+        success: true,
+        message: 'Senha de cancelamento configurada com sucesso!',
+        id: result[0].id
+      };
+    }
+    
+    return {
+      success: true,
+      message: 'Senha de cancelamento configurada com sucesso!'
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error setting cancel password:', error);
     if (error.statusCode) throw error;
     throw createError({
