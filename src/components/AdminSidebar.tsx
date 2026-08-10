@@ -4,7 +4,7 @@ import { useAuth, type UserRole } from "@/contexts/AuthContext";
 import {
  LayoutDashboard, Package, Tags, BarChart3, ShoppingCart, Settings, LogOut,
  ChefHat, Users, DollarSign, Bike, Shield, FileText, FilePlus2, WifiOff,
- Trash2,
+ Trash2, FileX,
 } from "lucide-react";
 
 const AdminSidebar = () => {
@@ -19,7 +19,7 @@ const AdminSidebar = () => {
  { path: "/admin/motoboys", icon: Bike, label: "Motoboys", roles: ["admin", "manager", "cashier"] },
  { path: "/admin/cash-register", icon: DollarSign, label: "Fluxo de Caixa", roles: ["admin", "manager", "cashier"] },
  { path: "/admin/reports", icon: BarChart3, label: "Relatórios", roles: ["admin", "manager"] },
- { path: "/admin/cancelar", icon: Trash2, label: "Cancelar Vendas", roles: ["admin", "manager"] },
+ { path: "/admin/cancelar", icon: FileX, label: "Notas Canceladas", roles: ["admin", "manager"] },
  { path: "/admin/fiscal", icon: Shield, label: "Configurações Fiscais", roles: ["admin"] },
  { path: "/admin/nfe", icon: FilePlus2, label: "Emitir NF-e", roles: ["admin", "manager"] },
  { path: "/admin/xmls", icon: FileText, label: "XMLs Fiscais", roles: ["admin", "manager"] },
