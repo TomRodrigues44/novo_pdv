@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"31abd-VXd8T+Ilmm/ptqmhxIu/YjSMAT4\"",
-    "mtime": "2026-08-10T14:36:37.504Z",
-    "size": 203453,
+    "etag": "\"31b11-PTRlky8GYOxgUtR+8PVlsgOfNnY\"",
+    "mtime": "2026-08-10T14:41:11.535Z",
+    "size": 203537,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"ba4fd-GdijgFlZNxD1E3ULTrbi5yGgFDs\"",
-    "mtime": "2026-08-10T14:36:37.518Z",
-    "size": 763133,
+    "etag": "\"ba697-OV1Z4wHZsd1FtvZsha4MFwfbAOM\"",
+    "mtime": "2026-08-10T14:41:11.540Z",
+    "size": 763543,
     "path": "index.mjs.map"
   }
 };
@@ -2579,7 +2579,8 @@ const customers_get = defineEventHandler(async () => {
     const customers = await sql`
         SELECT
           c.*,
-          COUNT(s.id) as total_orders
+          COALESCE(SUM(CASE WHEN s.status != 'cancelled' AND s.xml_status != 'cancelled' THEN s.total_amount ELSE 0 END), 0) as total_spent,
+          COUNT(CASE WHEN s.status != 'cancelled' AND s.xml_status != 'cancelled' THEN s.id ELSE NULL END) as total_orders
         FROM customers c
         LEFT JOIN sales s ON c.id = s.customer_id
         GROUP BY c.id
