@@ -11,12 +11,21 @@ export default defineEventHandler(async (event) => {
       });
     }
     
+    // Garantir que a tabela existe
+    await sql`
+      CREATE TABLE IF NOT EXISTS cancel_password (
+        id TEXT PRIMARY KEY,
+        password TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    
     // Deletar senhas anteriores e inserir a nova
     await sql`DELETE FROM cancel_password`;
     
     const result = await sql`
-      INSERT INTO cancel_password (password)
-      VALUES (${password})
+      INSERT INTO cancel_password (id, password)
+      VALUES (${`cancel-${Date.now()}`}, ${password})
       RETURNING id, created_at
     `;
     
@@ -30,7 +39,7 @@ export default defineEventHandler(async (event) => {
     if (error.statusCode) throw error;
     throw createError({
       statusCode: 500,
-      statusMessage: 'Error setting cancel password',
+      statusMessage: error.message || 'Error setting cancel password',
     });
   }
 });

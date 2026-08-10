@@ -19,6 +19,15 @@ export default defineEventHandler(async (event) => {
       });
     }
     
+    // Garantir que a tabela existe
+    await sql`
+      CREATE TABLE IF NOT EXISTS cancel_password (
+        id TEXT PRIMARY KEY,
+        password TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    
     // Verificar se a senha de cancelamento está configurada
     const passwordResult = await sql`
       SELECT password FROM cancel_password

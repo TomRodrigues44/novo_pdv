@@ -2,6 +2,15 @@ import { sql } from '../../utils/db';
 
 export default defineEventHandler(async () => {
   try {
+    // Garantir que a tabela existe
+    await sql`
+      CREATE TABLE IF NOT EXISTS cancel_password (
+        id TEXT PRIMARY KEY,
+        password TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    
     const result = await sql`
       SELECT password FROM cancel_password
       ORDER BY created_at DESC

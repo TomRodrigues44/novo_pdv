@@ -937,7 +937,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"308d8-cp0VfMNOaD9xYIhdzYqoFmucFuw\"",
+    "mtime": "2026-08-10T13:26:00.844Z",
+    "size": 198872,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"b5bb0-0juX+7qRtnQOglQy17DmwTnd8yc\"",
+    "mtime": "2026-08-10T13:26:00.844Z",
+    "size": 744368,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1767,6 +1782,13 @@ const _action_$1 = /*#__PURE__*/Object.freeze({
 
 const cancelPassword_get = defineEventHandler(async () => {
   try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS cancel_password (
+        id TEXT PRIMARY KEY,
+        password TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
     const result = await sql`
       SELECT password FROM cancel_password
       ORDER BY created_at DESC
@@ -1802,10 +1824,17 @@ const cancelPassword_post = defineEventHandler(async (event) => {
         statusMessage: "A senha de cancelamento deve ter pelo menos 4 caracteres"
       });
     }
+    await sql`
+      CREATE TABLE IF NOT EXISTS cancel_password (
+        id TEXT PRIMARY KEY,
+        password TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
     await sql`DELETE FROM cancel_password`;
     const result = await sql`
-      INSERT INTO cancel_password (password)
-      VALUES (${password})
+      INSERT INTO cancel_password (id, password)
+      VALUES (${`cancel-${Date.now()}`}, ${password})
       RETURNING id, created_at
     `;
     return {
@@ -1818,7 +1847,7 @@ const cancelPassword_post = defineEventHandler(async (event) => {
     if (error.statusCode) throw error;
     throw createError({
       statusCode: 500,
-      statusMessage: "Error setting cancel password"
+      statusMessage: error.message || "Error setting cancel password"
     });
   }
 });
@@ -2768,6 +2797,13 @@ const cancel_post$2 = defineEventHandler(async (event) => {
         statusMessage: "Senha de cancelamento \xE9 obrigat\xF3ria"
       });
     }
+    await sql`
+      CREATE TABLE IF NOT EXISTS cancel_password (
+        id TEXT PRIMARY KEY,
+        password TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
     const passwordResult = await sql`
       SELECT password FROM cancel_password
       ORDER BY created_at DESC
@@ -5481,6 +5517,13 @@ const cancel_post = defineEventHandler(async (event) => {
         statusMessage: "Senha de cancelamento \xE9 obrigat\xF3ria"
       });
     }
+    await sql`
+      CREATE TABLE IF NOT EXISTS cancel_password (
+        id TEXT PRIMARY KEY,
+        password TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
     const passwordResult = await sql`
       SELECT password FROM cancel_password
       ORDER BY created_at DESC
