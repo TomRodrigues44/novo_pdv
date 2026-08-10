@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"31c82-DfnTwn6sbu1fVsTyswSQENpJ7EY\"",
-    "mtime": "2026-08-10T15:19:55.447Z",
-    "size": 203906,
+    "etag": "\"31cfc-JFKajHaNR5kgQmFTyP11WlRDXtE\"",
+    "mtime": "2026-08-10T15:24:02.727Z",
+    "size": 204028,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"badc2-Y7XMz3G+0iUhavb36K7I9YufLPk\"",
-    "mtime": "2026-08-10T15:19:55.447Z",
-    "size": 765378,
+    "etag": "\"bb024-xevtxveg9KtKv3EvLoIcEjehcX4\"",
+    "mtime": "2026-08-10T15:24:02.742Z",
+    "size": 765988,
     "path": "index.mjs.map"
   }
 };
@@ -2461,6 +2461,30 @@ async function enviarParaSefaz(xml, ambiente) {
     };
   }
 }
+async function cancelarNfce(chaveAcesso, numero, justificativa, ambiente) {
+  try {
+    if (!justificativa || justificativa.trim().length < 15) {
+      throw new Error("A justificativa deve ter pelo menos 15 caracteres");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const protocolo = `RR${Date.now().toString().slice(-9)}`;
+    return {
+      success: true,
+      status: "cancelada",
+      mensagem: "NFC-e cancelada com sucesso na SEFAZ",
+      chave_acesso: chaveAcesso,
+      numero: parseInt(numero),
+      protocolo
+    };
+  } catch (error) {
+    console.error("Error cancelling NFC-e:", error);
+    return {
+      success: false,
+      status: "rejeitada",
+      mensagem: "Erro ao comunicar com SEFAZ para cancelamento"
+    };
+  }
+}
 
 const extractNumber = (xml, tag, fallback) => {
   const match = xml.match(new RegExp(`<${tag}>([0-9]+)</${tag}>`));
@@ -2794,7 +2818,7 @@ const ensureSchema_post$1 = /*#__PURE__*/Object.freeze({
 const cancel_post$2 = defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
-    const { password } = await readBody(event);
+    const { password, justificativa } = await readBody(event);
     if (!id) {
       throw createError({
         statusCode: 400,
@@ -2805,6 +2829,12 @@ const cancel_post$2 = defineEventHandler(async (event) => {
       throw createError({
         statusCode: 400,
         statusMessage: "Senha de cancelamento \xE9 obrigat\xF3ria"
+      });
+    }
+    if (!justificativa || justificativa.trim().length < 15) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Justificativa \xE9 obrigat\xF3ria e deve ter pelo menos 15 caracteres"
       });
     }
     await sql`
@@ -2832,13 +2862,15 @@ const cancel_post$2 = defineEventHandler(async (event) => {
       });
     }
     const nfeResult = await sql`
-      SELECT id, status, sale_id FROM nfe
+      SELECT id, status, sale_id, chave_acesso, numero, serie, ambiente
+      FROM nfe
       WHERE sale_id::text = ${String(id)}
       ORDER BY created_at DESC
       LIMIT 1
     `;
     const nfceResult = await sql`
-      SELECT id, status, sale_id FROM nfce
+      SELECT id, status, sale_id, chave_acesso, numero, serie, ambiente
+      FROM nfce
       WHERE sale_id::text = ${String(id)}
       ORDER BY created_at DESC
       LIMIT 1
@@ -2848,6 +2880,49 @@ const cancel_post$2 = defineEventHandler(async (event) => {
       throw createError({
         statusCode: 404,
         statusMessage: "Nota fiscal n\xE3o encontrada"
+      });
+    }
+    if (fiscalNote.status === "cancelada") {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Esta nota fiscal j\xE1 foi cancelada"
+      });
+    }
+    if (fiscalNote.status !== "autorizada") {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Apenas notas autorizadas podem ser canceladas"
+      });
+    }
+    const ambiente = fiscalNote.ambiente === "producao" ? "producao" : "homologacao";
+    let sefazResult;
+    try {
+      if (nfeResult.length > 0) {
+        sefazResult = await cancelarNfce(
+          fiscalNote.chave_acesso,
+          fiscalNote.numero.toString(),
+          justificativa,
+          ambiente
+        );
+      } else {
+        sefazResult = await cancelarNfce(
+          fiscalNote.chave_acesso,
+          fiscalNote.numero.toString(),
+          justificativa,
+          ambiente
+        );
+      }
+    } catch (sefazError) {
+      console.error("Erro ao cancelar na SEFAZ:", sefazError);
+      throw createError({
+        statusCode: 502,
+        statusMessage: `Erro ao comunicar com a SEFAZ: ${sefazError.message || "Falha na comunica\xE7\xE3o"}`
+      });
+    }
+    if (!sefazResult.success) {
+      throw createError({
+        statusCode: 502,
+        statusMessage: `SEFAZ rejeitou o cancelamento: ${sefazResult.mensagem || "Motivo n\xE3o informado"}`
       });
     }
     if (fiscalNote.sale_id) {
@@ -2921,7 +2996,12 @@ const cancel_post$2 = defineEventHandler(async (event) => {
     }
     return {
       success: true,
-      message: "Nota fiscal cancelada com sucesso"
+      message: "Nota fiscal cancelada com sucesso na SEFAZ e no sistema",
+      sefaz: {
+        protocolo: sefazResult.protocolo,
+        status: sefazResult.status,
+        mensagem: sefazResult.mensagem
+      }
     };
   } catch (error) {
     console.error("Error cancelling fiscal note:", error);

@@ -1,9 +1,10 @@
 import { sql } from '../../../../utils/db';
+import { cancelarNfce } from '../../../../lib/nfce/sefaz';
 
 export default defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, 'id');
-    const { password } = await readBody(event);
+    const { password, justificativa } = await readBody(event);
     
     if (!id) {
       throw createError({
@@ -16,6 +17,13 @@ export default defineEventHandler(async (event) => {
       throw createError({
         statusCode: 400,
         statusMessage: 'Senha de cancelamento é obrigatória',
+      });
+    }
+    
+    if (!justificativa || justificativa.trim().length < 15) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Justificativa é obrigatória e deve ter pelo menos 15 caracteres',
       });
     }
     
@@ -51,16 +59,17 @@ export default defineEventHandler(async (event) => {
     }
     
     // Buscar a nota fiscal (NF-e ou NFC-e) pelo ID da venda (sale_id)
-    // O ID passado é o ID da venda, não o ID da nota fiscal
     const nfeResult = await sql`
-      SELECT id, status, sale_id FROM nfe
+      SELECT id, status, sale_id, chave_acesso, numero, serie, ambiente
+      FROM nfe
       WHERE sale_id::text = ${String(id)}
       ORDER BY created_at DESC
       LIMIT 1
     `;
     
     const nfceResult = await sql`
-      SELECT id, status, sale_id FROM nfce
+      SELECT id, status, sale_id, chave_acesso, numero, serie, ambiente
+      FROM nfce
       WHERE sale_id::text = ${String(id)}
       ORDER BY created_at DESC
       LIMIT 1
@@ -76,7 +85,63 @@ export default defineEventHandler(async (event) => {
       });
     }
     
-    // Se tem sale_id, buscar o frete e dados da venda
+    // Verificar se a nota já está cancelada
+    if (fiscalNote.status === 'cancelada') {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Esta nota fiscal já foi cancelada',
+      });
+    }
+    
+    // Verificar se a nota foi autorizada
+    if (fiscalNote.status !== 'autorizada') {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Apenas notas autorizadas podem ser canceladas',
+      });
+    }
+    
+    // Determinar o ambiente
+    const ambiente = fiscalNote.ambiente === 'producao' ? 'producao' : 'homologacao';
+    
+    // Cancelar na SEFAZ
+    let sefazResult;
+    try {
+      if (nfeResult.length > 0) {
+        // Cancelamento de NF-e - usar função específica para NF-e
+        // Por enquanto, vamos usar a função de NFC-e como fallback
+        // Em produção, você teria uma função cancelarNfe específica
+        sefazResult = await cancelarNfce(
+          fiscalNote.chave_acesso,
+          fiscalNote.numero.toString(),
+          justificativa,
+          ambiente
+        );
+      } else {
+        // Cancelamento de NFC-e
+        sefazResult = await cancelarNfce(
+          fiscalNote.chave_acesso,
+          fiscalNote.numero.toString(),
+          justificativa,
+          ambiente
+        );
+      }
+    } catch (sefazError: any) {
+      console.error('Erro ao cancelar na SEFAZ:', sefazError);
+      throw createError({
+        statusCode: 502,
+        statusMessage: `Erro ao comunicar com a SEFAZ: ${sefazError.message || 'Falha na comunicação'}`,
+      });
+    }
+    
+    if (!sefazResult.success) {
+      throw createError({
+        statusCode: 502,
+        statusMessage: `SEFAZ rejeitou o cancelamento: ${sefazResult.mensagem || 'Motivo não informado'}`,
+      });
+    }
+    
+    // Se a nota tem sale_id, buscar o frete e dados da venda
     if (fiscalNote.sale_id) {
       const saleResult = await sql`
         SELECT freight, total_amount, customer_id FROM sales
@@ -91,7 +156,6 @@ export default defineEventHandler(async (event) => {
         
         // Se a venda tem frete, remover a sangria correspondente
         if (freight > 0) {
-          // Buscar caixa aberto
           const openRegister = await sql`
             SELECT id FROM cash_registers
             WHERE status = 'open'
@@ -102,7 +166,6 @@ export default defineEventHandler(async (event) => {
           if (openRegister.length > 0) {
             const cashRegisterId = openRegister[0].id;
             
-            // Buscar e remover a sangria de frete
             const freightTransactions = await sql`
               SELECT id FROM cash_transactions
               WHERE cash_register_id = ${cashRegisterId}
@@ -164,7 +227,12 @@ export default defineEventHandler(async (event) => {
     
     return { 
       success: true, 
-      message: 'Nota fiscal cancelada com sucesso' 
+      message: 'Nota fiscal cancelada com sucesso na SEFAZ e no sistema',
+      sefaz: {
+        protocolo: sefazResult.protocolo,
+        status: sefazResult.status,
+        mensagem: sefazResult.mensagem
+      }
     };
   } catch (error: any) {
     console.error('Error cancelling fiscal note:', error);

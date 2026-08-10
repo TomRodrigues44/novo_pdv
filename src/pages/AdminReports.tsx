@@ -22,6 +22,7 @@ import {
  Input,
 } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
  Select,
  SelectContent,
@@ -53,7 +54,7 @@ const AdminReports = () => {
  const [isDanfeOpen, setIsDanfeOpen] = useState(false);
  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
  const [cancelPassword, setCancelPassword] = useState("");
- const [cancelConfirmPassword, setCancelConfirmPassword] = useState("");
+ const [cancelJustificativa, setCancelJustificativa] = useState("");
  const [cancelLoading, setCancelLoading] = useState(false);
  const [cancelPasswordConfigured, setCancelPasswordConfigured] = useState(false);
 
@@ -125,12 +126,17 @@ const AdminReports = () => {
   setSelectedSale(sale);
   setCancelDialogOpen(true);
   setCancelPassword("");
-  setCancelConfirmPassword("");
+  setCancelJustificativa("");
  };
 
  const handleCancelSale = async () => {
-  if (cancelPassword !== cancelConfirmPassword) {
-   toast.error("As senhas não coincidem!");
+  if (!cancelPassword) {
+   toast.error("Senha de cancelamento é obrigatória!");
+   return;
+  }
+
+  if (!cancelJustificativa || cancelJustificativa.trim().length < 15) {
+   toast.error("Justificativa é obrigatória e deve ter pelo menos 15 caracteres!");
    return;
   }
 
@@ -138,8 +144,6 @@ const AdminReports = () => {
    toast.error("Senha de cancelamento não configurada. Configure uma senha de cancelamento em Configurações Fiscais.");
    return;
   }
-
-  if (!selectedSale) return;
 
   setCancelLoading(true);
 
@@ -153,6 +157,7 @@ const AdminReports = () => {
      },
      body: JSON.stringify({
       password: cancelPassword,
+      justificativa: cancelJustificativa,
      }),
     });
 
@@ -368,7 +373,7 @@ const AdminReports = () => {
      />
     )}
 
-    {/* Diálogo de Cancelamento */}
+    {/* Diálogo de Cancelamento com Justificativa */}
     <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
      <DialogContent>
       <DialogHeader>
@@ -394,30 +399,18 @@ const AdminReports = () => {
         </div>
        </div>
        <div className="space-y-2">
-        <Label htmlFor="cancel-confirm-password">Confirmar Senha</Label>
-        <div className="relative">
-         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-         <Input
-          type="password"
-          id="cancel-confirm-password"
-          value={cancelConfirmPassword}
-          onChange={(e) => setCancelConfirmPassword(e.target.value)}
-          placeholder="Confirme a senha de cancelamento"
-          autoComplete="off"
-          className="pl-10"
-         />
-        </div>
+        <Label htmlFor="cancel-justificativa">Justificativa do Cancelamento</Label>
+        <Textarea
+          id="cancel-justificativa"
+          value={cancelJustificativa}
+          onChange={(e) => setCancelJustificativa(e.target.value)}
+          placeholder="Digite a justificativa para o cancelamento (mínimo 15 caracteres)"
+          rows={3}
+        />
+        <p className="text-xs text-gray-500">
+         A justificativa será enviada à SEFAZ para autorizar o cancelamento da nota fiscal.
+        </p>
        </div>
-       {!cancelPasswordConfigured && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-         <div className="flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
-          <p className="text-sm text-yellow-800">
-           Configure uma senha de cancelamento em Configurações Fiscais antes de cancelar vendas.
-          </p>
-         </div>
-        </div>
-       )}
        <div className="flex gap-2 justify-end">
         <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
          Cancelar

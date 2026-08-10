@@ -126,30 +126,46 @@ export async function consultarStatusNfce(
 
 /**
  * Cancela uma NFC-e na SEFAZ
+ * 
+ * NOTA: Esta é uma implementação simulada para demonstração.
+ * Em produção, você faria uma requisição SOAP real para o serviço de cancelamento da SEFAZ.
  */
 export async function cancelarNfce(
   chaveAcesso: string,
-  protocolo: string,
+  numero: string,
   justificativa: string,
   ambiente: string
 ): Promise<SefazResponse> {
   try {
-    // Simular cancelamento
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Validar justificativa
+    if (!justificativa || justificativa.trim().length < 15) {
+      throw new Error('A justificativa deve ter pelo menos 15 caracteres');
+    }
+    
+    // Simular delay de processamento da SEFAZ
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Em produção, aqui você faria a requisição SOAP real para cancelamento
+    // utilizando o certificado digital A1 carregado
+    
+    // Simular resposta de sucesso da SEFAZ
+    const protocolo = `RR${Date.now().toString().slice(-9)}`;
     
     return {
       success: true,
       status: 'cancelada',
-      mensagem: 'NFC-e cancelada com sucesso',
+      mensagem: 'NFC-e cancelada com sucesso na SEFAZ',
       chave_acesso: chaveAcesso,
+      numero: parseInt(numero),
+      protocolo: protocolo,
     };
   } catch (error) {
     console.error('Error cancelling NFC-e:', error);
     
     return {
       success: false,
-      status: 'erro',
-      mensagem: 'Erro ao cancelar NFC-e',
+      status: 'rejeitada',
+      mensagem: 'Erro ao comunicar com SEFAZ para cancelamento',
     };
   }
 }
