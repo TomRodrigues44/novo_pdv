@@ -17,6 +17,13 @@ import {
  TableRow,
 } from "@/components/ui/table";
 import {
+ Dialog,
+ DialogContent,
+ DialogHeader,
+ DialogTitle,
+ DialogFooter,
+} from "@/components/ui/dialog";
+import {
  AlertCircle,
  Loader2,
  FileText,
