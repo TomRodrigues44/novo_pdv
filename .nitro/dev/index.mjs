@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"31b11-PTRlky8GYOxgUtR+8PVlsgOfNnY\"",
-    "mtime": "2026-08-10T14:41:11.535Z",
-    "size": 203537,
+    "etag": "\"31bf3-ubVp0TwiUGJkjXL2vHjFXsMAqGE\"",
+    "mtime": "2026-08-10T14:48:36.891Z",
+    "size": 203763,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"ba697-OV1Z4wHZsd1FtvZsha4MFwfbAOM\"",
-    "mtime": "2026-08-10T14:41:11.540Z",
-    "size": 763543,
+    "etag": "\"baafc-Pty16HmrQJTC8+ZVtXaa9EH+vUo\"",
+    "mtime": "2026-08-10T14:48:36.909Z",
+    "size": 764668,
     "path": "index.mjs.map"
   }
 };
@@ -2580,6 +2580,7 @@ const customers_get = defineEventHandler(async () => {
         SELECT
           c.*,
           COALESCE(SUM(CASE WHEN s.status != 'cancelled' AND s.xml_status != 'cancelled' THEN s.total_amount ELSE 0 END), 0) as total_spent,
+          COALESCE(SUM(CASE WHEN s.status != 'cancelled' AND s.xml_status != 'cancelled' THEN FLOOR(s.total_amount) ELSE 0 END), 0) as points,
           COUNT(CASE WHEN s.status != 'cancelled' AND s.xml_status != 'cancelled' THEN s.id ELSE NULL END) as total_orders
         FROM customers c
         LEFT JOIN sales s ON c.id = s.customer_id

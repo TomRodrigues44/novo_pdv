@@ -5,6 +5,7 @@ export default defineEventHandler(async () => {
         SELECT
           c.*,
           COALESCE(SUM(CASE WHEN s.status != 'cancelled' AND s.xml_status != 'cancelled' THEN s.total_amount ELSE 0 END), 0) as total_spent,
+          COALESCE(SUM(CASE WHEN s.status != 'cancelled' AND s.xml_status != 'cancelled' THEN FLOOR(s.total_amount) ELSE 0 END), 0) as points,
           COUNT(CASE WHEN s.status != 'cancelled' AND s.xml_status != 'cancelled' THEN s.id ELSE NULL END) as total_orders
         FROM customers c
         LEFT JOIN sales s ON c.id = s.customer_id
