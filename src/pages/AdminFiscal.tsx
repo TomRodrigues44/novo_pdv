@@ -15,6 +15,8 @@ import {
   RefreshCw,
   Settings,
   Trash2,
+  Lock,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -62,6 +64,11 @@ const AdminFiscal = () => {
     senha: "",
   });
 
+  // Senha de cancelamento
+  const [cancelPassword, setCancelPassword] = useState("");
+  const [cancelPasswordConfigured, setCancelPasswordConfigured] = useState(false);
+  const [loadingCancelPassword, setLoadingCancelPassword] = useState(false);
+
   const fetchCertificates = async () => {
     try {
       const response = await fetch('/api/fiscal/certificates');
@@ -71,6 +78,24 @@ const AdminFiscal = () => {
       }
     } catch (error) {
       console.error('Error fetching certificates:', error);
+    }
+  };
+
+  const fetchCancelPassword = async () => {
+    try {
+      setLoadingCancelPassword(true);
+      const response = await fetch('/api/cancel-password');
+      if (response.ok) {
+        const data = await response.json();
+        setCancelPasswordConfigured(data.configured);
+        if (data.configured) {
+          setCancelPassword(data.password);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching cancel password:', error);
+    } finally {
+      setLoadingCancelPassword(false);
     }
   };
 
@@ -97,6 +122,7 @@ const AdminFiscal = () => {
   useEffect(() => {
     fetchCompanyConfig();
     fetchCertificates();
+    fetchCancelPassword();
   }, []);
 
   const fetchCompanyConfig = async () => {
@@ -253,6 +279,30 @@ const AdminFiscal = () => {
     }
   };
 
+  const handleSaveCancelPassword = async () => {
+    if (!cancelPassword || cancelPassword.length < 4) {
+      toast.error('A senha de cancelamento deve ter pelo menos 4 caracteres');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/cancel-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: cancelPassword }),
+      });
+
+      if (response.ok) {
+        toast.success('Senha de cancelamento configurada com sucesso!');
+        setCancelPasswordConfigured(true);
+      } else {
+        toast.error('Erro ao configurar senha de cancelamento');
+      }
+    } catch (error) {
+      toast.error('Erro ao configurar senha de cancelamento');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex">
@@ -281,7 +331,7 @@ const AdminFiscal = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="empresa">
               <Building2 className="h-4 w-4 mr-2" />
               Dados da Empresa
@@ -293,6 +343,10 @@ const AdminFiscal = () => {
             <TabsTrigger value="configuracoes">
               <Settings className="h-4 w-4 mr-2" />
               Configurações
+            </TabsTrigger>
+            <TabsTrigger value="cancelamento">
+              <Lock className="h-4 w-4 mr-2" />
+              Senha de Cancelamento
             </TabsTrigger>
           </TabsList>
 
@@ -757,6 +811,75 @@ const AdminFiscal = () => {
                       <p className="text-sm mt-1">
                         {connectionResult.message}
                       </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab: Senha de Cancelamento */}
+          <TabsContent value="cancelamento">
+            <Card>
+              <CardHeader>
+                <CardTitle>Senha de Cancelamento</CardTitle>
+                <CardDescription>
+                  Configure uma senha específica para autorizar o cancelamento de vendas e notas fiscais
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <Lock className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-blue-900">Como funciona</h4>
+                      <p className="text-sm text-blue-700 mt-1">
+                        Esta senha é usada exclusivamente para cancelamento de vendas e notas fiscais. 
+                        Ela é diferente da senha de login do usuário e pode ser compartilhada com responsáveis 
+                        que precisam autorizar cancelamentos.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="cancel-password-input">Senha de Cancelamento</Label>
+                    <Input
+                      id="cancel-password-input"
+                      type="password"
+                      value={cancelPassword}
+                      onChange={(e) => setCancelPassword(e.target.value)}
+                      placeholder="Digite a senha de cancelamento"
+                      minLength={4}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Mínimo de 4 caracteres. Esta senha será usada para autorizar cancelamentos.
+                    </p>
+                  </div>
+
+                  {loadingCancelPassword ? (
+                    <div className="text-center py-4 text-gray-500">
+                      Carregando...
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={handleSaveCancelPassword}
+                      className="w-full bg-orange-600 hover:bg-orange-700"
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      {cancelPasswordConfigured ? 'Atualizar Senha de Cancelamento' : 'Configurar Senha de Cancelamento'}
+                    </Button>
+                  )}
+
+                  {cancelPasswordConfigured && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <p className="text-green-800 font-medium">
+                          Senha de cancelamento configurada com sucesso!
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>

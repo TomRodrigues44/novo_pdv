@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdmin } from "@/hooks/use-admin";
 import AdminSidebar from "@/components/AdminSidebar";
 import {
@@ -21,6 +21,7 @@ import {
 import {
  AlertCircle,
  Loader2,
+ Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,8 +41,25 @@ const AdminCancelSales = () => {
  const [confirmPassword, setConfirmPassword] = useState("");
  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
  const [isSubmitting, setIsSubmitting] = useState(false);
+ const [cancelPasswordConfigured, setCancelPasswordConfigured] = useState(false);
 
  const report = getSalesReport(90);
+
+ // Verificar se a senha de cancelamento está configurada
+ useEffect(() => {
+  const checkCancelPassword = async () => {
+   try {
+    const response = await fetch('/api/cancel-password');
+    if (response.ok) {
+     const data = await response.json();
+     setCancelPasswordConfigured(data.configured);
+    }
+   } catch (error) {
+    console.error('Error checking cancel password:', error);
+   }
+  };
+  checkCancelPassword();
+ }, []);
 
  // Filtrar vendas que podem ser canceladas (abertas, orçamentos, concluídas, etc.)
  const cancellableSales = report.sales.filter((sale: Sale) => {
@@ -69,6 +87,11 @@ const AdminCancelSales = () => {
    return;
   }
 
+  if (!cancelPasswordConfigured) {
+   toast.error("Senha de cancelamento não configurada. Configure uma senha de cancelamento em Configurações Fiscais.");
+   return;
+  }
+
   setIsSubmitting(true);
 
   try {
@@ -86,7 +109,7 @@ const AdminCancelSales = () => {
 
     if (!cancelFiscalResponse.ok) {
      const error = await cancelFiscalResponse.json();
-     throw new Error(error.message || "Falha ao cancelar fiscalmente");
+     throw new Error(error.statusMessage || error.message || "Falha ao cancelar fiscalmente");
     }
    }
 
@@ -103,7 +126,7 @@ const AdminCancelSales = () => {
 
    if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.message || "Falha ao cancelar a venda");
+    throw new Error(error.statusMessage || error.message || "Falha ao cancelar a venda");
    }
 
    toast.success("Venda cancelada com sucesso!");
@@ -139,6 +162,20 @@ const AdminCancelSales = () => {
       <p className="text-gray-600 mt-2">
        Selecione uma venda para cancelar. Apenas vendas em status "aberta" ou "concluída" podem ser canceladas.
       </p>
+      {!cancelPasswordConfigured && (
+       <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+         <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+         <div>
+          <h4 className="font-semibold text-yellow-900">Atenção</h4>
+          <p className="text-sm text-yellow-800 mt-1">
+           A senha de cancelamento não está configurada. Configure uma senha de cancelamento em 
+           <span className="font-medium"> Configurações Fiscais → Senha de Cancelamento</span> antes de cancelar vendas.
+          </p>
+         </div>
+        </div>
+       </div>
+      )}
      </div>
 
      <Card>
@@ -216,25 +253,33 @@ const AdminCancelSales = () => {
       <CardContent className="space-y-4">
        <div className="space-y-2">
         <Label htmlFor="password">Senha de Cancelamento</Label>
-        <Input
-         type="password"
-         id="password"
-         value={password}
-         onChange={(e) => setPassword(e.target.value)}
-         placeholder="Digite a senha"
-         autoComplete="off"
-        />
+        <div className="relative">
+         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+         <Input
+          type="password"
+          id="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Digite a senha de cancelamento"
+          autoComplete="off"
+          className="pl-10"
+         />
+        </div>
        </div>
        <div className="space-y-2">
         <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-        <Input
-         type="password"
-         id="confirmPassword"
-         value={confirmPassword}
-         onChange={(e) => setConfirmPassword(e.target.value)}
-         placeholder="Confirme a senha"
-         autoComplete="off"
-        />
+        <div className="relative">
+         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+         <Input
+          type="password"
+          id="confirmPassword"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder="Confirme a senha de cancelamento"
+          autoComplete="off"
+          className="pl-10"
+         />
+        </div>
        </div>
        <div className="flex gap-2 justify-end">
         <Button variant="outline" onClick={handleCloseForm}>
