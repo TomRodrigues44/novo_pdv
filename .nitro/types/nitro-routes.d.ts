@@ -6,12 +6,6 @@ declare module "nitropack/types" {
     '/api/auth/:action': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/auth/[action]').default>>>>
     }
-    '/api/auth/me': {
-      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/auth/me.get').default>>>>
-    }
-    '/api/auth/status': {
-      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/auth/status.get').default>>>>
-    }
     '/api/cash-register': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/cash-register.get').default>>>>
     }
@@ -126,9 +120,6 @@ declare module "nitropack/types" {
     '/api/sales': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/sales.get').default>>>>
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/sales.post').default>>>>
-    }
-    '/api/sales/:id/cancel': {
-      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/sales/[id]/cancel').default>>>>
     }
     '/api/sales/:id/status': {
       'put': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/sales/[id]/status.put').default>>>>
