@@ -50,16 +50,19 @@ export default defineEventHandler(async (event) => {
       });
     }
     
-    // Verificar se a nota fiscal existe
+    // Buscar a nota fiscal (NF-e ou NFC-e) pelo ID da venda (sale_id)
+    // O ID passado é o ID da venda, não o ID da nota fiscal
     const nfeResult = await sql`
       SELECT id, status, sale_id FROM nfe
-      WHERE id = ${id}
+      WHERE sale_id::text = ${String(id)}
+      ORDER BY created_at DESC
       LIMIT 1
     `;
     
     const nfceResult = await sql`
       SELECT id, status, sale_id FROM nfce
-      WHERE id = ${id}
+      WHERE sale_id::text = ${String(id)}
+      ORDER BY created_at DESC
       LIMIT 1
     `;
     
@@ -140,13 +143,13 @@ export default defineEventHandler(async (event) => {
       await sql`
         UPDATE nfe
         SET status = 'cancelada'
-        WHERE id = ${id}
+        WHERE id = ${fiscalNote.id}
       `;
     } else {
       await sql`
         UPDATE nfce
         SET status = 'cancelada'
-        WHERE id = ${id}
+        WHERE id = ${fiscalNote.id}
       `;
     }
     

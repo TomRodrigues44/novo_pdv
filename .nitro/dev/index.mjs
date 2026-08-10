@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"31bf3-ubVp0TwiUGJkjXL2vHjFXsMAqGE\"",
-    "mtime": "2026-08-10T14:48:36.891Z",
-    "size": 203763,
+    "etag": "\"31c82-DfnTwn6sbu1fVsTyswSQENpJ7EY\"",
+    "mtime": "2026-08-10T15:19:55.447Z",
+    "size": 203906,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"baafc-Pty16HmrQJTC8+ZVtXaa9EH+vUo\"",
-    "mtime": "2026-08-10T14:48:36.909Z",
-    "size": 764668,
+    "etag": "\"badc2-Y7XMz3G+0iUhavb36K7I9YufLPk\"",
+    "mtime": "2026-08-10T15:19:55.447Z",
+    "size": 765378,
     "path": "index.mjs.map"
   }
 };
@@ -2833,12 +2833,14 @@ const cancel_post$2 = defineEventHandler(async (event) => {
     }
     const nfeResult = await sql`
       SELECT id, status, sale_id FROM nfe
-      WHERE id = ${id}
+      WHERE sale_id::text = ${String(id)}
+      ORDER BY created_at DESC
       LIMIT 1
     `;
     const nfceResult = await sql`
       SELECT id, status, sale_id FROM nfce
-      WHERE id = ${id}
+      WHERE sale_id::text = ${String(id)}
+      ORDER BY created_at DESC
       LIMIT 1
     `;
     const fiscalNote = nfeResult.length > 0 ? nfeResult[0] : nfceResult.length > 0 ? nfceResult[0] : null;
@@ -2901,13 +2903,13 @@ const cancel_post$2 = defineEventHandler(async (event) => {
       await sql`
         UPDATE nfe
         SET status = 'cancelada'
-        WHERE id = ${id}
+        WHERE id = ${fiscalNote.id}
       `;
     } else {
       await sql`
         UPDATE nfce
         SET status = 'cancelada'
-        WHERE id = ${id}
+        WHERE id = ${fiscalNote.id}
       `;
     }
     if (fiscalNote.sale_id) {
