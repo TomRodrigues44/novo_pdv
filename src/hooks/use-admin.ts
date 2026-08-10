@@ -186,9 +186,11 @@ export const useAdmin = () => {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
 
-    const recentSales = sales.filter(
-      (sale) => new Date(sale.created_at) >= cutoffDate
-    );
+    const recentSales = sales.filter((sale) => {
+      const saleDate = new Date(sale.created_at);
+      // Filtrar por data E excluir vendas canceladas
+      return saleDate >= cutoffDate && sale.status !== 'cancelled' && sale.xml_status !== 'cancelled';
+    });
 
     const totalRevenue = recentSales.reduce(
       (sum, sale) => sum + parseFloat(sale.total_amount || sale.total || 0),

@@ -62,9 +62,14 @@ const AdminCancelSales = () => {
  }, []);
 
  // Filtrar vendas que podem ser canceladas (abertas, orçamentos, concluídas, etc.)
+ // E excluir as que já estão canceladas
  const cancellableSales = report.sales.filter((sale: Sale) => {
  const status = sale.status?.toLowerCase() || "";
  const model = sale.fiscal_model?.toLowerCase() || "";
+ const isCancelled = sale.status === 'cancelled' || sale.xml_status === 'cancelled';
+ 
+ if (isCancelled) return false;
+ 
  return (
   status === "aberta" ||
   status === "aberta (orçamento)" ||
@@ -121,7 +126,7 @@ const AdminCancelSales = () => {
     },
     body: JSON.stringify({
      password: password,
-    }),
+     }),
    });
 
    if (!response.ok) {
