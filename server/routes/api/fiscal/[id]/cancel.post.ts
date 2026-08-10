@@ -73,17 +73,20 @@ export default defineEventHandler(async (event) => {
       });
     }
     
-    // Se tem sale_id, buscar o frete da venda
+    // Se tem sale_id, buscar o frete e dados da venda
     if (fiscalNote.sale_id) {
       const saleResult = await sql`
-        SELECT freight FROM sales
+        SELECT freight, total_amount, customer_id FROM sales
         WHERE id::text = ${String(fiscalNote.sale_id)}
         LIMIT 1
       `;
       
       if (saleResult.length > 0) {
         const freight = parseFloat(saleResult[0].freight || 0);
+        const totalAmount = parseFloat(saleResult[0].total_amount || 0);
+        const customerId = saleResult[0].customer_id;
         
+        // Se a venda tem frete, remover a sangria correspondente
         if (freight > 0) {
           // Buscar caixa aberto
           const openRegister = await sql`
@@ -113,6 +116,20 @@ export default defineEventHandler(async (event) => {
                 WHERE id = ${freightTransactions[0].id}
               `;
             }
+          }
+        }
+        
+        // Se a venda tem cliente, estornar os pontos
+        if (customerId) {
+          const pointsToRemove = Math.floor(totalAmount);
+          
+          if (pointsToRemove > 0) {
+            await sql`
+              UPDATE customers
+              SET points = GREATEST(COALESCE(points, 0) - ${pointsToRemove}, 0),
+                  total_spent = GREATEST(COALESCE(total_spent, 0) - ${totalAmount}, 0)
+              WHERE id = ${customerId}
+            `;
           }
         }
       }

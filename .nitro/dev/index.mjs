@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"30e50-ef3FeDme6P6MBquR8s87vQLXoDY\"",
-    "mtime": "2026-08-10T13:51:23.810Z",
-    "size": 200272,
+    "etag": "\"3168b-JnyXg0bu9Aa+Tyky63u3pcuvZRs\"",
+    "mtime": "2026-08-10T14:33:52.615Z",
+    "size": 202379,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"b6dda-j+VdouzelGaNdaD7UCjkE6KahqQ\"",
-    "mtime": "2026-08-10T13:51:23.819Z",
-    "size": 749018,
+    "etag": "\"b9373-UKEu3AgQ6QDskEvxrcoRAilE1zg\"",
+    "mtime": "2026-08-10T14:33:52.635Z",
+    "size": 758643,
     "path": "index.mjs.map"
   }
 };
@@ -2846,12 +2846,14 @@ const cancel_post$2 = defineEventHandler(async (event) => {
     }
     if (fiscalNote.sale_id) {
       const saleResult = await sql`
-        SELECT freight FROM sales
+        SELECT freight, total_amount, customer_id FROM sales
         WHERE id::text = ${String(fiscalNote.sale_id)}
         LIMIT 1
       `;
       if (saleResult.length > 0) {
         const freight = parseFloat(saleResult[0].freight || 0);
+        const totalAmount = parseFloat(saleResult[0].total_amount || 0);
+        const customerId = saleResult[0].customer_id;
         if (freight > 0) {
           const openRegister = await sql`
             SELECT id FROM cash_registers
@@ -2876,6 +2878,17 @@ const cancel_post$2 = defineEventHandler(async (event) => {
                 WHERE id = ${freightTransactions[0].id}
               `;
             }
+          }
+        }
+        if (customerId) {
+          const pointsToRemove = Math.floor(totalAmount);
+          if (pointsToRemove > 0) {
+            await sql`
+              UPDATE customers
+              SET points = GREATEST(COALESCE(points, 0) - ${pointsToRemove}, 0),
+                  total_spent = GREATEST(COALESCE(total_spent, 0) - ${totalAmount}, 0)
+              WHERE id = ${customerId}
+            `;
           }
         }
       }
@@ -5584,7 +5597,7 @@ const cancel_post = defineEventHandler(async (event) => {
       });
     }
     const saleResult = await sql`
-      SELECT id, status, xml_status, freight, created_at
+      SELECT id, status, xml_status, freight, total_amount, customer_id, created_at
       FROM sales
       WHERE id = ${id}
       LIMIT 1
@@ -5597,6 +5610,8 @@ const cancel_post = defineEventHandler(async (event) => {
     }
     const sale = saleResult[0];
     const freight = parseFloat(sale.freight || 0);
+    const totalAmount = parseFloat(sale.total_amount || 0);
+    const customerId = sale.customer_id;
     if (freight > 0) {
       const openRegister = await sql`
         SELECT id FROM cash_registers
@@ -5621,6 +5636,17 @@ const cancel_post = defineEventHandler(async (event) => {
             WHERE id = ${freightTransactions[0].id}
           `;
         }
+      }
+    }
+    if (customerId) {
+      const pointsToRemove = Math.floor(totalAmount);
+      if (pointsToRemove > 0) {
+        await sql`
+          UPDATE customers
+          SET points = GREATEST(COALESCE(points, 0) - ${pointsToRemove}, 0),
+              total_spent = GREATEST(COALESCE(total_spent, 0) - ${totalAmount}, 0)
+          WHERE id = ${customerId}
+        `;
       }
     }
     await sql`

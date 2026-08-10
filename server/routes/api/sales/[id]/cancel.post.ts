@@ -50,9 +50,9 @@ export default defineEventHandler(async (event) => {
       });
     }
     
-    // Verificar se a venda existe e buscar dados (incluindo frete)
+    // Verificar se a venda existe e buscar dados (incluindo frete e customer_id)
     const saleResult = await sql`
-      SELECT id, status, xml_status, freight, created_at
+      SELECT id, status, xml_status, freight, total_amount, customer_id, created_at
       FROM sales
       WHERE id = ${id}
       LIMIT 1
@@ -67,6 +67,8 @@ export default defineEventHandler(async (event) => {
     
     const sale = saleResult[0];
     const freight = parseFloat(sale.freight || 0);
+    const totalAmount = parseFloat(sale.total_amount || 0);
+    const customerId = sale.customer_id;
     
     // Se a venda tem frete, remover a sangria correspondente do fluxo de caixa
     if (freight > 0) {
@@ -82,7 +84,6 @@ export default defineEventHandler(async (event) => {
         const cashRegisterId = openRegister[0].id;
         
         // Buscar a sangria de frete mais recente para esta venda
-        // A sangria tem descrição "Taxa Entrega - {motoboy}" e valor igual ao frete
         const freightTransactions = await sql`
           SELECT id FROM cash_transactions
           WHERE cash_register_id = ${cashRegisterId}
@@ -100,6 +101,21 @@ export default defineEventHandler(async (event) => {
             WHERE id = ${freightTransactions[0].id}
           `;
         }
+      }
+    }
+    
+    // Se a venda tem cliente, estornar os pontos
+    if (customerId) {
+      // 1 real = 1 ponto (conforme regra do sistema)
+      const pointsToRemove = Math.floor(totalAmount);
+      
+      if (pointsToRemove > 0) {
+        await sql`
+          UPDATE customers
+          SET points = GREATEST(COALESCE(points, 0) - ${pointsToRemove}, 0),
+              total_spent = GREATEST(COALESCE(total_spent, 0) - ${totalAmount}, 0)
+          WHERE id = ${customerId}
+        `;
       }
     }
     
