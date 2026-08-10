@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAdmin } from "@/hooks/use-admin";
+import AdminSidebar from "@/components/AdminSidebar";
 import { ReceiptDialog } from "@/components/DocumentDialog";
 import { DanfeDialog } from "@/components/DanfeDialog";
 import {
@@ -52,6 +53,7 @@ const AdminReports = () => {
  const [isDanfeOpen, setIsDanfeOpen] = useState(false);
  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
  const [cancelPassword, setCancelPassword] = useState("");
+ const [cancelConfirmPassword, setCancelConfirmPassword] = useState("");
  const [cancelLoading, setCancelLoading] = useState(false);
  const [cancelPasswordConfigured, setCancelPasswordConfigured] = useState(false);
 
@@ -123,9 +125,15 @@ const AdminReports = () => {
   setSelectedSale(sale);
   setCancelDialogOpen(true);
   setCancelPassword("");
+  setCancelConfirmPassword("");
  };
 
  const handleCancelSale = async () => {
+  if (cancelPassword !== cancelConfirmPassword) {
+   toast.error("As senhas não coincidem!");
+   return;
+  }
+
   if (!cancelPasswordConfigured) {
    toast.error("Senha de cancelamento não configurada. Configure uma senha de cancelamento em Configurações Fiscais.");
    return;
@@ -323,7 +331,6 @@ const AdminReports = () => {
       </Card>
      </div>
     </div>
-   </div>
 
     {selectedSale && nfeData && (
      <DanfeDialog
@@ -381,6 +388,21 @@ const AdminReports = () => {
           value={cancelPassword}
           onChange={(e) => setCancelPassword(e.target.value)}
           placeholder="Digite a senha de cancelamento"
+          autoComplete="off"
+          className="pl-10"
+         />
+        </div>
+       </div>
+       <div className="space-y-2">
+        <Label htmlFor="cancel-confirm-password">Confirmar Senha</Label>
+        <div className="relative">
+         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+         <Input
+          type="password"
+          id="cancel-confirm-password"
+          value={cancelConfirmPassword}
+          onChange={(e) => setCancelConfirmPassword(e.target.value)}
+          placeholder="Confirme a senha de cancelamento"
           autoComplete="off"
           className="pl-10"
          />
