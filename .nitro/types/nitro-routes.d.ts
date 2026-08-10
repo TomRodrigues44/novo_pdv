@@ -6,6 +6,10 @@ declare module "nitropack/types" {
     '/api/auth/:action': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/auth/[action]').default>>>>
     }
+    '/api/cancel-password': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/cancel-password.get').default>>>>
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/cancel-password.post').default>>>>
+    }
     '/api/cash-register': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/cash-register.get').default>>>>
     }
@@ -49,6 +53,9 @@ declare module "nitropack/types" {
     }
     '/api/customers/ensure-schema': {
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/customers/ensure-schema.post').default>>>>
+    }
+    '/api/fiscal/:id/cancel': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/[id]/cancel.post').default>>>>
     }
     '/api/fiscal/certificates': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/certificates.get').default>>>>
@@ -120,6 +127,9 @@ declare module "nitropack/types" {
     '/api/sales': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/sales.get').default>>>>
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/sales.post').default>>>>
+    }
+    '/api/sales/:id/cancel': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/sales/[id]/cancel.post').default>>>>
     }
     '/api/sales/:id/status': {
       'put': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/sales/[id]/status.put').default>>>>

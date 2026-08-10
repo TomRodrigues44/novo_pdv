@@ -28,6 +28,7 @@ const managerRoutes = [
   '/api/fiscal/certificates',
   '/api/fiscal/test-connection',
   '/api/upload',
+  '/api/cancel-password',
 ];
 
 function isAllowed(path: string, role: UserRole) {

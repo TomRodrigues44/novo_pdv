@@ -937,7 +937,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"2f0db-5M8Shb+hmRx9Po13hdRdr+kHUwE\"",
+    "mtime": "2026-08-10T13:21:38.809Z",
+    "size": 192731,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"b0336-GYUWKcky7wCDXJI7ph+ryZxR6hE\"",
+    "mtime": "2026-08-10T13:21:38.809Z",
+    "size": 721718,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1239,7 +1254,8 @@ const managerRoutes = [
   "/api/nfe",
   "/api/fiscal/certificates",
   "/api/fiscal/test-connection",
-  "/api/upload"
+  "/api/upload",
+  "/api/cancel-password"
 ];
 function isAllowed(path, role) {
   if (role === "admin") return true;
@@ -1260,6 +1276,8 @@ const _MzNUUT = defineEventHandler(async (event) => {
 });
 
 const _lazy_QxOhU1 = () => Promise.resolve().then(function () { return _action_$1; });
+const _lazy_f43s1k = () => Promise.resolve().then(function () { return cancelPassword_get$1; });
+const _lazy_xFJ02b = () => Promise.resolve().then(function () { return cancelPassword_post$1; });
 const _lazy_yxPaRJ = () => Promise.resolve().then(function () { return cashRegister_get$1; });
 const _lazy_kdJA4k = () => Promise.resolve().then(function () { return close_post$1; });
 const _lazy_rO_WFu = () => Promise.resolve().then(function () { return open_post$1; });
@@ -1278,6 +1296,7 @@ const _lazy_jbGOcG = () => Promise.resolve().then(function () { return _id__dele
 const _lazy_EFm9MF = () => Promise.resolve().then(function () { return _id__put$5; });
 const _lazy_vMNP2g = () => Promise.resolve().then(function () { return sales_get$3; });
 const _lazy_m3Hq09 = () => Promise.resolve().then(function () { return ensureSchema_post$1; });
+const _lazy_56Dv14 = () => Promise.resolve().then(function () { return cancel_post$3; });
 const _lazy_xe7acr = () => Promise.resolve().then(function () { return certificates_get$1; });
 const _lazy_AbKrHi = () => Promise.resolve().then(function () { return certificates_post$1; });
 const _lazy_YqQJx3 = () => Promise.resolve().then(function () { return _id__delete$5; });
@@ -1307,6 +1326,7 @@ const _lazy_gYdxNd = () => Promise.resolve().then(function () { return _id__dele
 const _lazy_jEPQaM = () => Promise.resolve().then(function () { return _id__put$1; });
 const _lazy_EeL9Xf = () => Promise.resolve().then(function () { return sales_get$1; });
 const _lazy_y4fMmW = () => Promise.resolve().then(function () { return sales_post$1; });
+const _lazy_THYWQY = () => Promise.resolve().then(function () { return cancel_post$1; });
 const _lazy_BeUxG7 = () => Promise.resolve().then(function () { return status_put$1; });
 const _lazy_pZXqj1 = () => Promise.resolve().then(function () { return xml_get$1; });
 const _lazy_JpFH7U = () => Promise.resolve().then(function () { return testDb_get$1; });
@@ -1316,6 +1336,8 @@ const handlers = [
   { route: '', handler: _l6gOeV, lazy: false, middleware: true, method: undefined },
   { route: '', handler: _MzNUUT, lazy: false, middleware: true, method: undefined },
   { route: '/api/auth/:action', handler: _lazy_QxOhU1, lazy: true, middleware: false, method: undefined },
+  { route: '/api/cancel-password', handler: _lazy_f43s1k, lazy: true, middleware: false, method: "get" },
+  { route: '/api/cancel-password', handler: _lazy_xFJ02b, lazy: true, middleware: false, method: "post" },
   { route: '/api/cash-register', handler: _lazy_yxPaRJ, lazy: true, middleware: false, method: "get" },
   { route: '/api/cash-register/close', handler: _lazy_kdJA4k, lazy: true, middleware: false, method: "post" },
   { route: '/api/cash-register/open', handler: _lazy_rO_WFu, lazy: true, middleware: false, method: "post" },
@@ -1334,6 +1356,7 @@ const handlers = [
   { route: '/api/customers/:id', handler: _lazy_EFm9MF, lazy: true, middleware: false, method: "put" },
   { route: '/api/customers/:id/sales', handler: _lazy_vMNP2g, lazy: true, middleware: false, method: "get" },
   { route: '/api/customers/ensure-schema', handler: _lazy_m3Hq09, lazy: true, middleware: false, method: "post" },
+  { route: '/api/fiscal/:id/cancel', handler: _lazy_56Dv14, lazy: true, middleware: false, method: "post" },
   { route: '/api/fiscal/certificates', handler: _lazy_xe7acr, lazy: true, middleware: false, method: "get" },
   { route: '/api/fiscal/certificates', handler: _lazy_AbKrHi, lazy: true, middleware: false, method: "post" },
   { route: '/api/fiscal/certificates/:id', handler: _lazy_YqQJx3, lazy: true, middleware: false, method: "delete" },
@@ -1363,6 +1386,7 @@ const handlers = [
   { route: '/api/products/:id', handler: _lazy_jEPQaM, lazy: true, middleware: false, method: "put" },
   { route: '/api/sales', handler: _lazy_EeL9Xf, lazy: true, middleware: false, method: "get" },
   { route: '/api/sales', handler: _lazy_y4fMmW, lazy: true, middleware: false, method: "post" },
+  { route: '/api/sales/:id/cancel', handler: _lazy_THYWQY, lazy: true, middleware: false, method: "post" },
   { route: '/api/sales/:id/status', handler: _lazy_BeUxG7, lazy: true, middleware: false, method: "put" },
   { route: '/api/sales/:id/xml', handler: _lazy_pZXqj1, lazy: true, middleware: false, method: "get" },
   { route: '/api/test-db', handler: _lazy_JpFH7U, lazy: true, middleware: false, method: "get" },
@@ -1754,6 +1778,69 @@ const _action_ = defineEventHandler(async (event) => {
 const _action_$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: _action_
+});
+
+const cancelPassword_get = defineEventHandler(async () => {
+  try {
+    const result = await sql`
+      SELECT password FROM cancel_password
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    if (result.length === 0) {
+      return { configured: false };
+    }
+    return {
+      configured: true,
+      password: result[0].password
+    };
+  } catch (error) {
+    console.error("Error fetching cancel password:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error fetching cancel password"
+    });
+  }
+});
+
+const cancelPassword_get$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: cancelPassword_get
+});
+
+const cancelPassword_post = defineEventHandler(async (event) => {
+  try {
+    const { password } = await readBody(event);
+    if (!password || password.length < 4) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "A senha de cancelamento deve ter pelo menos 4 caracteres"
+      });
+    }
+    await sql`DELETE FROM cancel_password`;
+    const result = await sql`
+      INSERT INTO cancel_password (password)
+      VALUES (${password})
+      RETURNING id, created_at
+    `;
+    return {
+      success: true,
+      message: "Senha de cancelamento configurada com sucesso",
+      id: result[0].id
+    };
+  } catch (error) {
+    console.error("Error setting cancel password:", error);
+    if (error.statusCode) throw error;
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error setting cancel password"
+    });
+  }
+});
+
+const cancelPassword_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: cancelPassword_post
 });
 
 const cashRegister_get = defineEventHandler(async () => {
@@ -2678,6 +2765,95 @@ const ensureSchema_post = defineEventHandler(async () => {
 const ensureSchema_post$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: ensureSchema_post
+});
+
+const cancel_post$2 = defineEventHandler(async (event) => {
+  try {
+    const id = getRouterParam(event, "id");
+    const { password } = await readBody(event);
+    if (!id) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "ID da nota fiscal \xE9 obrigat\xF3rio"
+      });
+    }
+    if (!password) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Senha de cancelamento \xE9 obrigat\xF3ria"
+      });
+    }
+    const passwordResult = await sql`
+      SELECT password FROM cancel_password
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    if (passwordResult.length === 0) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: "Senha de cancelamento n\xE3o configurada"
+      });
+    }
+    if (password !== passwordResult[0].password) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: "Senha de cancelamento inv\xE1lida"
+      });
+    }
+    const nfeResult = await sql`
+      SELECT id, status, sale_id FROM nfe
+      WHERE id = ${id}
+      LIMIT 1
+    `;
+    const nfceResult = await sql`
+      SELECT id, status, sale_id FROM nfce
+      WHERE id = ${id}
+      LIMIT 1
+    `;
+    const fiscalNote = nfeResult.length > 0 ? nfeResult[0] : nfceResult.length > 0 ? nfceResult[0] : null;
+    if (!fiscalNote) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Nota fiscal n\xE3o encontrada"
+      });
+    }
+    if (nfeResult.length > 0) {
+      await sql`
+        UPDATE nfe
+        SET status = 'cancelada'
+        WHERE id = ${id}
+      `;
+    } else {
+      await sql`
+        UPDATE nfce
+        SET status = 'cancelada'
+        WHERE id = ${id}
+      `;
+    }
+    if (fiscalNote.sale_id) {
+      await sql`
+        UPDATE sales
+        SET xml_status = 'cancelled'
+        WHERE id::text = ${String(fiscalNote.sale_id)}
+      `;
+    }
+    return {
+      success: true,
+      message: "Nota fiscal cancelada com sucesso"
+    };
+  } catch (error) {
+    console.error("Error cancelling fiscal note:", error);
+    if (error.statusCode) throw error;
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error cancelling fiscal note"
+    });
+  }
+});
+
+const cancel_post$3 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: cancel_post$2
 });
 
 const certificates_get = defineEventHandler(async () => {
@@ -5302,6 +5478,75 @@ const sales_post = defineEventHandler(async (event) => {
 const sales_post$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: sales_post
+});
+
+const cancel_post = defineEventHandler(async (event) => {
+  try {
+    const id = getRouterParam(event, "id");
+    const { password } = await readBody(event);
+    if (!id) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "ID da venda \xE9 obrigat\xF3rio"
+      });
+    }
+    if (!password) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Senha de cancelamento \xE9 obrigat\xF3ria"
+      });
+    }
+    const passwordResult = await sql`
+      SELECT password FROM cancel_password
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    if (passwordResult.length === 0) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: "Senha de cancelamento n\xE3o configurada. Configure uma senha de cancelamento primeiro."
+      });
+    }
+    if (password !== passwordResult[0].password) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: "Senha de cancelamento inv\xE1lida"
+      });
+    }
+    const saleResult = await sql`
+      SELECT id, status, xml_status FROM sales
+      WHERE id = ${id}
+      LIMIT 1
+    `;
+    if (saleResult.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Venda n\xE3o encontrada"
+      });
+    }
+    await sql`
+      UPDATE sales
+      SET status = 'cancelled',
+          xml_status = 'cancelled'
+      WHERE id = ${id}
+    `;
+    return {
+      success: true,
+      message: "Venda cancelada com sucesso"
+    };
+  } catch (error) {
+    console.error("Error cancelling sale:", error);
+    if (error.statusCode) throw error;
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Error cancelling sale"
+    });
+  }
+});
+
+const cancel_post$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: cancel_post
 });
 
 const status_put = defineEventHandler(async (event) => {
