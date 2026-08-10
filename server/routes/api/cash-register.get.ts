@@ -25,11 +25,15 @@ export default defineEventHandler(async () => {
       SELECT 
         s.id,
         s.total_amount,
+        s.status,
+        s.xml_status,
         sp.payment_type,
         sp.amount
       FROM sales s
       LEFT JOIN sale_payments sp ON s.id = sp.sale_id
       WHERE s.created_at >= ${currentRegister.opened_at}
+        AND s.status != 'cancelled'
+        AND s.xml_status != 'cancelled'
     `;
 
     let salesTotal = 0;

@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"308d8-cp0VfMNOaD9xYIhdzYqoFmucFuw\"",
-    "mtime": "2026-08-10T13:26:00.844Z",
-    "size": 198872,
+    "etag": "\"30de0-YWqzgQX3deToLHSGiKq800/z358\"",
+    "mtime": "2026-08-10T13:28:32.104Z",
+    "size": 200160,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"b5bb0-0juX+7qRtnQOglQy17DmwTnd8yc\"",
-    "mtime": "2026-08-10T13:26:00.844Z",
-    "size": 744368,
+    "etag": "\"b6bc8-cLAAh8vdDuA7EO/ocAYT/w9blA4\"",
+    "mtime": "2026-08-10T13:28:32.119Z",
+    "size": 748488,
     "path": "index.mjs.map"
   }
 };
@@ -1879,11 +1879,15 @@ const cashRegister_get = defineEventHandler(async () => {
       SELECT 
         s.id,
         s.total_amount,
+        s.status,
+        s.xml_status,
         sp.payment_type,
         sp.amount
       FROM sales s
       LEFT JOIN sale_payments sp ON s.id = sp.sale_id
       WHERE s.created_at >= ${currentRegister.opened_at}
+        AND s.status != 'cancelled'
+        AND s.xml_status != 'cancelled'
     `;
     let salesTotal = 0;
     const salesByPayment = {
@@ -1943,11 +1947,11 @@ const close_post = defineEventHandler(async (event) => {
   try {
     const { closingAmount, notes } = await readBody(event);
     const openRegister = await sql`
-          SELECT * FROM cash_registers
-          WHERE status = 'open'
-          ORDER BY opened_at DESC
-          LIMIT 1
-        `;
+      SELECT * FROM cash_registers
+      WHERE status = 'open'
+      ORDER BY opened_at DESC
+      LIMIT 1
+    `;
     if (openRegister.length === 0) {
       throw createError({
         statusCode: 400,
@@ -1964,6 +1968,8 @@ const close_post = defineEventHandler(async (event) => {
       FROM sales s
       LEFT JOIN sale_payments sp ON sp.sale_id = s.id
       WHERE s.created_at >= ${register.opened_at}
+        AND s.status != 'cancelled'
+        AND s.xml_status != 'cancelled'
       GROUP BY s.id, s.total_amount
     `;
     let salesTotal = 0;
@@ -1977,11 +1983,11 @@ const close_post = defineEventHandler(async (event) => {
       cashSales += netCash;
     });
     const transactionsResult = await sql`
-          SELECT type, COALESCE(SUM(amount), 0) as total
-          FROM cash_transactions
-          WHERE cash_register_id = ${register.id}
-          GROUP BY type
-        `;
+      SELECT type, COALESCE(SUM(amount), 0) as total
+      FROM cash_transactions
+      WHERE cash_register_id = ${register.id}
+      GROUP BY type
+    `;
     let withdrawals = 0;
     let additions = 0;
     let vouchers = 0;
@@ -2001,16 +2007,16 @@ const close_post = defineEventHandler(async (event) => {
     const expectedTotalAmount = openingAmount + salesTotal + additions - withdrawals - vouchers;
     const difference = closingAmount - expectedCashAmount;
     await sql`
-          UPDATE cash_registers
-          SET
-            closed_at = CURRENT_TIMESTAMP,
-            closing_amount = ${closingAmount},
-            expected_amount = ${expectedCashAmount},
-            difference = ${difference},
-            status = 'closed',
-            notes = ${notes || null}
-          WHERE id = ${register.id}
-        `;
+      UPDATE cash_registers
+      SET
+        closed_at = CURRENT_TIMESTAMP,
+        closing_amount = ${closingAmount},
+        expected_amount = ${expectedCashAmount},
+        difference = ${difference},
+        status = 'closed',
+        notes = ${notes || null}
+      WHERE id = ${register.id}
+    `;
     return {
       success: true,
       salesTotal,
