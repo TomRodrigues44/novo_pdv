@@ -50,9 +50,10 @@ export default defineEventHandler(async (event) => {
       });
     }
     
-    // Verificar se a venda existe
+    // Verificar se a venda existe e buscar dados (incluindo frete)
     const saleResult = await sql`
-      SELECT id, status, xml_status FROM sales
+      SELECT id, status, xml_status, freight, created_at
+      FROM sales
       WHERE id = ${id}
       LIMIT 1
     `;
@@ -62,6 +63,44 @@ export default defineEventHandler(async (event) => {
         statusCode: 404,
         statusMessage: 'Venda não encontrada',
       });
+    }
+    
+    const sale = saleResult[0];
+    const freight = parseFloat(sale.freight || 0);
+    
+    // Se a venda tem frete, remover a sangria correspondente do fluxo de caixa
+    if (freight > 0) {
+      // Buscar caixa aberto
+      const openRegister = await sql`
+        SELECT id FROM cash_registers
+        WHERE status = 'open'
+        ORDER BY opened_at DESC
+        LIMIT 1
+      `;
+      
+      if (openRegister.length > 0) {
+        const cashRegisterId = openRegister[0].id;
+        
+        // Buscar a sangria de frete mais recente para esta venda
+        // A sangria tem descrição "Taxa Entrega - {motoboy}" e valor igual ao frete
+        const freightTransactions = await sql`
+          SELECT id FROM cash_transactions
+          WHERE cash_register_id = ${cashRegisterId}
+            AND type = 'withdrawal'
+            AND amount = ${freight}
+            AND description LIKE 'Taxa Entrega%'
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
+        
+        if (freightTransactions.length > 0) {
+          // Remover a sangria de frete
+          await sql`
+            DELETE FROM cash_transactions
+            WHERE id = ${freightTransactions[0].id}
+          `;
+        }
+      }
     }
     
     // Cancelar a venda

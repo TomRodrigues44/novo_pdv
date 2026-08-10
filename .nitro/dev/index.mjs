@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"30de0-YWqzgQX3deToLHSGiKq800/z358\"",
-    "mtime": "2026-08-10T13:28:32.104Z",
-    "size": 200160,
+    "etag": "\"30e50-ef3FeDme6P6MBquR8s87vQLXoDY\"",
+    "mtime": "2026-08-10T13:51:23.810Z",
+    "size": 200272,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"b6bc8-cLAAh8vdDuA7EO/ocAYT/w9blA4\"",
-    "mtime": "2026-08-10T13:28:32.119Z",
-    "size": 748488,
+    "etag": "\"b6dda-j+VdouzelGaNdaD7UCjkE6KahqQ\"",
+    "mtime": "2026-08-10T13:51:23.819Z",
+    "size": 749018,
     "path": "index.mjs.map"
   }
 };
@@ -2843,6 +2843,42 @@ const cancel_post$2 = defineEventHandler(async (event) => {
         statusCode: 404,
         statusMessage: "Nota fiscal n\xE3o encontrada"
       });
+    }
+    if (fiscalNote.sale_id) {
+      const saleResult = await sql`
+        SELECT freight FROM sales
+        WHERE id::text = ${String(fiscalNote.sale_id)}
+        LIMIT 1
+      `;
+      if (saleResult.length > 0) {
+        const freight = parseFloat(saleResult[0].freight || 0);
+        if (freight > 0) {
+          const openRegister = await sql`
+            SELECT id FROM cash_registers
+            WHERE status = 'open'
+            ORDER BY opened_at DESC
+            LIMIT 1
+          `;
+          if (openRegister.length > 0) {
+            const cashRegisterId = openRegister[0].id;
+            const freightTransactions = await sql`
+              SELECT id FROM cash_transactions
+              WHERE cash_register_id = ${cashRegisterId}
+                AND type = 'withdrawal'
+                AND amount = ${freight}
+                AND description LIKE 'Taxa Entrega%'
+              ORDER BY created_at DESC
+              LIMIT 1
+            `;
+            if (freightTransactions.length > 0) {
+              await sql`
+                DELETE FROM cash_transactions
+                WHERE id = ${freightTransactions[0].id}
+              `;
+            }
+          }
+        }
+      }
     }
     if (nfeResult.length > 0) {
       await sql`
@@ -5548,7 +5584,8 @@ const cancel_post = defineEventHandler(async (event) => {
       });
     }
     const saleResult = await sql`
-      SELECT id, status, xml_status FROM sales
+      SELECT id, status, xml_status, freight, created_at
+      FROM sales
       WHERE id = ${id}
       LIMIT 1
     `;
@@ -5557,6 +5594,34 @@ const cancel_post = defineEventHandler(async (event) => {
         statusCode: 404,
         statusMessage: "Venda n\xE3o encontrada"
       });
+    }
+    const sale = saleResult[0];
+    const freight = parseFloat(sale.freight || 0);
+    if (freight > 0) {
+      const openRegister = await sql`
+        SELECT id FROM cash_registers
+        WHERE status = 'open'
+        ORDER BY opened_at DESC
+        LIMIT 1
+      `;
+      if (openRegister.length > 0) {
+        const cashRegisterId = openRegister[0].id;
+        const freightTransactions = await sql`
+          SELECT id FROM cash_transactions
+          WHERE cash_register_id = ${cashRegisterId}
+            AND type = 'withdrawal'
+            AND amount = ${freight}
+            AND description LIKE 'Taxa Entrega%'
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
+        if (freightTransactions.length > 0) {
+          await sql`
+            DELETE FROM cash_transactions
+            WHERE id = ${freightTransactions[0].id}
+          `;
+        }
+      }
     }
     await sql`
       UPDATE sales

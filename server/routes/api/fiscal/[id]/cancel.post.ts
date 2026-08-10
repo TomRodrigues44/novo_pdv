@@ -73,6 +73,51 @@ export default defineEventHandler(async (event) => {
       });
     }
     
+    // Se tem sale_id, buscar o frete da venda
+    if (fiscalNote.sale_id) {
+      const saleResult = await sql`
+        SELECT freight FROM sales
+        WHERE id::text = ${String(fiscalNote.sale_id)}
+        LIMIT 1
+      `;
+      
+      if (saleResult.length > 0) {
+        const freight = parseFloat(saleResult[0].freight || 0);
+        
+        if (freight > 0) {
+          // Buscar caixa aberto
+          const openRegister = await sql`
+            SELECT id FROM cash_registers
+            WHERE status = 'open'
+            ORDER BY opened_at DESC
+            LIMIT 1
+          `;
+          
+          if (openRegister.length > 0) {
+            const cashRegisterId = openRegister[0].id;
+            
+            // Buscar e remover a sangria de frete
+            const freightTransactions = await sql`
+              SELECT id FROM cash_transactions
+              WHERE cash_register_id = ${cashRegisterId}
+                AND type = 'withdrawal'
+                AND amount = ${freight}
+                AND description LIKE 'Taxa Entrega%'
+              ORDER BY created_at DESC
+              LIMIT 1
+            `;
+            
+            if (freightTransactions.length > 0) {
+              await sql`
+                DELETE FROM cash_transactions
+                WHERE id = ${freightTransactions[0].id}
+              `;
+            }
+          }
+        }
+      }
+    }
+    
     // Atualizar status da nota fiscal para cancelada
     if (nfeResult.length > 0) {
       await sql`
