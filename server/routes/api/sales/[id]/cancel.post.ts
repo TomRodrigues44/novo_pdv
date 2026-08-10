@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
     if (passwordResult.length === 0) {
       throw createError({
         statusCode: 403,
-        statusMessage: 'Senha de cancelamento não configurada. Configure uma senha de cancelamento primeiro.',
+        statusMessage: 'Senha de cancelamento não configurada',
       });
     }
     
@@ -50,58 +50,23 @@ export default defineEventHandler(async (event) => {
       });
     }
     
-    // Verificar se a venda existe e buscar dados (incluindo frete)
+    // Verificar se a venda existe e buscar dados (incluindo customer_id e total_amount)
     const saleResult = await sql`
-      SELECT id, status, xml_status, freight, created_at
+      SELECT id, total_amount, customer_id
       FROM sales
       WHERE id = ${id}
       LIMIT 1
     `;
     
-    if (saleResult.length === 0) {
+    if (!saleResult.length) {
       throw createError({
         statusCode: 404,
-        statusMessage: 'Venda não encontrada',
-      });
+        statusMessage: 'Venda não encontrada'
+      };
     }
     
-    const sale = saleResult[0];
-    const freight = parseFloat(sale.freight || 0);
-    
-    // Se a venda tem frete, remover a sangria correspondente do fluxo de caixa
-    if (freight > 0) {
-      // Buscar caixa aberto
-      const openRegister = await sql`
-        SELECT id FROM cash_registers
-        WHERE status = 'open'
-        ORDER BY opened_at DESC
-        LIMIT 1
-      `;
-      
-      if (openRegister.length > 0) {
-        const cashRegisterId = openRegister[0].id;
-        
-        // Buscar a sangria de frete mais recente para esta venda
-        // A sangria tem descrição "Taxa Entrega - {motoboy}" e valor igual ao frete
-        const freightTransactions = await sql`
-          SELECT id FROM cash_transactions
-          WHERE cash_register_id = ${cashRegisterId}
-            AND type = 'withdrawal'
-            AND amount = ${freight}
-            AND description LIKE 'Taxa Entrega%'
-          ORDER BY created_at DESC
-          LIMIT 1
-        `;
-        
-        if (freightTransactions.length > 0) {
-          // Remover a sangria de frete
-          await sql`
-            DELETE FROM cash_transactions
-            WHERE id = ${freightTransactions[0].id}
-          `;
-        }
-      }
-    }
+    const amount = parseFloat(saleResult[0].total_amount) || 0;
+    const customerId = saleResult[0].customer_id;
     
     // Cancelar a venda
     await sql`
@@ -110,6 +75,16 @@ export default defineEventHandler(async (event) => {
           xml_status = 'cancelled'
       WHERE id = ${id}
     `;
+    
+    // Estornar pontos e total_spent do cliente
+    if (customerId) {
+      await sql`
+        UPDATE customers
+        SET points = COALESCE(points, 0) - ${amount},
+            total_spent = COALESCE(total_spent, 0) - ${amount}
+        WHERE id = ${customerId}
+      `;
+    }
     
     return { 
       success: true, 
@@ -120,7 +95,7 @@ export default defineEventHandler(async (event) => {
     if (error.statusCode) throw error;
     throw createError({
       statusCode: 500,
-      statusMessage: 'Error cancelling sale',
-    });
+      statusMessage: 'Error cancelling sale'
+    };
   }
 });
