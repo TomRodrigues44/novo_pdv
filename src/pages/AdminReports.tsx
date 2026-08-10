@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAdmin } from "@/hooks/use-admin";
 import AdminSidebar from "@/components/AdminSidebar";
 import { ReceiptDialog } from "@/components/DocumentDialog";
@@ -19,8 +19,7 @@ import {
  DialogFooter,
 } from "@/components/ui/dialog";
 import {
- Input,
-} from "@/components/ui/input";
+ Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
  Select,
@@ -38,7 +37,6 @@ import {
  Loader2,
  Trash2,
  AlertCircle,
- Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -55,25 +53,8 @@ const AdminReports = () => {
  const [cancelPassword, setCancelPassword] = useState("");
  const [cancelConfirmPassword, setCancelConfirmPassword] = useState("");
  const [cancelLoading, setCancelLoading] = useState(false);
- const [cancelPasswordConfigured, setCancelPasswordConfigured] = useState(false);
 
  const report = getSalesReport(days);
-
- // Verificar se a senha de cancelamento está configurada
- useEffect(() => {
-  const checkCancelPassword = async () => {
-   try {
-    const response = await fetch('/api/cancel-password');
-    if (response.ok) {
-     const data = await response.json();
-     setCancelPasswordConfigured(data.configured);
-    }
-   } catch (error) {
-    console.error('Error checking cancel password:', error);
-   }
-  };
-  checkCancelPassword();
- }, []);
 
  const handlePrintClick = async (sale: any) => {
   setLoadingReceipt(true);
@@ -134,11 +115,6 @@ const AdminReports = () => {
    return;
   }
 
-  if (!cancelPasswordConfigured) {
-   toast.error("Senha de cancelamento não configurada. Configure uma senha de cancelamento em Configurações Fiscais.");
-   return;
-  }
-
   if (!selectedSale) return;
 
   setCancelLoading(true);
@@ -158,7 +134,7 @@ const AdminReports = () => {
 
     if (!cancelFiscalResponse.ok) {
      const error = await cancelFiscalResponse.json();
-     throw new Error(error.statusMessage || error.message || "Falha ao cancelar fiscalmente");
+     throw new Error(error.message || "Falha ao cancelar fiscalmente");
     }
    }
 
@@ -175,7 +151,7 @@ const AdminReports = () => {
 
    if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.statusMessage || error.message || "Falha ao cancelar a venda");
+    throw new Error(error.message || "Falha ao cancelar a venda");
    }
 
    toast.success("Venda cancelada com sucesso!");
@@ -377,64 +353,46 @@ const AdminReports = () => {
       <div className="space-y-4">
        <div className="space-y-2">
         <Label htmlFor="cancel-password">Senha de Cancelamento</Label>
-        <div className="relative">
-         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-         <Input
-          type="password"
-          id="cancel-password"
-          value={cancelPassword}
-          onChange={(e) => setCancelPassword(e.target.value)}
-          placeholder="Digite a senha de cancelamento"
-          autoComplete="off"
-          className="pl-10"
-         />
-        </div>
+        <Input
+         type="password"
+         id="cancel-password"
+         value={cancelPassword}
+         onChange={(e) => setCancelPassword(e.target.value)}
+         placeholder="Digite a senha"
+         autoComplete="off"
+        />
        </div>
        <div className="space-y-2">
         <Label htmlFor="cancel-confirm-password">Confirmar Senha</Label>
-        <div className="relative">
-         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-         <Input
-          type="password"
-          id="cancel-confirm-password"
-          value={cancelConfirmPassword}
-          onChange={(e) => setCancelConfirmPassword(e.target.value)}
-          placeholder="Confirme a senha de cancelamento"
-          autoComplete="off"
-          className="pl-10"
-         />
-        </div>
-       </div>
-       {!cancelPasswordConfigured && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-         <div className="flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
-          <p className="text-sm text-yellow-800">
-           Configure uma senha de cancelamento em Configurações Fiscais antes de cancelar vendas.
-          </p>
-         </div>
-        </div>
-       )}
-       <div className="flex gap-2 justify-end">
-        <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
-         Cancelar
-        </Button>
-        <Button
-         variant="destructive"
-         onClick={handleCancelSale}
-         disabled={cancelLoading}
-        >
-         {cancelLoading ? (
-          <>
-           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-           Cancelando...
-          </>
-         ) : (
-          "Confirmar Cancelamento"
-         )}
-        </Button>
+        <Input
+         type="password"
+         id="cancel-confirm-password"
+         value={cancelConfirmPassword}
+         onChange={(e) => setCancelConfirmPassword(e.target.value)}
+         placeholder="Confirme a senha"
+         autoComplete="off"
+        />
        </div>
       </div>
+      <DialogFooter>
+       <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+        Cancelar
+       </Button>
+       <Button
+        variant="destructive"
+        onClick={handleCancelSale}
+        disabled={cancelLoading}
+       >
+        {cancelLoading ? (
+         <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Cancelando...
+         </>
+        ) : (
+         "Confirmar Cancelamento"
+        )}
+       </Button>
+      </DialogFooter>
      </DialogContent>
     </Dialog>
    </>

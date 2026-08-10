@@ -1,156 +1,153 @@
 import crypto from 'node:crypto';
-import type { H3Event } from 'h3';
-import { getCookie, setCookie } from 'h3';
+import {
+  clearSession,
+  createSession,
+  ensureAuthSchema,
+  getSessionUser,
+  hashPassword,
+  normalizeUsername,
+  requireRole,
+  roleLabels,
+  type UserRole,
+  validatePassword,
+  verifyPassword,
+} from '../../../lib/auth';
 import { sql } from '../../../utils/db';
 
-export type UserRole = 'admin' | 'manager' | 'cashier';
+const validRoles: UserRole[] = ['admin', 'manager', 'cashier'];
 
-export interface AuthUser {
-  id: string;
-  name: string;
-  username: string;
-  role: UserRole;
-  active: boolean;
-}
+const publicUser = (user: any) => ({
+  id: user.id,
+  name: user.name,
+  username: user.username,
+  role: user.role,
+  roleLabel: roleLabels[user.role as UserRole],
+  active: user.active,
+  created_at: user.created_at,
+});
 
-const SESSION_COOKIE = 'pdv_session';
-const SESSION_DURATION_MS = 1000 * 60 * 60 * 12;
-
-export const roleLabels: Record<UserRole, string> = {
-  admin: 'Administrador',
-  manager: 'Gerente',
-  cashier: 'Caixa',
-};
-
-export async function ensureAuthSchema() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS app_users (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      username TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL CHECK (role IN ('admin', 'manager', 'cashier')),
-      active BOOLEAN NOT NULL DEFAULT true,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `;
-
-  await sql`
-    CREATE TABLE IF NOT EXISTS app_sessions (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
-      expires_at TIMESTAMPTZ NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `;
-
-  // Criar tabela de senha de cancelamento
-  await sql`
-    CREATE TABLE IF NOT EXISTS cancel_password (
-      id TEXT PRIMARY KEY,
-      password TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `;
-}
-
-export function normalizeUsername(value: unknown) {
-  return String(value ?? '').trim().toLowerCase();
-}
-
-export function validatePassword(password: unknown) {
-  const value = String(password ?? '');
-  if (value.length < 8) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'A senha precisa ter pelo menos 8 caracteres.',
-    });
-  }
-  return value;
-}
-
-export async function hashPassword(password: string) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const derivedKey = await new Promise<Buffer>((resolve, reject) => {
-    crypto.scrypt(password, salt, 64, (error, key) => {
-      if (error) reject(error);
-      else resolve(key as Buffer);
-    });
-  });
-
-  return `${salt}:${derivedKey.toString('hex')}`;
-}
-
-export async function verifyPassword(password: string, storedHash: string) {
-  const [salt, hash] = storedHash.split(':');
-  if (!salt || !hash) return false;
-
-  const derivedKey = await new Promise<Buffer>((resolve, reject) => {
-    crypto.scrypt(password, salt, 64, (error, key) => {
-      if (error) reject(error);
-      else resolve(key as Buffer);
-    });
-  });
-
-  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), derivedKey);
-}
-
-export async function createSession(event: H3Event, userId: string) {
-  const sessionId = crypto.randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
-
-  await sql`
-    INSERT INTO app_sessions (id, user_id, expires_at)
-    VALUES (${sessionId}, ${userId}, ${expiresAt})
-  `;
-
-  setCookie(event, SESSION_COOKIE, sessionId, {
-    httpOnly: true,
-    sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: SESSION_DURATION_MS / 1000,
-  });
-}
-
-export async function getSessionUser(event: H3Event): Promise<AuthUser | null> {
+export default defineEventHandler(async (event) => {
   await ensureAuthSchema();
-  const sessionId = getCookie(event, SESSION_COOKIE);
-  if (!sessionId) return null;
+  const action = getRouterParam(event, 'action');
 
-  const result = await sql`
-    SELECT u.id, u.name, u.username, u.role, u.active
-    FROM app_sessions s
-    INNER JOIN app_users u ON u.id = s.user_id
-    WHERE s.id = ${sessionId}
-      AND s.expires_at > CURRENT_TIMESTAMP
-      AND u.active = true
-    LIMIT 1
-  `;
-
-  return (result[0] as AuthUser | undefined) || null;
-}
-
-export async function clearSession(event: H3Event) {
-  const sessionId = getCookie(event, SESSION_COOKIE);
-  if (sessionId) {
-    await sql`DELETE FROM app_sessions WHERE id = ${sessionId}`;
+  if (action === 'status') {
+    const users = await sql`SELECT COUNT(*)::int AS count FROM app_users`;
+    return { configured: Number(users[0].count) > 0 };
   }
 
-  setCookie(event, SESSION_COOKIE, '', {
-    httpOnly: true,
-    sameSite: 'strict',
-    path: '/',
-    maxAge: 0,
-  });
-}
+  if (action === 'bootstrap') {
+    const users = await sql`SELECT COUNT(*)::int AS count FROM app_users`;
+    if (Number(users[0].count) > 0) {
+      throw createError({ statusCode: 403, statusMessage: 'O administrador inicial já foi configurado.' });
+    }
 
-export function requireRole(user: AuthUser | null, roles: UserRole[]) {
-  if (!user || !roles.includes(user.role)) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: 'Você não tem permissão para acessar este recurso.',
-    });
+    const body = await readBody(event);
+    const name = String(body.name ?? '').trim();
+    const username = normalizeUsername(body.username);
+    const password = validatePassword(body.password);
+
+    if (!name || username.length < 3) {
+      throw createError({ statusCode: 400, statusMessage: 'Informe nome e usuário com pelo menos 3 caracteres.' });
+    }
+
+    const id = `user-${crypto.randomUUID()}`;
+    await sql`
+      INSERT INTO app_users (id, name, username, password_hash, role)
+      VALUES (${id}, ${name}, ${username}, ${await hashPassword(password)}, 'admin')
+    `;
+    await createSession(event, id);
+    return { user: { id, name, username, role: 'admin', roleLabel: 'Administrador', active: true } };
   }
-}
+
+  if (action === 'login') {
+    const body = await readBody(event);
+    const username = normalizeUsername(body.username);
+    const password = String(body.password ?? '');
+    const users = await sql`
+      SELECT * FROM app_users
+      WHERE username = ${username} AND active = true
+      LIMIT 1
+    `;
+    const user = users[0];
+
+    if (!user || !(await verifyPassword(password, user.password_hash))) {
+      throw createError({ statusCode: 401, statusMessage: 'Usuário ou senha inválidos.' });
+    }
+
+    await createSession(event, user.id);
+    return { user: publicUser(user) };
+  }
+
+  if (action === 'logout') {
+    await clearSession(event);
+    return { success: true };
+  }
+
+  const currentUser = await getSessionUser(event);
+  if (action === 'me') return { user: currentUser };
+
+  requireRole(currentUser, ['admin']);
+
+  if (action === 'users' && event.method === 'GET') {
+    const users = await sql`
+      SELECT id, name, username, role, active, created_at
+      FROM app_users
+      ORDER BY created_at ASC
+    `;
+    return users.map(publicUser);
+  }
+
+  if (action === 'users' && event.method === 'POST') {
+    const body = await readBody(event);
+    const name = String(body.name ?? '').trim();
+    const username = normalizeUsername(body.username);
+    const password = validatePassword(body.password);
+    const role = body.role as UserRole;
+
+    if (!name || username.length < 3 || !validRoles.includes(role)) {
+      throw createError({ statusCode: 400, statusMessage: 'Preencha os dados do usuário corretamente.' });
+    }
+
+    const id = `user-${crypto.randomUUID()}`;
+    const result = await sql`
+      INSERT INTO app_users (id, name, username, password_hash, role)
+      VALUES (${id}, ${name}, ${username}, ${await hashPassword(password)}, ${role})
+      RETURNING id, name, username, role, active, created_at
+    `;
+    return publicUser(result[0]);
+  }
+
+  if (action === 'users' && event.method === 'PUT') {
+    const body = await readBody(event);
+    const id = String(body.id ?? '');
+    const name = String(body.name ?? '').trim();
+    const role = body.role as UserRole;
+    const active = Boolean(body.active);
+
+    if (!id || !name || !validRoles.includes(role)) {
+      throw createError({ statusCode: 400, statusMessage: 'Dados inválidos para atualização.' });
+    }
+    if (id === currentUser?.id && !active) {
+      throw createError({ statusCode: 400, statusMessage: 'Você não pode desativar seu próprio acesso.' });
+    }
+
+    if (body.password) {
+      await sql`
+        UPDATE app_users
+        SET name = ${name}, role = ${role}, active = ${active},
+            password_hash = ${await hashPassword(validatePassword(body.password))},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+      `;
+    } else {
+      await sql`
+        UPDATE app_users
+        SET name = ${name}, role = ${role}, active = ${active}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+      `;
+    }
+    return { success: true };
+  }
+
+  throw createError({ statusCode: 404, statusMessage: 'Ação não encontrada.' });
+});

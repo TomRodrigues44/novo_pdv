@@ -3,7 +3,7 @@ import { Server } from 'node:http';
 import { resolve, dirname, join } from 'node:path';
 import crypto from 'node:crypto';
 import { parentPort, threadId } from 'node:worker_threads';
-import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestURL, getRequestHeader, getResponseHeader, getRequestHeaders, setResponseHeaders, setResponseStatus, send, removeResponseHeader, appendResponseHeader, setResponseHeader, getCookie, getRequestPath, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, readBody, getQuery as getQuery$1, setCookie, readFormData } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index.mjs';
+import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestURL, getRequestHeader, getResponseHeader, getRequestHeaders, setResponseHeaders, setResponseStatus, send, removeResponseHeader, appendResponseHeader, setResponseHeader, getCookie, setCookie, getRequestPath, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, readBody, getQuery as getQuery$1, readFormData } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index.mjs';
 import destr from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/destr@2.0.5/node_modules/destr/dist/index.mjs';
 import { createHooks } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/hookable@5.5.3/node_modules/hookable/dist/index.mjs';
 import { createFetch, Headers as Headers$1 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/ofetch@1.5.1/node_modules/ofetch/dist/node.mjs';
@@ -937,22 +937,7 @@ const plugins = [
   
 ];
 
-const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"308d8-cp0VfMNOaD9xYIhdzYqoFmucFuw\"",
-    "mtime": "2026-08-10T13:17:13.882Z",
-    "size": 198872,
-    "path": "index.mjs"
-  },
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"b5bb0-0juX+7qRtnQOglQy17DmwTnd8yc\"",
-    "mtime": "2026-08-10T13:17:13.882Z",
-    "size": 744368,
-    "path": "index.mjs.map"
-  }
-};
+const assets = {};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1116,8 +1101,14 @@ function getDatabaseTarget() {
   };
 }
 
-const SESSION_COOKIE$1 = "pdv_session";
-async function ensureAuthSchema$1() {
+const SESSION_COOKIE = "pdv_session";
+const SESSION_DURATION_MS = 1e3 * 60 * 60 * 12;
+const roleLabels = {
+  admin: "Administrador",
+  manager: "Gerente",
+  cashier: "Caixa"
+};
+async function ensureAuthSchema() {
   await sql`
     CREATE TABLE IF NOT EXISTS app_users (
       id TEXT PRIMARY KEY,
@@ -1139,9 +1130,58 @@ async function ensureAuthSchema$1() {
     )
   `;
 }
-async function getSessionUser$1(event) {
-  await ensureAuthSchema$1();
-  const sessionId = getCookie(event, SESSION_COOKIE$1);
+function normalizeUsername(value) {
+  return String(value != null ? value : "").trim().toLowerCase();
+}
+function validatePassword(password) {
+  const value = String(password != null ? password : "");
+  if (value.length < 8) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "A senha precisa ter pelo menos 8 caracteres."
+    });
+  }
+  return value;
+}
+async function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const derivedKey = await new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, 64, (error, key) => {
+      if (error) reject(error);
+      else resolve(key);
+    });
+  });
+  return `${salt}:${derivedKey.toString("hex")}`;
+}
+async function verifyPassword(password, storedHash) {
+  const [salt, hash] = storedHash.split(":");
+  if (!salt || !hash) return false;
+  const derivedKey = await new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, 64, (error, key) => {
+      if (error) reject(error);
+      else resolve(key);
+    });
+  });
+  return crypto.timingSafeEqual(Buffer.from(hash, "hex"), derivedKey);
+}
+async function createSession(event, userId) {
+  const sessionId = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
+  await sql`
+    INSERT INTO app_sessions (id, user_id, expires_at)
+    VALUES (${sessionId}, ${userId}, ${expiresAt})
+  `;
+  setCookie(event, SESSION_COOKIE, sessionId, {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: false,
+    path: "/",
+    maxAge: SESSION_DURATION_MS / 1e3
+  });
+}
+async function getSessionUser(event) {
+  await ensureAuthSchema();
+  const sessionId = getCookie(event, SESSION_COOKIE);
   if (!sessionId) return null;
   const result = await sql`
     SELECT u.id, u.name, u.username, u.role, u.active
@@ -1153,6 +1193,26 @@ async function getSessionUser$1(event) {
     LIMIT 1
   `;
   return result[0] || null;
+}
+async function clearSession(event) {
+  const sessionId = getCookie(event, SESSION_COOKIE);
+  if (sessionId) {
+    await sql`DELETE FROM app_sessions WHERE id = ${sessionId}`;
+  }
+  setCookie(event, SESSION_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "strict",
+    path: "/",
+    maxAge: 0
+  });
+}
+function requireRole(user, roles) {
+  if (!user || !roles.includes(user.role)) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Voc\xEA n\xE3o tem permiss\xE3o para acessar este recurso."
+    });
+  }
 }
 
 const publicRoutes = /* @__PURE__ */ new Set([
@@ -1179,8 +1239,7 @@ const managerRoutes = [
   "/api/nfe",
   "/api/fiscal/certificates",
   "/api/fiscal/test-connection",
-  "/api/upload",
-  "/api/cancel-password"
+  "/api/upload"
 ];
 function isAllowed(path, role) {
   if (role === "admin") return true;
@@ -1190,7 +1249,7 @@ function isAllowed(path, role) {
 const _MzNUUT = defineEventHandler(async (event) => {
   const path = getRequestPath(event);
   if (!path.startsWith("/api/") || publicRoutes.has(path)) return;
-  const user = await getSessionUser$1(event);
+  const user = await getSessionUser(event);
   if (!user) {
     throw createError({ statusCode: 401, statusMessage: "Fa\xE7a login para continuar." });
   }
@@ -1200,9 +1259,7 @@ const _MzNUUT = defineEventHandler(async (event) => {
   event.context.authUser = user;
 });
 
-const _lazy_QxOhU1 = () => Promise.resolve().then(function () { return _action_; });
-const _lazy_f43s1k = () => Promise.resolve().then(function () { return cancelPassword_get$1; });
-const _lazy_xFJ02b = () => Promise.resolve().then(function () { return cancelPassword_post$1; });
+const _lazy_QxOhU1 = () => Promise.resolve().then(function () { return _action_$1; });
 const _lazy_yxPaRJ = () => Promise.resolve().then(function () { return cashRegister_get$1; });
 const _lazy_kdJA4k = () => Promise.resolve().then(function () { return close_post$1; });
 const _lazy_rO_WFu = () => Promise.resolve().then(function () { return open_post$1; });
@@ -1221,7 +1278,6 @@ const _lazy_jbGOcG = () => Promise.resolve().then(function () { return _id__dele
 const _lazy_EFm9MF = () => Promise.resolve().then(function () { return _id__put$5; });
 const _lazy_vMNP2g = () => Promise.resolve().then(function () { return sales_get$3; });
 const _lazy_m3Hq09 = () => Promise.resolve().then(function () { return ensureSchema_post$1; });
-const _lazy_56Dv14 = () => Promise.resolve().then(function () { return cancel_post$3; });
 const _lazy_xe7acr = () => Promise.resolve().then(function () { return certificates_get$1; });
 const _lazy_AbKrHi = () => Promise.resolve().then(function () { return certificates_post$1; });
 const _lazy_YqQJx3 = () => Promise.resolve().then(function () { return _id__delete$5; });
@@ -1251,7 +1307,6 @@ const _lazy_gYdxNd = () => Promise.resolve().then(function () { return _id__dele
 const _lazy_jEPQaM = () => Promise.resolve().then(function () { return _id__put$1; });
 const _lazy_EeL9Xf = () => Promise.resolve().then(function () { return sales_get$1; });
 const _lazy_y4fMmW = () => Promise.resolve().then(function () { return sales_post$1; });
-const _lazy_THYWQY = () => Promise.resolve().then(function () { return cancel_post$1; });
 const _lazy_BeUxG7 = () => Promise.resolve().then(function () { return status_put$1; });
 const _lazy_pZXqj1 = () => Promise.resolve().then(function () { return xml_get$1; });
 const _lazy_JpFH7U = () => Promise.resolve().then(function () { return testDb_get$1; });
@@ -1261,8 +1316,6 @@ const handlers = [
   { route: '', handler: _l6gOeV, lazy: false, middleware: true, method: undefined },
   { route: '', handler: _MzNUUT, lazy: false, middleware: true, method: undefined },
   { route: '/api/auth/:action', handler: _lazy_QxOhU1, lazy: true, middleware: false, method: undefined },
-  { route: '/api/cancel-password', handler: _lazy_f43s1k, lazy: true, middleware: false, method: "get" },
-  { route: '/api/cancel-password', handler: _lazy_xFJ02b, lazy: true, middleware: false, method: "post" },
   { route: '/api/cash-register', handler: _lazy_yxPaRJ, lazy: true, middleware: false, method: "get" },
   { route: '/api/cash-register/close', handler: _lazy_kdJA4k, lazy: true, middleware: false, method: "post" },
   { route: '/api/cash-register/open', handler: _lazy_rO_WFu, lazy: true, middleware: false, method: "post" },
@@ -1281,7 +1334,6 @@ const handlers = [
   { route: '/api/customers/:id', handler: _lazy_EFm9MF, lazy: true, middleware: false, method: "put" },
   { route: '/api/customers/:id/sales', handler: _lazy_vMNP2g, lazy: true, middleware: false, method: "get" },
   { route: '/api/customers/ensure-schema', handler: _lazy_m3Hq09, lazy: true, middleware: false, method: "post" },
-  { route: '/api/fiscal/:id/cancel', handler: _lazy_56Dv14, lazy: true, middleware: false, method: "post" },
   { route: '/api/fiscal/certificates', handler: _lazy_xe7acr, lazy: true, middleware: false, method: "get" },
   { route: '/api/fiscal/certificates', handler: _lazy_AbKrHi, lazy: true, middleware: false, method: "post" },
   { route: '/api/fiscal/certificates/:id', handler: _lazy_YqQJx3, lazy: true, middleware: false, method: "delete" },
@@ -1311,7 +1363,6 @@ const handlers = [
   { route: '/api/products/:id', handler: _lazy_jEPQaM, lazy: true, middleware: false, method: "put" },
   { route: '/api/sales', handler: _lazy_EeL9Xf, lazy: true, middleware: false, method: "get" },
   { route: '/api/sales', handler: _lazy_y4fMmW, lazy: true, middleware: false, method: "post" },
-  { route: '/api/sales/:id/cancel', handler: _lazy_THYWQY, lazy: true, middleware: false, method: "post" },
   { route: '/api/sales/:id/status', handler: _lazy_BeUxG7, lazy: true, middleware: false, method: "put" },
   { route: '/api/sales/:id/xml', handler: _lazy_pZXqj1, lazy: true, middleware: false, method: "get" },
   { route: '/api/test-db', handler: _lazy_JpFH7U, lazy: true, middleware: false, method: "get" },
@@ -1582,202 +1633,127 @@ async function shutdown() {
   parentPort?.postMessage({ event: "exit" });
 }
 
-const SESSION_COOKIE = "pdv_session";
-const SESSION_DURATION_MS = 1e3 * 60 * 60 * 12;
-const roleLabels = {
-  admin: "Administrador",
-  manager: "Gerente",
-  cashier: "Caixa"
-};
-async function ensureAuthSchema() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS app_users (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      username TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL CHECK (role IN ('admin', 'manager', 'cashier')),
-      active BOOLEAN NOT NULL DEFAULT true,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS app_sessions (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
-      expires_at TIMESTAMPTZ NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS cancel_password (
-      id TEXT PRIMARY KEY,
-      password TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `;
-}
-function normalizeUsername(value) {
-  return String(value != null ? value : "").trim().toLowerCase();
-}
-function validatePassword(password) {
-  const value = String(password != null ? password : "");
-  if (value.length < 8) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "A senha precisa ter pelo menos 8 caracteres."
-    });
-  }
-  return value;
-}
-async function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString("hex");
-  const derivedKey = await new Promise((resolve, reject) => {
-    crypto.scrypt(password, salt, 64, (error, key) => {
-      if (error) reject(error);
-      else resolve(key);
-    });
-  });
-  return `${salt}:${derivedKey.toString("hex")}`;
-}
-async function verifyPassword(password, storedHash) {
-  const [salt, hash] = storedHash.split(":");
-  if (!salt || !hash) return false;
-  const derivedKey = await new Promise((resolve, reject) => {
-    crypto.scrypt(password, salt, 64, (error, key) => {
-      if (error) reject(error);
-      else resolve(key);
-    });
-  });
-  return crypto.timingSafeEqual(Buffer.from(hash, "hex"), derivedKey);
-}
-async function createSession(event, userId) {
-  const sessionId = crypto.randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
-  await sql`
-    INSERT INTO app_sessions (id, user_id, expires_at)
-    VALUES (${sessionId}, ${userId}, ${expiresAt})
-  `;
-  setCookie(event, SESSION_COOKIE, sessionId, {
-    httpOnly: true,
-    sameSite: "strict",
-    secure: false,
-    path: "/",
-    maxAge: SESSION_DURATION_MS / 1e3
-  });
-}
-async function getSessionUser(event) {
-  await ensureAuthSchema();
-  const sessionId = getCookie(event, SESSION_COOKIE);
-  if (!sessionId) return null;
-  const result = await sql`
-    SELECT u.id, u.name, u.username, u.role, u.active
-    FROM app_sessions s
-    INNER JOIN app_users u ON u.id = s.user_id
-    WHERE s.id = ${sessionId}
-      AND s.expires_at > CURRENT_TIMESTAMP
-      AND u.active = true
-    LIMIT 1
-  `;
-  return result[0] || null;
-}
-async function clearSession(event) {
-  const sessionId = getCookie(event, SESSION_COOKIE);
-  if (sessionId) {
-    await sql`DELETE FROM app_sessions WHERE id = ${sessionId}`;
-  }
-  setCookie(event, SESSION_COOKIE, "", {
-    httpOnly: true,
-    sameSite: "strict",
-    path: "/",
-    maxAge: 0
-  });
-}
-function requireRole(user, roles) {
-  if (!user || !roles.includes(user.role)) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: "Voc\xEA n\xE3o tem permiss\xE3o para acessar este recurso."
-    });
-  }
-}
-
-const _action_ = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  clearSession: clearSession,
-  createSession: createSession,
-  ensureAuthSchema: ensureAuthSchema,
-  getSessionUser: getSessionUser,
-  hashPassword: hashPassword,
-  normalizeUsername: normalizeUsername,
-  requireRole: requireRole,
-  roleLabels: roleLabels,
-  validatePassword: validatePassword,
-  verifyPassword: verifyPassword
+const validRoles = ["admin", "manager", "cashier"];
+const publicUser = (user) => ({
+  id: user.id,
+  name: user.name,
+  username: user.username,
+  role: user.role,
+  roleLabel: roleLabels[user.role],
+  active: user.active,
+  created_at: user.created_at
 });
-
-const cancelPassword_get = defineEventHandler(async () => {
-  try {
-    const result = await sql`
-      SELECT password FROM cancel_password
-      ORDER BY created_at DESC
+const _action_ = defineEventHandler(async (event) => {
+  var _a, _b, _c, _d, _e;
+  await ensureAuthSchema();
+  const action = getRouterParam(event, "action");
+  if (action === "status") {
+    const users = await sql`SELECT COUNT(*)::int AS count FROM app_users`;
+    return { configured: Number(users[0].count) > 0 };
+  }
+  if (action === "bootstrap") {
+    const users = await sql`SELECT COUNT(*)::int AS count FROM app_users`;
+    if (Number(users[0].count) > 0) {
+      throw createError({ statusCode: 403, statusMessage: "O administrador inicial j\xE1 foi configurado." });
+    }
+    const body = await readBody(event);
+    const name = String((_a = body.name) != null ? _a : "").trim();
+    const username = normalizeUsername(body.username);
+    const password = validatePassword(body.password);
+    if (!name || username.length < 3) {
+      throw createError({ statusCode: 400, statusMessage: "Informe nome e usu\xE1rio com pelo menos 3 caracteres." });
+    }
+    const id = `user-${crypto.randomUUID()}`;
+    await sql`
+      INSERT INTO app_users (id, name, username, password_hash, role)
+      VALUES (${id}, ${name}, ${username}, ${await hashPassword(password)}, 'admin')
+    `;
+    await createSession(event, id);
+    return { user: { id, name, username, role: "admin", roleLabel: "Administrador", active: true } };
+  }
+  if (action === "login") {
+    const body = await readBody(event);
+    const username = normalizeUsername(body.username);
+    const password = String((_b = body.password) != null ? _b : "");
+    const users = await sql`
+      SELECT * FROM app_users
+      WHERE username = ${username} AND active = true
       LIMIT 1
     `;
-    if (result.length === 0) {
-      return { configured: false };
+    const user = users[0];
+    if (!user || !await verifyPassword(password, user.password_hash)) {
+      throw createError({ statusCode: 401, statusMessage: "Usu\xE1rio ou senha inv\xE1lidos." });
     }
-    return {
-      configured: true,
-      password: result[0].password
-    };
-  } catch (error) {
-    console.error("Error fetching cancel password:", error);
-    throw createError({
-      statusCode: 500,
-      statusMessage: "Error fetching cancel password"
-    });
+    await createSession(event, user.id);
+    return { user: publicUser(user) };
   }
-});
-
-const cancelPassword_get$1 = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  default: cancelPassword_get
-});
-
-const cancelPassword_post = defineEventHandler(async (event) => {
-  try {
-    const { password } = await readBody(event);
-    if (!password || password.length < 4) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "A senha de cancelamento deve ter pelo menos 4 caracteres"
-      });
-    }
-    await sql`DELETE FROM cancel_password`;
-    const result = await sql`
-      INSERT INTO cancel_password (password)
-      VALUES (${password})
-      RETURNING id, created_at
+  if (action === "logout") {
+    await clearSession(event);
+    return { success: true };
+  }
+  const currentUser = await getSessionUser(event);
+  if (action === "me") return { user: currentUser };
+  requireRole(currentUser, ["admin"]);
+  if (action === "users" && event.method === "GET") {
+    const users = await sql`
+      SELECT id, name, username, role, active, created_at
+      FROM app_users
+      ORDER BY created_at ASC
     `;
-    return {
-      success: true,
-      message: "Senha de cancelamento configurada com sucesso",
-      id: result[0].id
-    };
-  } catch (error) {
-    console.error("Error setting cancel password:", error);
-    if (error.statusCode) throw error;
-    throw createError({
-      statusCode: 500,
-      statusMessage: "Error setting cancel password"
-    });
+    return users.map(publicUser);
   }
+  if (action === "users" && event.method === "POST") {
+    const body = await readBody(event);
+    const name = String((_c = body.name) != null ? _c : "").trim();
+    const username = normalizeUsername(body.username);
+    const password = validatePassword(body.password);
+    const role = body.role;
+    if (!name || username.length < 3 || !validRoles.includes(role)) {
+      throw createError({ statusCode: 400, statusMessage: "Preencha os dados do usu\xE1rio corretamente." });
+    }
+    const id = `user-${crypto.randomUUID()}`;
+    const result = await sql`
+      INSERT INTO app_users (id, name, username, password_hash, role)
+      VALUES (${id}, ${name}, ${username}, ${await hashPassword(password)}, ${role})
+      RETURNING id, name, username, role, active, created_at
+    `;
+    return publicUser(result[0]);
+  }
+  if (action === "users" && event.method === "PUT") {
+    const body = await readBody(event);
+    const id = String((_d = body.id) != null ? _d : "");
+    const name = String((_e = body.name) != null ? _e : "").trim();
+    const role = body.role;
+    const active = Boolean(body.active);
+    if (!id || !name || !validRoles.includes(role)) {
+      throw createError({ statusCode: 400, statusMessage: "Dados inv\xE1lidos para atualiza\xE7\xE3o." });
+    }
+    if (id === (currentUser == null ? void 0 : currentUser.id) && !active) {
+      throw createError({ statusCode: 400, statusMessage: "Voc\xEA n\xE3o pode desativar seu pr\xF3prio acesso." });
+    }
+    if (body.password) {
+      await sql`
+        UPDATE app_users
+        SET name = ${name}, role = ${role}, active = ${active},
+            password_hash = ${await hashPassword(validatePassword(body.password))},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+      `;
+    } else {
+      await sql`
+        UPDATE app_users
+        SET name = ${name}, role = ${role}, active = ${active}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+      `;
+    }
+    return { success: true };
+  }
+  throw createError({ statusCode: 404, statusMessage: "A\xE7\xE3o n\xE3o encontrada." });
 });
 
-const cancelPassword_post$1 = /*#__PURE__*/Object.freeze({
+const _action_$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  default: cancelPassword_post
+  default: _action_
 });
 
 const cashRegister_get = defineEventHandler(async () => {
@@ -2702,95 +2678,6 @@ const ensureSchema_post = defineEventHandler(async () => {
 const ensureSchema_post$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: ensureSchema_post
-});
-
-const cancel_post$2 = defineEventHandler(async (event) => {
-  try {
-    const id = getRouterParam(event, "id");
-    const { password } = await readBody(event);
-    if (!id) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "ID da nota fiscal \xE9 obrigat\xF3rio"
-      });
-    }
-    if (!password) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "Senha de cancelamento \xE9 obrigat\xF3ria"
-      });
-    }
-    const passwordResult = await sql`
-      SELECT password FROM cancel_password
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
-    if (passwordResult.length === 0) {
-      throw createError({
-        statusCode: 403,
-        statusMessage: "Senha de cancelamento n\xE3o configurada"
-      });
-    }
-    if (password !== passwordResult[0].password) {
-      throw createError({
-        statusCode: 403,
-        statusMessage: "Senha de cancelamento inv\xE1lida"
-      });
-    }
-    const nfeResult = await sql`
-      SELECT id, status, sale_id FROM nfe
-      WHERE id = ${id}
-      LIMIT 1
-    `;
-    const nfceResult = await sql`
-      SELECT id, status, sale_id FROM nfce
-      WHERE id = ${id}
-      LIMIT 1
-    `;
-    const fiscalNote = nfeResult.length > 0 ? nfeResult[0] : nfceResult.length > 0 ? nfceResult[0] : null;
-    if (!fiscalNote) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: "Nota fiscal n\xE3o encontrada"
-      });
-    }
-    if (nfeResult.length > 0) {
-      await sql`
-        UPDATE nfe
-        SET status = 'cancelada'
-        WHERE id = ${id}
-      `;
-    } else {
-      await sql`
-        UPDATE nfce
-        SET status = 'cancelada'
-        WHERE id = ${id}
-      `;
-    }
-    if (fiscalNote.sale_id) {
-      await sql`
-        UPDATE sales
-        SET xml_status = 'cancelled'
-        WHERE id::text = ${String(fiscalNote.sale_id)}
-      `;
-    }
-    return {
-      success: true,
-      message: "Nota fiscal cancelada com sucesso"
-    };
-  } catch (error) {
-    console.error("Error cancelling fiscal note:", error);
-    if (error.statusCode) throw error;
-    throw createError({
-      statusCode: 500,
-      statusMessage: "Error cancelling fiscal note"
-    });
-  }
-});
-
-const cancel_post$3 = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  default: cancel_post$2
 });
 
 const certificates_get = defineEventHandler(async () => {
@@ -5415,75 +5302,6 @@ const sales_post = defineEventHandler(async (event) => {
 const sales_post$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: sales_post
-});
-
-const cancel_post = defineEventHandler(async (event) => {
-  try {
-    const id = getRouterParam(event, "id");
-    const { password } = await readBody(event);
-    if (!id) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "ID da venda \xE9 obrigat\xF3rio"
-      });
-    }
-    if (!password) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "Senha de cancelamento \xE9 obrigat\xF3ria"
-      });
-    }
-    const passwordResult = await sql`
-      SELECT password FROM cancel_password
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
-    if (passwordResult.length === 0) {
-      throw createError({
-        statusCode: 403,
-        statusMessage: "Senha de cancelamento n\xE3o configurada. Configure uma senha de cancelamento primeiro."
-      });
-    }
-    if (password !== passwordResult[0].password) {
-      throw createError({
-        statusCode: 403,
-        statusMessage: "Senha de cancelamento inv\xE1lida"
-      });
-    }
-    const saleResult = await sql`
-      SELECT id, status, xml_status FROM sales
-      WHERE id = ${id}
-      LIMIT 1
-    `;
-    if (saleResult.length === 0) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: "Venda n\xE3o encontrada"
-      });
-    }
-    await sql`
-      UPDATE sales
-      SET status = 'cancelled',
-          xml_status = 'cancelled'
-      WHERE id = ${id}
-    `;
-    return {
-      success: true,
-      message: "Venda cancelada com sucesso"
-    };
-  } catch (error) {
-    console.error("Error cancelling sale:", error);
-    if (error.statusCode) throw error;
-    throw createError({
-      statusCode: 500,
-      statusMessage: "Error cancelling sale"
-    });
-  }
-});
-
-const cancel_post$1 = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  default: cancel_post
 });
 
 const status_put = defineEventHandler(async (event) => {
