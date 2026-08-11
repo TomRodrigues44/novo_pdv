@@ -24,6 +24,8 @@ const cashierRoutes = [
   '/api/xmls',          // Added: XMLs Fiscais
   '/api/contingency',   // Added: Contingência
   '/api/kitchen',       // Added: Cozinha
+  '/api/cancel-password', // Added: Senha de cancelamento
+  '/api/nfe',           // Added: NF-e geral
 ];
 
 const managerRoutes = [
