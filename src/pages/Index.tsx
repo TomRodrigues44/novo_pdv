@@ -133,7 +133,7 @@ const Index = () => {
                 variant="outline"
                 size="sm"
                 className="bg-orange-600 hover:bg-orange-700"
-                onClick={() => window.location.href = '/admin/cash-register'}
+                onClick={() => window.open('/admin/cash-register', '_blank')}
               >
                 ADMIN
               </Button>
