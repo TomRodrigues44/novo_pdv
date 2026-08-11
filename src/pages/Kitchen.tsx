@@ -165,8 +165,17 @@ const Kitchen = () => {
               onClick={() => refetch()}
               className="bg-white"
             >
-              <Bell className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4 mr-2" />
               Atualizar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open('/admin/cash-register', '_blank')}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              <Database className="h-4 w-4 mr-2" />
+              ADMIN
             </Button>
           </div>
         </div>
