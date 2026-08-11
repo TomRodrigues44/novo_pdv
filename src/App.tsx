@@ -38,19 +38,18 @@ const AppRoutes = () => (
   <Routes>
     <Route path="/login" element={<Login />} />
     <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-    <Route path="/kitchen" element={<ProtectedRoute roles={["admin", "manager"]}><Kitchen /></ProtectedRoute>} />
+    <Route path="/kitchen" element={<ProtectedRoute roles={["admin", "manager", "cashier"]}><Kitchen /></ProtectedRoute>} />
     <Route path="/admin" element={<ProtectedRoute roles={["admin", "manager"]}><Admin /></ProtectedRoute>} />
     <Route path="/admin/categories" element={<ProtectedRoute roles={["admin", "manager"]}><AdminCategories /></ProtectedRoute>} />
-    <Route path="/admin/products" element={<ProtectedRoute roles={["admin", "manager"]}><AdminProducts /></ProtectedRoute>} />
     <Route path="/admin/customers" element={<ProtectedRoute><AdminCustomers /></ProtectedRoute>} />
     <Route path="/admin/motoboys" element={<ProtectedRoute><AdminMotoboys /></ProtectedRoute>} />
     <Route path="/admin/cash-register" element={<ProtectedRoute><CashRegister /></ProtectedRoute>} />
-    <Route path="/admin/reports" element={<ProtectedRoute roles={["admin", "manager"]}><AdminReports /></ProtectedRoute>} />
-    <Route path="/admin/cancelar" element={<ProtectedRoute roles={["admin", "manager"]}><AdminCancelSales /></ProtectedRoute>} />
+    <Route path="/admin/reports" element={<ProtectedRoute roles={["admin", "manager", "cashier"]}><AdminReports /></ProtectedRoute>} />
+    <Route path="/admin/cancelar" element={<ProtectedRoute roles={["admin", "manager", "cashier"]}><AdminCancelSales /></ProtectedRoute>} />
     <Route path="/admin/fiscal" element={<ProtectedRoute roles={["admin"]}><AdminFiscal /></ProtectedRoute>} />
-    <Route path="/admin/nfe" element={<ProtectedRoute roles={["admin", "manager"]}><AdminNfe /></ProtectedRoute>} />
-    <Route path="/admin/xmls" element={<ProtectedRoute roles={["admin", "manager"]}><AdminXmls /></ProtectedRoute>} />
-    <Route path="/admin/contingency" element={<ProtectedRoute roles={["admin", "manager"]}><AdminContingency /></ProtectedRoute>} />
+    <Route path="/admin/nfe" element={<ProtectedRoute roles={["admin", "manager", "cashier"]}><AdminNfe /></ProtectedRoute>} />
+    <Route path="/admin/xmls" element={<ProtectedRoute roles={["admin", "manager", "cashier"]}><AdminXmls /></ProtectedRoute>} />
+    <Route path="/admin/contingency" element={<ProtectedRoute roles={["admin", "manager", "cashier"]}><AdminContingency /></ProtectedRoute>} />
     <Route path="/admin/users" element={<ProtectedRoute roles={["admin"]}><AdminUsers /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>

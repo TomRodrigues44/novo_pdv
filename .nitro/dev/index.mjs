@@ -937,22 +937,7 @@ const plugins = [
   
 ];
 
-const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"32731-ZABKLqRmWPKF0G9yq2o1EOZEddE\"",
-    "mtime": "2026-08-10T15:34:50.146Z",
-    "size": 206641,
-    "path": "index.mjs"
-  },
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"bdb6c-8xBXnzNuuKrNEWiXOIX7Droevz4\"",
-    "mtime": "2026-08-10T15:34:50.162Z",
-    "size": 777068,
-    "path": "index.mjs.map"
-  }
-};
+const assets = {};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
