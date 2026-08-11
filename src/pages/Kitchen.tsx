@@ -162,11 +162,11 @@ const Kitchen = () => {
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              onClick={() => refetch()}
+              onClick={() => window.open('/admin/cash-register', '_blank')}
               className="bg-white"
             >
               <Bell className="h-4 w-4 mr-2" />
-              Atualizar
+              ADMIN
             </Button>
           </div>
         </div>
@@ -270,7 +270,7 @@ const Kitchen = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
 
                 {/* Action Buttons */}
