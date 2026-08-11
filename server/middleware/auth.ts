@@ -19,12 +19,15 @@ const cashierRoutes = [
   '/api/sales',
   '/api/nfce',
   '/api/fiscal/company-config',
+  '/api/reports',        // Added: Relatórios
+  '/api/nfe/emitir',    // Added: Emitir NF-e
+  '/api/xmls',          // Added: XMLs Fiscais
+  '/api/contingency',   // Added: Contingência
+  '/api/kitchen',       // Added: Cozinha
 ];
 
 const managerRoutes = [
   ...cashierRoutes,
-  '/api/contingency',
-  '/api/nfe',
   '/api/fiscal/certificates',
   '/api/fiscal/test-connection',
   '/api/upload',

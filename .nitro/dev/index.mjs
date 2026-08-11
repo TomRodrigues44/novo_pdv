@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"31cfc-JFKajHaNR5kgQmFTyP11WlRDXtE\"",
-    "mtime": "2026-08-10T15:24:02.727Z",
-    "size": 204028,
+    "etag": "\"32731-ZABKLqRmWPKF0G9yq2o1EOZEddE\"",
+    "mtime": "2026-08-10T15:34:50.146Z",
+    "size": 206641,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"bb024-xevtxveg9KtKv3EvLoIcEjehcX4\"",
-    "mtime": "2026-08-10T15:24:02.742Z",
-    "size": 765988,
+    "etag": "\"bdb6c-8xBXnzNuuKrNEWiXOIX7Droevz4\"",
+    "mtime": "2026-08-10T15:34:50.162Z",
+    "size": 777068,
     "path": "index.mjs.map"
   }
 };
@@ -1246,12 +1246,20 @@ const cashierRoutes = [
   "/api/cash-transactions",
   "/api/sales",
   "/api/nfce",
-  "/api/fiscal/company-config"
+  "/api/fiscal/company-config",
+  "/api/reports",
+  // Added: Relatórios
+  "/api/nfe/emitir",
+  // Added: Emitir NF-e
+  "/api/xmls",
+  // Added: XMLs Fiscais
+  "/api/contingency",
+  // Added: Contingência
+  "/api/kitchen"
+  // Added: Cozinha
 ];
 const managerRoutes = [
   ...cashierRoutes,
-  "/api/contingency",
-  "/api/nfe",
   "/api/fiscal/certificates",
   "/api/fiscal/test-connection",
   "/api/upload",

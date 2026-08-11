@@ -18,14 +18,14 @@ const AdminSidebar = () => {
  { path: "/admin/customers", icon: Users, label: "Clientes", roles: ["admin", "manager", "cashier"] },
  { path: "/admin/motoboys", icon: Bike, label: "Motoboys", roles: ["admin", "manager", "cashier"] },
  { path: "/admin/cash-register", icon: DollarSign, label: "Fluxo de Caixa", roles: ["admin", "manager", "cashier"] },
- { path: "/admin/reports", icon: BarChart3, label: "Relatórios", roles: ["admin", "manager"] },
- { path: "/admin/cancelar", icon: FileX, label: "Notas Canceladas", roles: ["admin", "manager"] },
+ { path: "/admin/reports", icon: BarChart3, label: "Relatórios", roles: ["admin", "manager", "cashier"] },  // Updated: Added cashier
+ { path: "/admin/cancelar", icon: FileX, label: "Notas Canceladas", roles: ["admin", "manager", "cashier"] },  // Updated: Added cashier
  { path: "/admin/fiscal", icon: Shield, label: "Configurações Fiscais", roles: ["admin"] },
- { path: "/admin/nfe", icon: FilePlus2, label: "Emitir NF-e", roles: ["admin", "manager"] },
- { path: "/admin/xmls", icon: FileText, label: "XMLs Fiscais", roles: ["admin", "manager"] },
- { path: "/admin/contingency", icon: WifiOff, label: "Contingência", roles: ["admin", "manager"] },
+ { path: "/admin/nfe", icon: FilePlus2, label: "Emitir NF-e", roles: ["admin", "manager", "cashier"] },  // Updated: Added cashier
+ { path: "/admin/xmls", icon: FileText, label: "XMLs Fiscais", roles: ["admin", "manager", "cashier"] },  // Updated: Added cashier
+ { path: "/admin/contingency", icon: WifiOff, label: "Contingência", roles: ["admin", "manager", "cashier"] },  // Updated: Added cashier
  { path: "/admin/users", icon: Users, label: "Usuários e Perfis", roles: ["admin"] },
- { path: "/kitchen", icon: ChefHat, label: "Cozinha", roles: ["admin", "manager"] },
+ { path: "/kitchen", icon: ChefHat, label: "Cozinha", roles: ["admin", "manager", "cashier"] },  // Updated: Added cashier
  { path: "/", icon: ShoppingCart, label: "Ir para PDV", roles: ["admin", "manager", "cashier"] },
  ];
 
