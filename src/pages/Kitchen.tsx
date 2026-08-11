@@ -162,11 +162,11 @@ const Kitchen = () => {
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              onClick={() => refetch()}
-              className="bg-white"
+              size="sm"
+              className="bg-orange-600 hover:bg-orange-700"
+              onClick={() => window.open('/admin/cash-register', '_blank')}
             >
-              <Bell className="h-4 w-4 mr-2" />
-              Atualizar
+              ADMIN
             </Button>
           </div>
         </div>
