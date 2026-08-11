@@ -115,10 +115,6 @@ const Index = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold">Empório das Coxinhas</h1>
-                <p className="text-orange-100 text-sm flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  Aberto agora • PDV Sistema
-                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -133,30 +129,13 @@ const Index = () => {
                   <span>Caixa Fechado</span>
                 </div>
               )}
-              {usingLocalStorage ? (
-                <div className="flex items-center gap-2 bg-yellow-500/20 border border-yellow-400/50 rounded-lg px-3 py-2 text-sm">
-                  <HardDrive className="h-4 w-4" />
-                  <span>Modo Cache</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 bg-blue-500/20 border border-blue-400/50 rounded-lg px-3 py-2 text-sm">
-                  <Database className="h-4 w-4" />
-                  <span>Banco de Dados</span>
-                </div>
-              )}
               <Button
                 variant="outline"
                 size="sm"
-                className="bg-white/10 hover:bg-white/20 text-white border-white/30"
-                onClick={() => {
-                  localStorage.removeItem('admin_products');
-                  localStorage.removeItem('admin_categories');
-                  localStorage.removeItem('admin_sales');
-                  fetchData();
-                }}
+                className="bg-orange-600 hover:bg-orange-700"
+                onClick={() => window.location.href = '/admin/cash-register'}
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Atualizar
+                ADMIN
               </Button>
             </div>
           </div>
