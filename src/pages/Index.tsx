@@ -3,7 +3,7 @@ import { useCart } from '@/contexts/CartContext';
 import { ProductCard } from '@/components/ProductCard';
 import { CartPanel } from '@/components/CartPanel';
 import { CategoryFilter } from '@/components/CategoryFilter';
-import { Store, Clock, Loader2, Database, HardDrive, RefreshCw, Lock, AlertTriangle } from 'lucide-react';
+import { Store, Clock, Loader2, Database, HardDrive, RefreshCw, Lock, AlertTriangle, ChefHat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product, Category } from '@/types';
 import { toast } from 'sonner';
@@ -129,6 +129,15 @@ const Index = () => {
                   <span>Caixa Fechado</span>
                 </div>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-orange-600 hover:bg-orange-700"
+                onClick={() => window.open('/kitchen', '_blank')}
+              >
+                <ChefHat className="h-4 w-4 mr-2" />
+                COZINHA
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
