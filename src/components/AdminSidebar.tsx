@@ -18,27 +18,27 @@ const AdminSidebar = () => {
  { path: "/admin/customers", icon: Users, label: "Clientes", roles: ["admin", "manager", "cashier"] },
  { path: "/admin/motoboys", icon: Bike, label: "Motoboys", roles: ["admin", "manager", "cashier"] },
  { path: "/admin/cash-register", icon: DollarSign, label: "Fluxo de Caixa", roles: ["admin", "manager", "cashier"] },
- { path: "/admin/reports", icon: BarChart3, label: "Relatórios", roles: ["admin", "manager", "cashier"] },  // Updated: Added cashier
- { path: "/admin/cancelar", icon: FileX, label: "Notas Canceladas", roles: ["admin", "manager", "cashier"] },  // Updated: Added cashier
+ { path: "/admin/reports", icon: BarChart3, label: "Relatórios", roles: ["admin", "manager", "cashier"] }, 
+ { path: "/admin/cancelar", icon: FileX, label: "Notas Canceladas", roles: ["admin", "manager", "cashier"] }, 
  { path: "/admin/fiscal", icon: Shield, label: "Configurações Fiscais", roles: ["admin"] },
- { path: "/admin/nfe", icon: FilePlus2, label: "Emitir NF-e", roles: ["admin", "manager", "cashier"] },  // Updated: Added cashier
- { path: "/admin/xmls", icon: FileText, label: "XMLs Fiscais", roles: ["admin", "manager", "cashier"] },  // Updated: Added cashier
- { path: "/admin/contingency", icon: WifiOff, label: "Contingência", roles: ["admin", "manager", "cashier"] },  // Updated: Added cashier
+ { path: "/admin/nfe", icon: FilePlus2, label: "Emitir NF-e", roles: ["admin", "manager", "cashier"] }, 
+ { path: "/admin/xmls", icon: FileText, label: "XMLs Fiscais", roles: ["admin", "manager", "cashier"] }, 
+ { path: "/admin/contingency", icon: WifiOff, label: "Contingência", roles: ["admin", "manager", "cashier"] }, 
  { path: "/admin/users", icon: Users, label: "Usuários e Perfis", roles: ["admin"] },
- { path: "/kitchen", icon: ChefHat, label: "Cozinha", roles: ["admin", "manager", "cashier"] },  // Updated: Added cashier
+ { path: "/kitchen", icon: ChefHat, label: "Cozinha", roles: ["admin", "manager", "cashier"] }, 
  { path: "/", icon: ShoppingCart, label: "Ir para PDV", roles: ["admin", "manager", "cashier"] },
  ];
 
  const visibleItems = menuItems.filter((item) => user && item.roles.includes(user.role));
 
  return (
- <aside className="fixed left-0 top-0 min-h-screen w-64 bg-gray-900 p-4 text-white">
+ <aside className="fixed left-0 top-0 min-h-screen w-64 bg-gray-900 p-4 text-white overflow-y-auto">
  <div className="mb-8">
  <h2 className="flex items-center gap-2 text-xl font-bold"><Settings className="h-6 w-6" /> Admin Panel</h2>
  <p className="mt-1 text-sm text-gray-400">Empório das Coxinhas</p>
  {user && <p className="mt-3 rounded bg-gray-800 px-3 py-2 text-xs text-gray-300">{user.name} · {user.roleLabel}</p>}
  </div>
- <nav className="space-y-2">
+ <nav className="space-y-2 max-h-screen">
  {visibleItems.map((item) => (
  <Link key={item.path} to={item.path} className={cn("flex items-center gap-3 rounded-lg px-4 py-3 transition-colors", location.pathname === item.path ? "bg-orange-600 text-white" : "text-gray-300 hover:bg-gray-800")}>
  <item.icon className="h-5 w-5" />{item.label}
