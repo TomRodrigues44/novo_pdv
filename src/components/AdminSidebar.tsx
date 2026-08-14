@@ -16,7 +16,7 @@ const AdminSidebar = () => {
  { path: "/admin/products", icon: Package, label: "Produtos", roles: ["admin", "manager"] },
  { path: "/admin/categories", icon: Tags, label: "Categorias", roles: ["admin", "manager"] },
  { path: "/admin/customers", icon: Users, label: "Clientes", roles: ["admin", "manager", "cashier"] },
- { path: "/admin/motoboys", icon: Bike, label: "Motoboys", roles: ["admin", "manager", "cashier"] },
+ { path: "/admin/motoboies", icon: Bike, label: "Motoboys", roles: ["admin", "manager", "cashier"] },
  { path: "/admin/cash-register", icon: DollarSign, label: "Fluxo de Caixa", roles: ["admin", "manager", "cashier"] },
  { path: "/admin/reports", icon: BarChart3, label: "Relatórios", roles: ["admin", "manager", "cashier"] }, 
  { path: "/admin/cancelar", icon: FileX, label: "Notas Canceladas", roles: ["admin", "manager", "cashier"] }, 
@@ -45,7 +45,7 @@ const AdminSidebar = () => {
  </Link>
  ))}
  </nav>
- <button onClick={() => logout()} className="absolute bottom-4 left-4 right-4 flex items-center gap-3 rounded-lg px-4 py-3 text-gray-300 transition-colors hover:bg-gray-800">
+ <button onClick={() => logout()} className="mt-4 w-full flex items-center gap-3 rounded-lg px-4 py-3 text-gray-300 transition-colors hover:bg-gray-800">
  <LogOut className="h-5 w-5" />Sair
  </button>
  </aside>
