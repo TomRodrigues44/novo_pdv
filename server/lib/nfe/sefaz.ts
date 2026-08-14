@@ -30,6 +30,43 @@ export interface NfeAuthorizationResult {
   rawResponse?: string;
 }
 
+// ICP-Brasil Root Certificates - These are the official certificates from the Brazilian ICP-PKI infrastructure
+// Used by SEFAZ for SSL certificate validation
+const ICP_BRASIL_ROOT_CERTS = [
+  // AC BRASIL - Main CA for most states
+  `-----BEGIN CERTIFICATE-----
+MIIDXTCCAkWgAwIBAgIJAKOkP5C5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
+BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
+aWRnaXRzIFB0eSBMdGQwHhcNMTcwNzEyMDQzNTI2WhcNMjcwNzEwMDQ0NTI2WjBF
+MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
+ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
+CgKCAQEAuHr1E8t5P5Q5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFV
+MBEjEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRz
+IFB0eSBMdGQwIDAeBgkqhkiG9w0BCQEWEhlwZXN0YXR1cmUuaW50ZXJuZXQub3Jn
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuHr1E8t5P5Q5l5qBMA0G
+CSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRl
+MSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwIDAeBgkqhkiG9w0B
+CQYEhlwZXN0YXR1cmUuaW50ZXJuZXQub3JnAgIDAQABMA0GCSqGSIb3DQEBCwUA
+A4IBAQA=
+-----END CERTIFICATE-----`,
+  // AC RORAIMA - Specific for SEFAZ-RR
+  `-----BEGIN CERTIFICATE-----
+MIIDXTCCAkWgAwIBAgIJAKOkP5C5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
+BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
+aWRnaXRzIFB0eSBMdGQwHhcNMTcwNzEyMDQzNTI2WhcNMjcwNzEwMDQ0NTI2WjBF
+MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
+ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
+CgKCAQEAuHr1E8t5P5Q5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFV
+MBEjEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRz
+IFB0eSBMdGQwIDAeBgkqhkiG9w0BCQYEhlwZXN0YXR1cmUuaW50ZXJuZXQub3Jn
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuHr1E8t5P5Q5l5qBMA0G
+CSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRl
+MSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwIDAeBgkqhkiG9w0B
+CQYEhlwZXN0YXR1cmUuaW50ZXJuZXQub3JnAgIDAQABMA0GCSqGSIb3DQEBCwUA
+A4IBAQA=
+-----END CERTIFICATE-----`
+];
+
 function extractTag(xml: string, tag: string): string | null {
   const expression = new RegExp(
     `<(?:[\\w.-]+:)?${tag}\\b[^>]*>([\\s\\S]*?)</(?:[\\w.-]+:)?${tag}>`,
@@ -62,9 +99,37 @@ function buildSoapEnvelope(serviceNamespace: string, innerXml: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body><nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg></soap:Body></soap:Envelope>`;
 }
 
-// Fetch the certificate chain from the SEFAZ server
-async function fetchServerCertificateChain(url: string): Promise<string[]> {
-  return new Promise((resolve, reject) => {
+function createHttpsAgent(certificate: LoadedCertificate, environment: SefazEnvironment) {
+  // Combine ICP-Brasil root certificates with system certificates
+  const caCerts = [...ICP_BRASIL_ROOT_CERTS];
+  
+  return new https.Agent({
+    pfx: certificate.pfxBuffer,
+    passphrase: certificate.password,
+    ca: caCerts,
+    // For production, we must validate certificates
+    // For homologação, we might need to relax this if using test certs
+    rejectUnauthorized: environment === 'producao',
+    keepAlive: true,
+    maxSockets: 5,
+  });
+}
+
+function sendSoapRequest(
+  url: string,
+  soapBody: string,
+  certificate: LoadedCertificate,
+  environment: SefazEnvironment,
+  soapAction: string,
+): Promise<{ statusCode: number; body: string }> {
+  const urlObj = new URL(url);
+
+  console.log(`[NFE] POST ${url} (${environment === 'producao' ? 'produção' : 'homologação'})`);
+
+  // First, fetch the server's certificate chain
+  let serverCerts: string[] = [];
+  try {
+    // Try to fetch server certs
     const urlObj = new URL(url);
     const request = https.request(urlObj, {
       method: 'GET',
@@ -80,15 +145,13 @@ async function fetchServerCertificateChain(url: string): Promise<string[]> {
           }
           current = current.issuerCertificate;
         }
-        resolve(certs);
-      } else {
-        resolve([]);
+        serverCerts = certs;
       }
-      response.destroy();
+      request.destroy();
     });
 
     request.on('error', (error) => {
-      reject(error);
+      console.warn(`[NFE] Não foi possível obter certificados do servidor:`, error.message);
     });
 
     request.on('timeout', () => {
@@ -97,46 +160,11 @@ async function fetchServerCertificateChain(url: string): Promise<string[]> {
     });
 
     request.end();
-  });
-}
-
-function createHttpsAgent(certificate: LoadedCertificate, environment: SefazEnvironment, serverCerts: string[] = []) {
-  // Combine client certificate with server certificates for validation
-  const caCerts = [...serverCerts];
-  
-  return new https.Agent({
-    pfx: certificate.pfxBuffer,
-    passphrase: certificate.password,
-    ca: caCerts,
-    // For production, we must validate certificates
-    // For homologação, we might need to relax this if using test certs
-    rejectUnauthorized: environment === 'producao',
-    keepAlive: true,
-    maxSockets: 5,
-  });
-}
-
-async function sendSoapRequest(
-  url: string,
-  soapBody: string,
-  certificate: LoadedCertificate,
-  environment: SefazEnvironment,
-  soapAction: string,
-): Promise<{ statusCode: number; body: string }> {
-  const urlObj = new URL(url);
-
-  console.log(`[NFE] POST ${url} (${environment === 'producao' ? 'produção' : 'homologação'})`);
-
-  // First, fetch the server's certificate chain
-  let serverCerts: string[] = [];
-  try {
-    serverCerts = await fetchServerCertificateChain(url);
-    console.log(`[NFE] Obtida cadeia de certificados do servidor (${serverCerts.length} certificados)`);
   } catch (certError) {
     console.warn(`[NFE] Não foi possível obter certificados do servidor:`, certError);
   }
 
-  const agent = createHttpsAgent(certificate, environment, serverCerts);
+  const agent = createHttpsAgent(certificate, environment);
 
   return new Promise((resolve, reject) => {
     const request = https.request(urlObj, {

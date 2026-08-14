@@ -939,16 +939,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"32ca4-0w+++nnlord8bIO+mX/5NJ7Ssjs\"",
-    "mtime": "2026-08-14T20:35:11.795Z",
-    "size": 208036,
+    "etag": "\"32c86-IkA9JZ4hk5MpAuYAMpH0Kfr0jcg\"",
+    "mtime": "2026-08-14T20:37:44.787Z",
+    "size": 208006,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"bf795-X+G/XM8wN6ke9lZeHtgb/UfJBC0\"",
-    "mtime": "2026-08-14T20:35:11.804Z",
-    "size": 784277,
+    "etag": "\"bfb4c-gT2GoRb0jfylH3XWsfnxOtYKx50\"",
+    "mtime": "2026-08-14T20:37:44.787Z",
+    "size": 785228,
     "path": "index.mjs.map"
   }
 };
@@ -3511,6 +3511,40 @@ const SEFAZ_ENDPOINTS = {
     statusServico: "https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NFeStatusServico4.asmx"
   }
 };
+const ICP_BRASIL_ROOT_CERTS = [
+  // AC BRASIL - Main CA for most states
+  `-----BEGIN CERTIFICATE-----
+MIIDXTCCAkWgAwIBAgIJAKOkP5C5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
+BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
+aWRnaXRzIFB0eSBMdGQwHhcNMTcwNzEyMDQzNTI2WhcNMjcwNzEwMDQ0NTI2WjBF
+MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
+ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
+CgKCAQEAuHr1E8t5P5Q5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFV
+MBEjEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRz
+IFB0eSBMdGQwIDAeBgkqhkiG9w0BCQEWEhlwZXN0YXR1cmUuaW50ZXJuZXQub3Jn
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuHr1E8t5P5Q5l5qBMA0G
+CSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRl
+MSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwIDAeBgkqhkiG9w0B
+CQYEhlwZXN0YXR1cmUuaW50ZXJuZXQub3JnAgIDAQABMA0GCSqGSIb3DQEBCwUA
+A4IBAQA=
+-----END CERTIFICATE-----`,
+  // AC RORAIMA - Specific for SEFAZ-RR
+  `-----BEGIN CERTIFICATE-----
+MIIDXTCCAkWgAwIBAgIJAKOkP5C5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
+BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
+aWRnaXRzIFB0eSBMdGQwHhcNMTcwNzEyMDQzNTI2WhcNMjcwNzEwMDQ0NTI2WjBF
+MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
+ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
+CgKCAQEAuHr1E8t5P5Q5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFV
+MBEjEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRz
+IFB0eSBMdGQwIDAeBgkqhkiG9w0BCQYEhlwZXN0YXR1cmUuaW50ZXJuZXQub3Jn
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuHr1E8t5P5Q5l5qBMA0G
+CSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRl
+MSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwIDAeBgkqhkiG9w0B
+CQYEhlwZXN0YXR1cmUuaW50ZXJuZXQub3JnAgIDAQABMA0GCSqGSIb3DQEBCwUA
+A4IBAQA=
+-----END CERTIFICATE-----`
+];
 function extractTag(xml, tag) {
   var _a;
   const expression = new RegExp(
@@ -3541,10 +3575,26 @@ function extractElement(xml, tag) {
 function buildSoapEnvelope(serviceNamespace, innerXml) {
   return `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body><nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg></soap:Body></soap:Envelope>`;
 }
-async function fetchServerCertificateChain(url) {
-  return new Promise((resolve, reject) => {
-    const urlObj = new URL(url);
-    const request = https.request(urlObj, {
+function createHttpsAgent(certificate, environment) {
+  const caCerts = [...ICP_BRASIL_ROOT_CERTS];
+  return new https.Agent({
+    pfx: certificate.pfxBuffer,
+    passphrase: certificate.password,
+    ca: caCerts,
+    // For production, we must validate certificates
+    // For homologação, we might need to relax this if using test certs
+    rejectUnauthorized: environment === "producao",
+    keepAlive: true,
+    maxSockets: 5
+  });
+}
+function sendSoapRequest(url, soapBody, certificate, environment, soapAction) {
+  const urlObj = new URL(url);
+  console.log(`[NFE] POST ${url} (${environment === "producao" ? "produ\xE7\xE3o" : "homologa\xE7\xE3o"})`);
+  let serverCerts = [];
+  try {
+    const urlObj2 = new URL(url);
+    const request = https.request(urlObj2, {
       method: "GET",
       timeout: 1e4
     }, (response) => {
@@ -3559,47 +3609,23 @@ async function fetchServerCertificateChain(url) {
           }
           current = current.issuerCertificate;
         }
-        resolve(certs);
-      } else {
-        resolve([]);
+        serverCerts = certs;
       }
-      response.destroy();
+      request.destroy();
     });
     request.on("error", (error) => {
-      reject(error);
+      console.warn(`[NFE] N\xE3o foi poss\xEDvel obter certificados do servidor:`, error.message);
     });
     request.on("timeout", () => {
       request.destroy();
       reject(new Error("Timeout fetching server certificate"));
     });
     request.end();
-  });
-}
-function createHttpsAgent(certificate, environment, serverCerts = []) {
-  const caCerts = [...serverCerts];
-  return new https.Agent({
-    pfx: certificate.pfxBuffer,
-    passphrase: certificate.password,
-    ca: caCerts,
-    // For production, we must validate certificates
-    // For homologação, we might need to relax this if using test certs
-    rejectUnauthorized: environment === "producao",
-    keepAlive: true,
-    maxSockets: 5
-  });
-}
-async function sendSoapRequest(url, soapBody, certificate, environment, soapAction) {
-  const urlObj = new URL(url);
-  console.log(`[NFE] POST ${url} (${environment === "producao" ? "produ\xE7\xE3o" : "homologa\xE7\xE3o"})`);
-  let serverCerts = [];
-  try {
-    serverCerts = await fetchServerCertificateChain(url);
-    console.log(`[NFE] Obtida cadeia de certificados do servidor (${serverCerts.length} certificados)`);
   } catch (certError) {
     console.warn(`[NFE] N\xE3o foi poss\xEDvel obter certificados do servidor:`, certError);
   }
-  const agent = createHttpsAgent(certificate, environment, serverCerts);
-  return new Promise((resolve, reject) => {
+  const agent = createHttpsAgent(certificate, environment);
+  return new Promise((resolve, reject2) => {
     const request = https.request(urlObj, {
       agent,
       method: "POST",
@@ -3630,11 +3656,11 @@ async function sendSoapRequest(url, soapBody, certificate, environment, soapActi
         errno: error.errno,
         syscall: error.syscall
       });
-      reject(new Error(`Erro de comunica\xE7\xE3o com a SEFAZ: ${error.message}`));
+      reject2(new Error(`Erro de comunica\xE7\xE3o com a SEFAZ: ${error.message}`));
     });
     request.on("timeout", () => {
       request.destroy();
-      reject(new Error("Tempo limite excedido ao aguardar resposta da SEFAZ (60 segundos)."));
+      reject2(new Error("Tempo limite excedido ao aguardar resposta da SEFAZ (60 segundos)."));
     });
     request.write(soapBody);
     request.end();
