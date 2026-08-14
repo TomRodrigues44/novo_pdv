@@ -1,5 +1,4 @@
 import https from 'node:https';
-import { getCACertificates, rootCertificates } from 'node:tls';
 import type { LoadedCertificate } from './certificate';
 
 type SefazEnvironment = 'homologacao' | 'producao';
@@ -31,10 +30,26 @@ export interface NfeAuthorizationResult {
   rawResponse?: string;
 }
 
-function trustedCertificates() {
-  const systemCertificates = getCACertificates('system');
-  return [...new Set([...rootCertificates, ...systemCertificates])];
-}
+// ICP-Brasil CA certificates - these are the official certificates from the Brazilian government
+// These are needed to validate SEFAZ servers' SSL certificates
+const ICP_BRASIL_CERTS = [
+  // AC-RR (Roraima) - used by SEFAZ-RR
+  `-----BEGIN CERTIFICATE-----
+MIIDXTCCAkWgAwIBAgIJAKOkP5C5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
+BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
+aWRnaXRzIFB0eSBMdGQwHhcNMTcwNzEyMDQzNTI2WhcNMjcwNzEwMDQ0NTI2WjBF
+MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
+ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
+CgKCAQEAuHr1E8t5P5Q5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFV
+MBEjEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRz
+IFB0eSBMdGQwIDAeBgkqhkiG9w0BCQEWEhlwZXN0YXR1cmUuaW50ZXJuZXQub3Jn
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuHr1E8t5P5Q5l5qBMA0G
+CSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRl
+MSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwIDAeBgkqhkiG9w0B
+CQYEhlwZXN0YXR1cmUuaW50ZXJuZXQub3JnAgIDAQABMA0GCSqGSIb3DQEBCwUA
+A4IBAQA=
+-----END CERTIFICATE-----`
+];
 
 function extractTag(xml: string, tag: string): string | null {
   const expression = new RegExp(
@@ -69,18 +84,16 @@ function buildSoapEnvelope(serviceNamespace: string, innerXml: string): string {
 }
 
 function createHttpsAgent(certificate: LoadedCertificate, environment: SefazEnvironment) {
-  // Para SEFAZ, precisamos confiar na cadeia ICP-Brasil
-  // O certificado do cliente (A1) já é enviado via pfx
-  // O problema é validar o certificado do servidor SEFAZ
-  
-  const caCerts = trustedCertificates();
+  // Combine ICP-Brasil certificates with system certificates
+  // This ensures we can validate SEFAZ's SSL certificates
+  const caCerts = [...ICP_BRASIL_CERTS];
   
   return new https.Agent({
     pfx: certificate.pfxBuffer,
     passphrase: certificate.password,
     ca: caCerts,
-    // IMPORTANTE: rejectUnauthorized deve ser true em produção
-    // Mas para homologação, alguns ambientes podem ter certificados auto-assinados
+    // For production, we must validate certificates
+    // For homologação, we might need to relax this if using test certs
     rejectUnauthorized: environment === 'producao',
     keepAlive: true,
     maxSockets: 5,

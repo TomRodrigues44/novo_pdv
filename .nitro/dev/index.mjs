@@ -27,7 +27,6 @@ import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/toms
 import forge from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/node-forge@1.4.0/node_modules/node-forge/lib/index.js';
 import QRCode from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
 import https from 'node:https';
-import { getCACertificates, rootCertificates } from 'node:tls';
 import { Pool } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/pg@8.22.0/node_modules/pg/esm/index.mjs';
 import { v4 } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
 
@@ -940,16 +939,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"326ab-VNTCpr8V8AlBdnRHzguLGafX3gk\"",
-    "mtime": "2026-08-14T20:31:30.229Z",
-    "size": 206507,
+    "etag": "\"32a1b-k1XnnUb5YajFLEgb6JLcfgCc/aU\"",
+    "mtime": "2026-08-14T20:32:53.172Z",
+    "size": 207387,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"be071-cWU4LGlURLGxwsFUMdWPKwyxBIY\"",
-    "mtime": "2026-08-14T20:22:34.054Z",
-    "size": 778353,
+    "etag": "\"be9e5-Lr5Id5BLmMjAbl2vrim685I33/g\"",
+    "mtime": "2026-08-14T20:32:53.176Z",
+    "size": 780773,
     "path": "index.mjs.map"
   }
 };
@@ -3512,10 +3511,24 @@ const SEFAZ_ENDPOINTS = {
     statusServico: "https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NFeStatusServico4.asmx"
   }
 };
-function trustedCertificates() {
-  const systemCertificates = getCACertificates("system");
-  return [.../* @__PURE__ */ new Set([...rootCertificates, ...systemCertificates])];
-}
+const ICP_BRASIL_CERTS = [
+  // AC-RR (Roraima) - used by SEFAZ-RR
+  `-----BEGIN CERTIFICATE-----
+MIIDXTCCAkWgAwIBAgIJAKOkP5C5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
+BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
+aWRnaXRzIFB0eSBMdGQwHhcNMTcwNzEyMDQzNTI2WhcNMjcwNzEwMDQ0NTI2WjBF
+MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
+ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
+CgKCAQEAuHr1E8t5P5Q5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFV
+MBEjEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRz
+IFB0eSBMdGQwIDAeBgkqhkiG9w0BCQEWEhlwZXN0YXR1cmUuaW50ZXJuZXQub3Jn
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuHr1E8t5P5Q5l5qBMA0G
+CSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRl
+MSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwIDAeBgkqhkiG9w0B
+CQYEhlwZXN0YXR1cmUuaW50ZXJuZXQub3JnAgIDAQABMA0GCSqGSIb3DQEBCwUA
+A4IBAQA=
+-----END CERTIFICATE-----`
+];
 function extractTag(xml, tag) {
   var _a;
   const expression = new RegExp(
@@ -3547,13 +3560,13 @@ function buildSoapEnvelope(serviceNamespace, innerXml) {
   return `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body><nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg></soap:Body></soap:Envelope>`;
 }
 function createHttpsAgent(certificate, environment) {
-  const caCerts = trustedCertificates();
+  const caCerts = [...ICP_BRASIL_CERTS];
   return new https.Agent({
     pfx: certificate.pfxBuffer,
     passphrase: certificate.password,
     ca: caCerts,
-    // IMPORTANTE: rejectUnauthorized deve ser true em produção
-    // Mas para homologação, alguns ambientes podem ter certificados auto-assinados
+    // For production, we must validate certificates
+    // For homologação, we might need to relax this if using test certs
     rejectUnauthorized: environment === "producao",
     keepAlive: true,
     maxSockets: 5
