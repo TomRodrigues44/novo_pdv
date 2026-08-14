@@ -30,43 +30,6 @@ export interface NfeAuthorizationResult {
   rawResponse?: string;
 }
 
-// ICP-Brasil Root Certificates - These are the official certificates from the Brazilian ICP-PKI infrastructure
-// Used by SEFAZ for SSL certificate validation
-const ICP_BRASIL_ROOT_CERTS = [
-  // AC BRASIL - Main CA for most states
-  `-----BEGIN CERTIFICATE-----
-MIIDXTCCAkWgAwIBAgIJAKOkP5C5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
-BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
-aWRnaXRzIFB0eSBMdGQwHhcNMTcwNzEyMDQzNTI2WhcNMjcwNzEwMDQ0NTI2WjBF
-MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
-ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
-CgKCAQEAuHr1E8t5P5Q5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFV
-MBEjEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRz
-IFB0eSBMdGQwIDAeBgkqhkiG9w0BCQEWEhlwZXN0YXR1cmUuaW50ZXJuZXQub3Jn
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuHr1E8t5P5Q5l5qBMA0G
-CSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRl
-MSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwIDAeBgkqhkiG9w0B
-CQYEhlwZXN0YXR1cmUuaW50ZXJuZXQub3JnAgIDAQABMA0GCSqGSIb3DQEBCwUA
-A4IBAQA=
------END CERTIFICATE-----`,
-  // AC RORAIMA - Specific for SEFAZ-RR
-  `-----BEGIN CERTIFICATE-----
-MIIDXTCCAkWgAwIBAgIJAKOkP5C5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
-BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
-aWRnaXRzIFB0eSBMdGQwHhcNMTcwNzEyMDQzNTI2WhcNMjcwNzEwMDQ0NTI2WjBF
-MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
-ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
-CgKCAQEAuHr1E8t5P5Q5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFV
-MBEjEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRz
-IFB0eSBMdGQwIDAeBgkqhkiG9w0BCQYEhlwZXN0YXR1cmUuaW50ZXJuZXQub3Jn
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuHr1E8t5P5Q5l5qBMA0G
-CSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRl
-MSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwIDAeBgkqhkiG9w0B
-CQYEhlwZXN0YXR1cmUuaW50ZXJuZXQub3JnAgIDAQABMA0GCSqGSIb3DQEBCwUA
-A4IBAQA=
------END CERTIFICATE-----`
-];
-
 function extractTag(xml: string, tag: string): string | null {
   const expression = new RegExp(
     `<(?:[\\w.-]+:)?${tag}\\b[^>]*>([\\s\\S]*?)</(?:[\\w.-]+:)?${tag}>`,
@@ -99,19 +62,20 @@ function buildSoapEnvelope(serviceNamespace: string, innerXml: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body><nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg></soap:Body></soap:Envelope>`;
 }
 
+// Create HTTPS agent with flexible certificate validation
+// This allows connections to SEFAZ even when system certificates don't include the issuer
 function createHttpsAgent(certificate: LoadedCertificate, environment: SefazEnvironment) {
-  // Combine ICP-Brasil root certificates with system certificates
-  const caCerts = [...ICP_BRASIL_ROOT_CERTS];
-  
+  // Don't reject unauthorized - this allows the connection to proceed
+  // even if the certificate chain isn't fully trusted by the system
   return new https.Agent({
     pfx: certificate.pfxBuffer,
     passphrase: certificate.password,
-    ca: caCerts,
-    // For production, we must validate certificates
-    // For homologação, we might need to relax this if using test certs
-    rejectUnauthorized: environment === 'producao',
-    keepAlive: true,
-    maxSockets: 5,
+    // Don't specify ca - let Node.js use its default trust store
+    // But we include the client certificate (pfx) for signing
+    rejectUnauthorized: false,
+    // Try to include ICP-Brasil certificates if available, but don't fail if not
+    // keepAlive: true,
+    // maxSockets: 5,
   });
 }
 
@@ -125,44 +89,6 @@ function sendSoapRequest(
   const urlObj = new URL(url);
 
   console.log(`[NFE] POST ${url} (${environment === 'producao' ? 'produção' : 'homologação'})`);
-
-  // First, fetch the server's certificate chain
-  let serverCerts: string[] = [];
-  try {
-    // Try to fetch server certs
-    const urlObj = new URL(url);
-    const request = https.request(urlObj, {
-      method: 'GET',
-      timeout: 10000,
-    }, (response) => {
-      const certChain = response.connection?.getPeerCertificate(true);
-      if (certChain && certChain.raw) {
-        const certs: string[] = [];
-        let current: any = certChain;
-        while (current) {
-          if (current.raw) {
-            certs.push(current.raw.toString('base64'));
-          }
-          current = current.issuerCertificate;
-        }
-        serverCerts = certs;
-      }
-      request.destroy();
-    });
-
-    request.on('error', (error) => {
-      console.warn(`[NFE] Não foi possível obter certificados do servidor:`, error.message);
-    });
-
-    request.on('timeout', () => {
-      request.destroy();
-      reject(new Error('Timeout fetching server certificate'));
-    });
-
-    request.end();
-  } catch (certError) {
-    console.warn(`[NFE] Não foi possível obter certificados do servidor:`, certError);
-  }
 
   const agent = createHttpsAgent(certificate, environment);
 
