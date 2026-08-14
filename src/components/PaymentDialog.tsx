@@ -106,12 +106,22 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
     }
   };
 
-  // Styles for selected payment method tabs
-  const getTabClassName = (type: "debit" | "credit" | "pix" | "cash") => {
-    if (selectedType === type) {
-      return "bg-orange-100 text-orange-800 border-orange-300";
+  // Ícones para cada tipo de pagamento
+  const getPaymentIcon = (type: "debit" | "credit" | "pix" | "cash") => {
+    switch (type) {
+      case "debit": return <CreditCard className="h-4 w-4" />;
+      case "credit": return <CreditCard className="h-4 w-4" />;
+      case "pix": return <QrCode className="h-4 w-4" />;
+      case "cash": return <Banknote className="h-4 w-4" />;
     }
-    return "text-gray-500 hover:text-gray-600";
+  };
+
+  // Cores para cada tipo quando selecionado
+  const getSelectedColors = (type: "debit" | "credit" | "pix" | "cash") => {
+    if (selectedType === type) {
+      return "bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-500/25";
+    }
+    return "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400";
   };
 
   return (
@@ -215,10 +225,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                       >
                         <div className="flex items-center gap-3">
-                          {payment.type === "debit" && <CreditCard className="h-5 w-5 text-blue-600" />}
-                          {payment.type === "credit" && <CreditCard className="h-5 w-5 text-purple-600" />}
-                          {payment.type === "pix" && <QrCode className="h-5 w-5 text-green-600" />}
-                          {payment.type === "cash" && <Banknote className="h-5 w-5 text-amber-600" />}
+                          {getPaymentIcon(payment.type)}
                           <div>
                             <p className="font-medium text-sm">
                               {getPaymentTypeName(payment.type)}
@@ -263,108 +270,73 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                 </div>
               )}
 
-              {/* Adicionar Pagamento */}
+              {/* Adicionar Pagamento - Botões customizados ao invés de TabsTrigger */}
               {!isComplete && (
                 <div className="space-y-4">
                   <h4 className="font-semibold">Adicionar Pagamento</h4>
                   
-                  <Tabs value={selectedType} onValueChange={(v) => setSelectedType(v as any)}>
-                    <TabsList className="grid w-full grid-cols-4">
-                      <TabsTrigger
-                        value="debit"
-                        className={({ active }) => getTabClassName("debit") + (active ? " bg-orange-100 text-orange-800 border-orange-300" : "")}
+                  {/* Grid de botões de pagamento customizados */}
+                  <div className="grid grid-cols-4 gap-2">
+                    {(["debit", "credit", "pix", "cash"] as const).map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setSelectedType(type)}
+                        className={`
+                          flex flex-col items-center justify-center gap-2
+                          px-3 py-4 rounded-lg border-2 transition-all duration-200
+                          font-medium text-sm
+                          focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2
+                          ${getSelectedColors(type)}
+                        `}
                       >
-                        <CreditCard className="h-3 w-3 mr-1" />
-                        Débito
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="credit"
-                        className={({ active }) => getTabClassName("credit") + (active ? " bg-orange-100 text-orange-800 border-orange-300" : "")}
-                      >
-                        <CreditCard className="h-3 w-3 mr-1" />
-                        Crédito
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="pix"
-                        className={({ active }) => getTabClassName("pix") + (active ? " bg-orange-100 text-orange-800 border-orange-300" : "")}
-                      >
-                        <QrCode className="h-3 w-3 mr-1" />
-                        Pix
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="cash"
-                        className={({ active }) => getTabClassName("cash") + (active ? " bg-orange-100 text-orange-800 border-orange-300" : "")}
-                      >
-                        <Banknote className="h-3 w-3 mr-1" />
-                        Dinheiro
-                      </TabsTrigger>
-                    </TabsList>
+                        <div className="flex items-center gap-1">
+                          {getPaymentIcon(type)}
+                          <span>{type === "debit" ? "Débito" : type === "credit" ? "Crédito" : type === "pix" ? "Pix" : "Dinheiro"}</span>
+                        </div>
+                        {selectedType === type && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs">
+                            <Check className="h-3 w-3" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
 
-                    <TabsContent value="debit" className="space-y-3">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
-                      />
-                    </TabsContent>
-
-                    <TabsContent value="credit" className="space-y-3">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
-                      />
-                    </TabsContent>
-
-                    <TabsContent value="pix" className="space-y-3">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={amount}
-                        onChange={(e) => isComplete ? undefined : setAmount(e.target.value)}
-                        placeholder={`Máximo: R$ ${remaining.toFixed(2)}`}
-                      />
-                    </TabsContent>
-
-                    <TabsContent value="cash" className="space-y-3">
-                      <div>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={amount}
-                          onChange={(e) => setAmount(e.target.value)}
-                          placeholder="Valor recebido"
-                        />
-                        {amount && parseFloat(amount) > 0 && (
-                          <div className="mt-2 space-y-1">
-                            {remaining > 0 && parseFloat(amount) < remaining && (
-                              <p className="text-sm text-orange-600">
-                                Ainda faltam: R$ {(remaining - parseFloat(amount)).toFixed(2)}
-                              </p>
-                            )}
-                            {parseFloat(amount) >= remaining && (
-                              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
-                                <p className="text-sm text-orange-700 font-medium">
-                                  Troco: R$ {(parseFloat(amount) - remaining).toFixed(2)}
-                                </p>
-                              </div>
-                            )}
+                  {/* Input de valor */}
+                  <div className="space-y-3">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder={selectedType === "cash" ? "Valor recebido" : `Máximo: R$ ${remaining.toFixed(2)}`}
+                      className="text-lg text-center font-medium"
+                    />
+                    {selectedType === "cash" && amount && parseFloat(amount) > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {remaining > 0 && parseFloat(amount) < remaining && (
+                          <p className="text-sm text-orange-600 text-center">
+                            Ainda faltam: R$ {(remaining - parseFloat(amount)).toFixed(2)}
+                          </p>
+                        )}
+                        {parseFloat(amount) >= remaining && (
+                          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
+                            <p className="text-sm text-orange-700 font-medium">
+                              Troco: R$ {(parseFloat(amount) - remaining).toFixed(2)}
+                            </p>
                           </div>
                         )}
                       </div>
-                    </TabsContent>
-                  </Tabs>
+                    )}
+                  </div>
 
                   <Button
                     onClick={addPayment}
-                    className="w-full bg-orange-600 hover:bg-orange-700"
+                    className="w-full bg-orange-600 hover:bg-orange-700 text-lg py-3"
                     disabled={!amount || parseFloat(amount) <= 0}
                   >
-                    <Plus className="mr-2 h-4 w-4" />
+                    <Plus className="mr-2 h-5 w-5" />
                     Adicionar Pagamento
                   </Button>
                 </div>
