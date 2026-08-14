@@ -939,16 +939,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"32a1b-k1XnnUb5YajFLEgb6JLcfgCc/aU\"",
-    "mtime": "2026-08-14T20:32:53.172Z",
-    "size": 207387,
+    "etag": "\"32ca4-0w+++nnlord8bIO+mX/5NJ7Ssjs\"",
+    "mtime": "2026-08-14T20:35:11.795Z",
+    "size": 208036,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"be9e5-Lr5Id5BLmMjAbl2vrim685I33/g\"",
-    "mtime": "2026-08-14T20:32:53.176Z",
-    "size": 780773,
+    "etag": "\"bf795-X+G/XM8wN6ke9lZeHtgb/UfJBC0\"",
+    "mtime": "2026-08-14T20:35:11.804Z",
+    "size": 784277,
     "path": "index.mjs.map"
   }
 };
@@ -3511,24 +3511,6 @@ const SEFAZ_ENDPOINTS = {
     statusServico: "https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NFeStatusServico4.asmx"
   }
 };
-const ICP_BRASIL_CERTS = [
-  // AC-RR (Roraima) - used by SEFAZ-RR
-  `-----BEGIN CERTIFICATE-----
-MIIDXTCCAkWgAwIBAgIJAKOkP5C5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
-BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
-aWRnaXRzIFB0eSBMdGQwHhcNMTcwNzEyMDQzNTI2WhcNMjcwNzEwMDQ0NTI2WjBF
-MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
-ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
-CgKCAQEAuHr1E8t5P5Q5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFV
-MBEjEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRz
-IFB0eSBMdGQwIDAeBgkqhkiG9w0BCQEWEhlwZXN0YXR1cmUuaW50ZXJuZXQub3Jn
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuHr1E8t5P5Q5l5qBMA0G
-CSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRl
-MSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwIDAeBgkqhkiG9w0B
-CQYEhlwZXN0YXR1cmUuaW50ZXJuZXQub3JnAgIDAQABMA0GCSqGSIb3DQEBCwUA
-A4IBAQA=
------END CERTIFICATE-----`
-];
 function extractTag(xml, tag) {
   var _a;
   const expression = new RegExp(
@@ -3559,8 +3541,42 @@ function extractElement(xml, tag) {
 function buildSoapEnvelope(serviceNamespace, innerXml) {
   return `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body><nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg></soap:Body></soap:Envelope>`;
 }
-function createHttpsAgent(certificate, environment) {
-  const caCerts = [...ICP_BRASIL_CERTS];
+async function fetchServerCertificateChain(url) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const request = https.request(urlObj, {
+      method: "GET",
+      timeout: 1e4
+    }, (response) => {
+      var _a;
+      const certChain = (_a = response.connection) == null ? void 0 : _a.getPeerCertificate(true);
+      if (certChain && certChain.raw) {
+        const certs = [];
+        let current = certChain;
+        while (current) {
+          if (current.raw) {
+            certs.push(current.raw.toString("base64"));
+          }
+          current = current.issuerCertificate;
+        }
+        resolve(certs);
+      } else {
+        resolve([]);
+      }
+      response.destroy();
+    });
+    request.on("error", (error) => {
+      reject(error);
+    });
+    request.on("timeout", () => {
+      request.destroy();
+      reject(new Error("Timeout fetching server certificate"));
+    });
+    request.end();
+  });
+}
+function createHttpsAgent(certificate, environment, serverCerts = []) {
+  const caCerts = [...serverCerts];
   return new https.Agent({
     pfx: certificate.pfxBuffer,
     passphrase: certificate.password,
@@ -3572,11 +3588,18 @@ function createHttpsAgent(certificate, environment) {
     maxSockets: 5
   });
 }
-function sendSoapRequest(url, soapBody, certificate, environment, soapAction) {
+async function sendSoapRequest(url, soapBody, certificate, environment, soapAction) {
+  const urlObj = new URL(url);
+  console.log(`[NFE] POST ${url} (${environment === "producao" ? "produ\xE7\xE3o" : "homologa\xE7\xE3o"})`);
+  let serverCerts = [];
+  try {
+    serverCerts = await fetchServerCertificateChain(url);
+    console.log(`[NFE] Obtida cadeia de certificados do servidor (${serverCerts.length} certificados)`);
+  } catch (certError) {
+    console.warn(`[NFE] N\xE3o foi poss\xEDvel obter certificados do servidor:`, certError);
+  }
+  const agent = createHttpsAgent(certificate, environment, serverCerts);
   return new Promise((resolve, reject) => {
-    const urlObj = new URL(url);
-    console.log(`[NFE] POST ${url} (${environment === "producao" ? "produ\xE7\xE3o" : "homologa\xE7\xE3o"})`);
-    const agent = createHttpsAgent(certificate, environment);
     const request = https.request(urlObj, {
       agent,
       method: "POST",

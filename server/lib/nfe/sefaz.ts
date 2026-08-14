@@ -30,27 +30,6 @@ export interface NfeAuthorizationResult {
   rawResponse?: string;
 }
 
-// ICP-Brasil CA certificates - these are the official certificates from the Brazilian government
-// These are needed to validate SEFAZ servers' SSL certificates
-const ICP_BRASIL_CERTS = [
-  // AC-RR (Roraima) - used by SEFAZ-RR
-  `-----BEGIN CERTIFICATE-----
-MIIDXTCCAkWgAwIBAgIJAKOkP5C5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
-BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
-aWRnaXRzIFB0eSBMdGQwHhcNMTcwNzEyMDQzNTI2WhcNMjcwNzEwMDQ0NTI2WjBF
-MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
-ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
-CgKCAQEAuHr1E8t5P5Q5l5qBMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFV
-MBEjEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRz
-IFB0eSBMdGQwIDAeBgkqhkiG9w0BCQEWEhlwZXN0YXR1cmUuaW50ZXJuZXQub3Jn
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuHr1E8t5P5Q5l5qBMA0G
-CSqGSIb3DQEBCwUAMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRl
-MSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwIDAeBgkqhkiG9w0B
-CQYEhlwZXN0YXR1cmUuaW50ZXJuZXQub3JnAgIDAQABMA0GCSqGSIb3DQEBCwUA
-A4IBAQA=
------END CERTIFICATE-----`
-];
-
 function extractTag(xml: string, tag: string): string | null {
   const expression = new RegExp(
     `<(?:[\\w.-]+:)?${tag}\\b[^>]*>([\\s\\S]*?)</(?:[\\w.-]+:)?${tag}>`,
@@ -83,10 +62,47 @@ function buildSoapEnvelope(serviceNamespace: string, innerXml: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body><nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg></soap:Body></soap:Envelope>`;
 }
 
-function createHttpsAgent(certificate: LoadedCertificate, environment: SefazEnvironment) {
-  // Combine ICP-Brasil certificates with system certificates
-  // This ensures we can validate SEFAZ's SSL certificates
-  const caCerts = [...ICP_BRASIL_CERTS];
+// Fetch the certificate chain from the SEFAZ server
+async function fetchServerCertificateChain(url: string): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const request = https.request(urlObj, {
+      method: 'GET',
+      timeout: 10000,
+    }, (response) => {
+      const certChain = response.connection?.getPeerCertificate(true);
+      if (certChain && certChain.raw) {
+        const certs: string[] = [];
+        let current: any = certChain;
+        while (current) {
+          if (current.raw) {
+            certs.push(current.raw.toString('base64'));
+          }
+          current = current.issuerCertificate;
+        }
+        resolve(certs);
+      } else {
+        resolve([]);
+      }
+      response.destroy();
+    });
+
+    request.on('error', (error) => {
+      reject(error);
+    });
+
+    request.on('timeout', () => {
+      request.destroy();
+      reject(new Error('Timeout fetching server certificate'));
+    });
+
+    request.end();
+  });
+}
+
+function createHttpsAgent(certificate: LoadedCertificate, environment: SefazEnvironment, serverCerts: string[] = []) {
+  // Combine client certificate with server certificates for validation
+  const caCerts = [...serverCerts];
   
   return new https.Agent({
     pfx: certificate.pfxBuffer,
@@ -100,20 +116,29 @@ function createHttpsAgent(certificate: LoadedCertificate, environment: SefazEnvi
   });
 }
 
-function sendSoapRequest(
+async function sendSoapRequest(
   url: string,
   soapBody: string,
   certificate: LoadedCertificate,
   environment: SefazEnvironment,
   soapAction: string,
 ): Promise<{ statusCode: number; body: string }> {
+  const urlObj = new URL(url);
+
+  console.log(`[NFE] POST ${url} (${environment === 'producao' ? 'produção' : 'homologação'})`);
+
+  // First, fetch the server's certificate chain
+  let serverCerts: string[] = [];
+  try {
+    serverCerts = await fetchServerCertificateChain(url);
+    console.log(`[NFE] Obtida cadeia de certificados do servidor (${serverCerts.length} certificados)`);
+  } catch (certError) {
+    console.warn(`[NFE] Não foi possível obter certificados do servidor:`, certError);
+  }
+
+  const agent = createHttpsAgent(certificate, environment, serverCerts);
+
   return new Promise((resolve, reject) => {
-    const urlObj = new URL(url);
-
-    console.log(`[NFE] POST ${url} (${environment === 'producao' ? 'produção' : 'homologação'})`);
-
-    const agent = createHttpsAgent(certificate, environment);
-
     const request = https.request(urlObj, {
       agent,
       method: 'POST',
