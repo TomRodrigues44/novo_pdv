@@ -3,35 +3,35 @@ import { Server } from 'node:http';
 import { resolve, dirname, join } from 'node:path';
 import crypto from 'node:crypto';
 import { parentPort, threadId } from 'node:worker_threads';
-import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestURL, getRequestHeader, getResponseHeader, getRequestHeaders, setResponseHeaders, setResponseStatus, send, removeResponseHeader, appendResponseHeader, setResponseHeader, getCookie, setCookie, getRequestPath, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, readBody, getQuery as getQuery$1, readFormData } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index.mjs';
-import destr from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/destr@2.0.5/node_modules/destr/dist/index.mjs';
-import { createHooks } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/hookable@5.5.3/node_modules/hookable/dist/index.mjs';
-import { createFetch, Headers as Headers$1 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/ofetch@1.5.1/node_modules/ofetch/dist/node.mjs';
-import { fetchNodeRequestHandler, callNodeRequestHandler } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/node-mock-http@1.0.4/node_modules/node-mock-http/dist/index.mjs';
-import { parseURL, withoutBase, joinURL, getQuery, withQuery, decodePath, withLeadingSlash, withoutTrailingSlash } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/ufo@1.6.4/node_modules/ufo/dist/index.mjs';
-import { createStorage, prefixStorage } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/unstorage@1.17.5_db0@0.3.4_ioredis@5.11.1/node_modules/unstorage/dist/index.mjs';
-import unstorage_47drivers_47fs from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/unstorage@1.17.5_db0@0.3.4_ioredis@5.11.1/node_modules/unstorage/drivers/fs.mjs';
-import { digest } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/ohash@2.0.11/node_modules/ohash/dist/index.mjs';
-import { klona } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/klona@2.0.6/node_modules/klona/dist/index.mjs';
-import defu, { defuFn } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/defu@6.1.7/node_modules/defu/dist/defu.mjs';
-import { snakeCase } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/scule@1.3.0/node_modules/scule/dist/index.mjs';
-import { toRouteMatcher, createRouter } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/radix3@1.1.2/node_modules/radix3/dist/index.mjs';
+import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestURL, getRequestHeader, getResponseHeader, getRequestHeaders, setResponseHeaders, setResponseStatus, send, removeResponseHeader, appendResponseHeader, setResponseHeader, getCookie, setCookie, getRequestPath, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, readBody, getQuery as getQuery$1, readFormData } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index.mjs';
+import destr from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/destr@2.0.5/node_modules/destr/dist/index.mjs';
+import { createHooks } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/hookable@5.5.3/node_modules/hookable/dist/index.mjs';
+import { createFetch, Headers as Headers$1 } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/ofetch@1.5.1/node_modules/ofetch/dist/node.mjs';
+import { fetchNodeRequestHandler, callNodeRequestHandler } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/node-mock-http@1.0.4/node_modules/node-mock-http/dist/index.mjs';
+import { parseURL, withoutBase, joinURL, getQuery, withQuery, decodePath, withLeadingSlash, withoutTrailingSlash } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/ufo@1.6.4/node_modules/ufo/dist/index.mjs';
+import { createStorage, prefixStorage } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/unstorage@1.17.5_db0@0.3.4_ioredis@5.11.1/node_modules/unstorage/dist/index.mjs';
+import unstorage_47drivers_47fs from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/unstorage@1.17.5_db0@0.3.4_ioredis@5.11.1/node_modules/unstorage/drivers/fs.mjs';
+import { digest } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/ohash@2.0.11/node_modules/ohash/dist/index.mjs';
+import { klona } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/klona@2.0.6/node_modules/klona/dist/index.mjs';
+import defu, { defuFn } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/defu@6.1.7/node_modules/defu/dist/defu.mjs';
+import { snakeCase } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/scule@1.3.0/node_modules/scule/dist/index.mjs';
+import { toRouteMatcher, createRouter } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/radix3@1.1.2/node_modules/radix3/dist/index.mjs';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
-import consola from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/index.mjs';
-import { ErrorParser } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/youch-core@0.3.3/node_modules/youch-core/build/index.js';
-import { Youch } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/youch@4.1.1/node_modules/youch/build/index.js';
-import { SourceMapConsumer } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/source-map@0.7.6/node_modules/source-map/source-map.js';
+import consola from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/index.mjs';
+import { ErrorParser } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/youch-core@0.3.3/node_modules/youch-core/build/index.js';
+import { Youch } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/youch@4.1.1/node_modules/youch/build/index.js';
+import { SourceMapConsumer } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/source-map@0.7.6/node_modules/source-map/source-map.js';
 import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
-import forge from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/node-forge@1.4.0/node_modules/node-forge/lib/index.js';
-import QRCode from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
+import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
+import forge from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/node-forge@1.4.0/node_modules/node-forge/lib/index.js';
+import QRCode from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
 import https from 'node:https';
 import { getCACertificates, rootCertificates } from 'node:tls';
-import { Pool } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/pg@8.22.0/node_modules/pg/esm/index.mjs';
-import { v4 } from 'file://C:/Users/1793579/dyad-apps/novo_pdv/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
+import { Pool } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/pg@8.22.0/node_modules/pg/esm/index.mjs';
+import { v4 } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/uuid@14.0.1/node_modules/uuid/dist-node/index.js';
 
-const serverAssets = [{"baseName":"server","dir":"C:/Users/1793579/dyad-apps/novo_pdv/server/assets"}];
+const serverAssets = [{"baseName":"server","dir":"C:/Users/tomsa/dyad-apps/novo-pdv/server/assets"}];
 
 const assets$1 = createStorage();
 
@@ -43,11 +43,11 @@ const storage = createStorage({});
 
 storage.mount('/assets', assets$1);
 
-storage.mount('root', unstorage_47drivers_47fs({"driver":"fs","readOnly":true,"base":"C:/Users/1793579/dyad-apps/novo_pdv"}));
-storage.mount('src', unstorage_47drivers_47fs({"driver":"fs","readOnly":true,"base":"C:/Users/1793579/dyad-apps/novo_pdv/server"}));
-storage.mount('build', unstorage_47drivers_47fs({"driver":"fs","readOnly":false,"base":"C:/Users/1793579/dyad-apps/novo_pdv/.nitro"}));
-storage.mount('cache', unstorage_47drivers_47fs({"driver":"fs","readOnly":false,"base":"C:/Users/1793579/dyad-apps/novo_pdv/.nitro/cache"}));
-storage.mount('data', unstorage_47drivers_47fs({"driver":"fs","base":"C:/Users/1793579/dyad-apps/novo_pdv/.data/kv"}));
+storage.mount('root', unstorage_47drivers_47fs({"driver":"fs","readOnly":true,"base":"C:/Users/tomsa/dyad-apps/novo-pdv"}));
+storage.mount('src', unstorage_47drivers_47fs({"driver":"fs","readOnly":true,"base":"C:/Users/tomsa/dyad-apps/novo-pdv/server"}));
+storage.mount('build', unstorage_47drivers_47fs({"driver":"fs","readOnly":false,"base":"C:/Users/tomsa/dyad-apps/novo-pdv/.nitro"}));
+storage.mount('cache', unstorage_47drivers_47fs({"driver":"fs","readOnly":false,"base":"C:/Users/tomsa/dyad-apps/novo-pdv/.nitro/cache"}));
+storage.mount('data', unstorage_47drivers_47fs({"driver":"fs","base":"C:/Users/tomsa/dyad-apps/novo-pdv/.data/kv"}));
 
 function useStorage(base = "") {
   return base ? prefixStorage(storage, base) : storage;
@@ -937,7 +937,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"326ab-VNTCpr8V8AlBdnRHzguLGafX3gk\"",
+    "mtime": "2026-08-14T20:31:30.229Z",
+    "size": 206507,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"be071-cWU4LGlURLGxwsFUMdWPKwyxBIY\"",
+    "mtime": "2026-08-14T20:22:34.054Z",
+    "size": 778353,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -962,7 +977,7 @@ function getAsset (id) {
 
 const METHODS = /* @__PURE__ */ new Set(["HEAD", "GET"]);
 const EncodingMap = { gzip: ".gz", br: ".br" };
-const _l6gOeV = eventHandler((event) => {
+const _L59kL2 = eventHandler((event) => {
   if (event.method && !METHODS.has(event.method)) {
     return;
   }
@@ -1259,7 +1274,7 @@ function isAllowed(path, role) {
   const allowedRoutes = role === "manager" ? managerRoutes : cashierRoutes;
   return allowedRoutes.some((route) => path === route || path.startsWith(`${route}/`));
 }
-const _MzNUUT = defineEventHandler(async (event) => {
+const _2jogPt = defineEventHandler(async (event) => {
   const path = getRequestPath(event);
   if (!path.startsWith("/api/") || publicRoutes.has(path)) return;
   const user = await getSessionUser(event);
@@ -1272,122 +1287,122 @@ const _MzNUUT = defineEventHandler(async (event) => {
   event.context.authUser = user;
 });
 
-const _lazy_QxOhU1 = () => Promise.resolve().then(function () { return _action_$1; });
-const _lazy_f43s1k = () => Promise.resolve().then(function () { return cancelPassword_get$1; });
-const _lazy_xFJ02b = () => Promise.resolve().then(function () { return cancelPassword_post$1; });
-const _lazy_yxPaRJ = () => Promise.resolve().then(function () { return cashRegister_get$1; });
-const _lazy_kdJA4k = () => Promise.resolve().then(function () { return close_post$1; });
-const _lazy_rO_WFu = () => Promise.resolve().then(function () { return open_post$1; });
-const _lazy_BdYJUJ = () => Promise.resolve().then(function () { return cashTransactions_get$1; });
-const _lazy_PEHXk3 = () => Promise.resolve().then(function () { return cashTransactions_post$1; });
-const _lazy_RKtRXd = () => Promise.resolve().then(function () { return _id__delete$b; });
-const _lazy_IW2_BM = () => Promise.resolve().then(function () { return categories_get$1; });
-const _lazy_MNhMfv = () => Promise.resolve().then(function () { return categories_post$3; });
-const _lazy_gfQAUz = () => Promise.resolve().then(function () { return _id__delete$9; });
-const _lazy_cFC5Uh = () => Promise.resolve().then(function () { return _id__put$7; });
-const _lazy_Iv96YT = () => Promise.resolve().then(function () { return contingency_get$1; });
-const _lazy_4CVdlH = () => Promise.resolve().then(function () { return retry_post$1; });
-const _lazy_S1l8gD = () => Promise.resolve().then(function () { return customers_get$1; });
-const _lazy_Pnfsz0 = () => Promise.resolve().then(function () { return customers_post$1; });
-const _lazy_jbGOcG = () => Promise.resolve().then(function () { return _id__delete$7; });
-const _lazy_EFm9MF = () => Promise.resolve().then(function () { return _id__put$5; });
-const _lazy_vMNP2g = () => Promise.resolve().then(function () { return sales_get$3; });
-const _lazy_m3Hq09 = () => Promise.resolve().then(function () { return ensureSchema_post$1; });
-const _lazy_56Dv14 = () => Promise.resolve().then(function () { return cancel_post$3; });
-const _lazy_xe7acr = () => Promise.resolve().then(function () { return certificates_get$1; });
-const _lazy_AbKrHi = () => Promise.resolve().then(function () { return certificates_post$1; });
-const _lazy_YqQJx3 = () => Promise.resolve().then(function () { return _id__delete$5; });
-const _lazy_Y8c96g = () => Promise.resolve().then(function () { return _id__patch$1; });
-const _lazy_JuQZAj = () => Promise.resolve().then(function () { return companyConfig_get$1; });
-const _lazy_MgNWqb = () => Promise.resolve().then(function () { return companyConfig_post$1; });
-const _lazy_UUyT9J = () => Promise.resolve().then(function () { return testConnection_post$1; });
-const _lazy_y8kYmo = () => Promise.resolve().then(function () { return categories_post$1; });
-const _lazy_J_6_3Z = () => Promise.resolve().then(function () { return products_post$3; });
-const _lazy_GEhQc0 = () => Promise.resolve().then(function () { return sales_post$3; });
-const _lazy_rsKQJO = () => Promise.resolve().then(function () { return motoboys_get$1; });
-const _lazy_YqxG9s = () => Promise.resolve().then(function () { return motoboys_post$1; });
-const _lazy_maYdpZ = () => Promise.resolve().then(function () { return _id__delete$3; });
-const _lazy_fHvjOj = () => Promise.resolve().then(function () { return _id__put$3; });
-const _lazy_o3Jy8Y = () => Promise.resolve().then(function () { return nfce_get$1; });
-const _lazy_IbtS6o = () => Promise.resolve().then(function () { return qrCode_get$1; });
-const _lazy_jCpQHj = () => Promise.resolve().then(function () { return _sale_id__get$1; });
-const _lazy_MwmAsd = () => Promise.resolve().then(function () { return emitir_post$3; });
-const _lazy_9g6I2U = () => Promise.resolve().then(function () { return _id__get$3; });
-const _lazy_ni6qrk = () => Promise.resolve().then(function () { return nfe_get$1; });
-const _lazy_VzYBUW = () => Promise.resolve().then(function () { return _saleId__get$1; });
-const _lazy_Ubuh2Q = () => Promise.resolve().then(function () { return emitir_post$1; });
-const _lazy_A87TZM = () => Promise.resolve().then(function () { return _id__get$1; });
-const _lazy_T_NEx7 = () => Promise.resolve().then(function () { return products_get$1; });
-const _lazy_dTrC0F = () => Promise.resolve().then(function () { return products_post$1; });
-const _lazy_gYdxNd = () => Promise.resolve().then(function () { return _id__delete$1; });
-const _lazy_jEPQaM = () => Promise.resolve().then(function () { return _id__put$1; });
-const _lazy_EeL9Xf = () => Promise.resolve().then(function () { return sales_get$1; });
-const _lazy_y4fMmW = () => Promise.resolve().then(function () { return sales_post$1; });
-const _lazy_THYWQY = () => Promise.resolve().then(function () { return cancel_post$1; });
-const _lazy_BeUxG7 = () => Promise.resolve().then(function () { return status_put$1; });
-const _lazy_pZXqj1 = () => Promise.resolve().then(function () { return xml_get$1; });
-const _lazy_JpFH7U = () => Promise.resolve().then(function () { return testDb_get$1; });
-const _lazy_b9ys0L = () => Promise.resolve().then(function () { return upload_post$1; });
+const _lazy_aAbfzC = () => Promise.resolve().then(function () { return _action_$1; });
+const _lazy_nIp1PR = () => Promise.resolve().then(function () { return cancelPassword_get$1; });
+const _lazy_7Gx3xu = () => Promise.resolve().then(function () { return cancelPassword_post$1; });
+const _lazy_Ztljkv = () => Promise.resolve().then(function () { return cashRegister_get$1; });
+const _lazy_RQ3t17 = () => Promise.resolve().then(function () { return close_post$1; });
+const _lazy_sacHZO = () => Promise.resolve().then(function () { return open_post$1; });
+const _lazy_v5UK4z = () => Promise.resolve().then(function () { return cashTransactions_get$1; });
+const _lazy_9npnzi = () => Promise.resolve().then(function () { return cashTransactions_post$1; });
+const _lazy_tI3hMs = () => Promise.resolve().then(function () { return _id__delete$b; });
+const _lazy_FBYk03 = () => Promise.resolve().then(function () { return categories_get$1; });
+const _lazy_D5PpYs = () => Promise.resolve().then(function () { return categories_post$3; });
+const _lazy_23COSy = () => Promise.resolve().then(function () { return _id__delete$9; });
+const _lazy_vriRoQ = () => Promise.resolve().then(function () { return _id__put$7; });
+const _lazy_DlBejw = () => Promise.resolve().then(function () { return contingency_get$1; });
+const _lazy_63gHdJ = () => Promise.resolve().then(function () { return retry_post$1; });
+const _lazy_fzyxiC = () => Promise.resolve().then(function () { return customers_get$1; });
+const _lazy_BepBhz = () => Promise.resolve().then(function () { return customers_post$1; });
+const _lazy_6mZBUP = () => Promise.resolve().then(function () { return _id__delete$7; });
+const _lazy_lxyfFT = () => Promise.resolve().then(function () { return _id__put$5; });
+const _lazy_LCr5rs = () => Promise.resolve().then(function () { return sales_get$3; });
+const _lazy_SiD0kg = () => Promise.resolve().then(function () { return ensureSchema_post$1; });
+const _lazy_cg7Cjd = () => Promise.resolve().then(function () { return cancel_post$3; });
+const _lazy_drR5Qm = () => Promise.resolve().then(function () { return certificates_get$1; });
+const _lazy_UIMbgl = () => Promise.resolve().then(function () { return certificates_post$1; });
+const _lazy_Gy8Ft8 = () => Promise.resolve().then(function () { return _id__delete$5; });
+const _lazy_T7sXkb = () => Promise.resolve().then(function () { return _id__patch$1; });
+const _lazy_h3XcEI = () => Promise.resolve().then(function () { return companyConfig_get$1; });
+const _lazy_AzRBh9 = () => Promise.resolve().then(function () { return companyConfig_post$1; });
+const _lazy_XBuveo = () => Promise.resolve().then(function () { return testConnection_post$1; });
+const _lazy_kq8Uzj = () => Promise.resolve().then(function () { return categories_post$1; });
+const _lazy_M7i7Ty = () => Promise.resolve().then(function () { return products_post$3; });
+const _lazy_HtdrVQ = () => Promise.resolve().then(function () { return sales_post$3; });
+const _lazy_KWG9Cr = () => Promise.resolve().then(function () { return motoboys_get$1; });
+const _lazy_QMoCtc = () => Promise.resolve().then(function () { return motoboys_post$1; });
+const _lazy_w196M_ = () => Promise.resolve().then(function () { return _id__delete$3; });
+const _lazy_YJXWvz = () => Promise.resolve().then(function () { return _id__put$3; });
+const _lazy_xGxOH9 = () => Promise.resolve().then(function () { return nfce_get$1; });
+const _lazy_zws91n = () => Promise.resolve().then(function () { return qrCode_get$1; });
+const _lazy_SCCVh6 = () => Promise.resolve().then(function () { return _sale_id__get$1; });
+const _lazy_r13XfM = () => Promise.resolve().then(function () { return emitir_post$3; });
+const _lazy_h2FEJi = () => Promise.resolve().then(function () { return _id__get$3; });
+const _lazy_7S0Oqe = () => Promise.resolve().then(function () { return nfe_get$1; });
+const _lazy_AGDJ79 = () => Promise.resolve().then(function () { return _saleId__get$1; });
+const _lazy_VPCRTW = () => Promise.resolve().then(function () { return emitir_post$1; });
+const _lazy_U3hhYj = () => Promise.resolve().then(function () { return _id__get$1; });
+const _lazy_rL3pwQ = () => Promise.resolve().then(function () { return products_get$1; });
+const _lazy_oAqIEX = () => Promise.resolve().then(function () { return products_post$1; });
+const _lazy_EcTtsY = () => Promise.resolve().then(function () { return _id__delete$1; });
+const _lazy_dfJadE = () => Promise.resolve().then(function () { return _id__put$1; });
+const _lazy_bUNuXH = () => Promise.resolve().then(function () { return sales_get$1; });
+const _lazy_wHuJ7g = () => Promise.resolve().then(function () { return sales_post$1; });
+const _lazy_fqccYM = () => Promise.resolve().then(function () { return cancel_post$1; });
+const _lazy_FemfvS = () => Promise.resolve().then(function () { return status_put$1; });
+const _lazy__W1WnR = () => Promise.resolve().then(function () { return xml_get$1; });
+const _lazy_b9Has_ = () => Promise.resolve().then(function () { return testDb_get$1; });
+const _lazy_RSMg8p = () => Promise.resolve().then(function () { return upload_post$1; });
 
 const handlers = [
-  { route: '', handler: _l6gOeV, lazy: false, middleware: true, method: undefined },
-  { route: '', handler: _MzNUUT, lazy: false, middleware: true, method: undefined },
-  { route: '/api/auth/:action', handler: _lazy_QxOhU1, lazy: true, middleware: false, method: undefined },
-  { route: '/api/cancel-password', handler: _lazy_f43s1k, lazy: true, middleware: false, method: "get" },
-  { route: '/api/cancel-password', handler: _lazy_xFJ02b, lazy: true, middleware: false, method: "post" },
-  { route: '/api/cash-register', handler: _lazy_yxPaRJ, lazy: true, middleware: false, method: "get" },
-  { route: '/api/cash-register/close', handler: _lazy_kdJA4k, lazy: true, middleware: false, method: "post" },
-  { route: '/api/cash-register/open', handler: _lazy_rO_WFu, lazy: true, middleware: false, method: "post" },
-  { route: '/api/cash-transactions', handler: _lazy_BdYJUJ, lazy: true, middleware: false, method: "get" },
-  { route: '/api/cash-transactions', handler: _lazy_PEHXk3, lazy: true, middleware: false, method: "post" },
-  { route: '/api/cash-transactions/:id', handler: _lazy_RKtRXd, lazy: true, middleware: false, method: "delete" },
-  { route: '/api/categories', handler: _lazy_IW2_BM, lazy: true, middleware: false, method: "get" },
-  { route: '/api/categories', handler: _lazy_MNhMfv, lazy: true, middleware: false, method: "post" },
-  { route: '/api/categories/:id', handler: _lazy_gfQAUz, lazy: true, middleware: false, method: "delete" },
-  { route: '/api/categories/:id', handler: _lazy_cFC5Uh, lazy: true, middleware: false, method: "put" },
-  { route: '/api/contingency', handler: _lazy_Iv96YT, lazy: true, middleware: false, method: "get" },
-  { route: '/api/contingency/:id/retry', handler: _lazy_4CVdlH, lazy: true, middleware: false, method: "post" },
-  { route: '/api/customers', handler: _lazy_S1l8gD, lazy: true, middleware: false, method: "get" },
-  { route: '/api/customers', handler: _lazy_Pnfsz0, lazy: true, middleware: false, method: "post" },
-  { route: '/api/customers/:id', handler: _lazy_jbGOcG, lazy: true, middleware: false, method: "delete" },
-  { route: '/api/customers/:id', handler: _lazy_EFm9MF, lazy: true, middleware: false, method: "put" },
-  { route: '/api/customers/:id/sales', handler: _lazy_vMNP2g, lazy: true, middleware: false, method: "get" },
-  { route: '/api/customers/ensure-schema', handler: _lazy_m3Hq09, lazy: true, middleware: false, method: "post" },
-  { route: '/api/fiscal/:id/cancel', handler: _lazy_56Dv14, lazy: true, middleware: false, method: "post" },
-  { route: '/api/fiscal/certificates', handler: _lazy_xe7acr, lazy: true, middleware: false, method: "get" },
-  { route: '/api/fiscal/certificates', handler: _lazy_AbKrHi, lazy: true, middleware: false, method: "post" },
-  { route: '/api/fiscal/certificates/:id', handler: _lazy_YqQJx3, lazy: true, middleware: false, method: "delete" },
-  { route: '/api/fiscal/certificates/:id', handler: _lazy_Y8c96g, lazy: true, middleware: false, method: "patch" },
-  { route: '/api/fiscal/company-config', handler: _lazy_JuQZAj, lazy: true, middleware: false, method: "get" },
-  { route: '/api/fiscal/company-config', handler: _lazy_MgNWqb, lazy: true, middleware: false, method: "post" },
-  { route: '/api/fiscal/test-connection', handler: _lazy_UUyT9J, lazy: true, middleware: false, method: "post" },
-  { route: '/api/migrate/categories', handler: _lazy_y8kYmo, lazy: true, middleware: false, method: "post" },
-  { route: '/api/migrate/products', handler: _lazy_J_6_3Z, lazy: true, middleware: false, method: "post" },
-  { route: '/api/migrate/sales', handler: _lazy_GEhQc0, lazy: true, middleware: false, method: "post" },
-  { route: '/api/motoboys', handler: _lazy_rsKQJO, lazy: true, middleware: false, method: "get" },
-  { route: '/api/motoboys', handler: _lazy_YqxG9s, lazy: true, middleware: false, method: "post" },
-  { route: '/api/motoboys/:id', handler: _lazy_maYdpZ, lazy: true, middleware: false, method: "delete" },
-  { route: '/api/motoboys/:id', handler: _lazy_fHvjOj, lazy: true, middleware: false, method: "put" },
-  { route: '/api/nfce', handler: _lazy_o3Jy8Y, lazy: true, middleware: false, method: "get" },
-  { route: '/api/nfce/:id/qr-code', handler: _lazy_IbtS6o, lazy: true, middleware: false, method: "get" },
-  { route: '/api/nfce/:sale_id', handler: _lazy_jCpQHj, lazy: true, middleware: false, method: "get" },
-  { route: '/api/nfce/emitir', handler: _lazy_MwmAsd, lazy: true, middleware: false, method: "post" },
-  { route: '/api/nfce/xml/:id', handler: _lazy_9g6I2U, lazy: true, middleware: false, method: "get" },
-  { route: '/api/nfe', handler: _lazy_ni6qrk, lazy: true, middleware: false, method: "get" },
-  { route: '/api/nfe/:saleId', handler: _lazy_VzYBUW, lazy: true, middleware: false, method: "get" },
-  { route: '/api/nfe/emitir', handler: _lazy_Ubuh2Q, lazy: true, middleware: false, method: "post" },
-  { route: '/api/nfe/xml/:id', handler: _lazy_A87TZM, lazy: true, middleware: false, method: "get" },
-  { route: '/api/products', handler: _lazy_T_NEx7, lazy: true, middleware: false, method: "get" },
-  { route: '/api/products', handler: _lazy_dTrC0F, lazy: true, middleware: false, method: "post" },
-  { route: '/api/products/:id', handler: _lazy_gYdxNd, lazy: true, middleware: false, method: "delete" },
-  { route: '/api/products/:id', handler: _lazy_jEPQaM, lazy: true, middleware: false, method: "put" },
-  { route: '/api/sales', handler: _lazy_EeL9Xf, lazy: true, middleware: false, method: "get" },
-  { route: '/api/sales', handler: _lazy_y4fMmW, lazy: true, middleware: false, method: "post" },
-  { route: '/api/sales/:id/cancel', handler: _lazy_THYWQY, lazy: true, middleware: false, method: "post" },
-  { route: '/api/sales/:id/status', handler: _lazy_BeUxG7, lazy: true, middleware: false, method: "put" },
-  { route: '/api/sales/:id/xml', handler: _lazy_pZXqj1, lazy: true, middleware: false, method: "get" },
-  { route: '/api/test-db', handler: _lazy_JpFH7U, lazy: true, middleware: false, method: "get" },
-  { route: '/api/upload', handler: _lazy_b9ys0L, lazy: true, middleware: false, method: "post" }
+  { route: '', handler: _L59kL2, lazy: false, middleware: true, method: undefined },
+  { route: '', handler: _2jogPt, lazy: false, middleware: true, method: undefined },
+  { route: '/api/auth/:action', handler: _lazy_aAbfzC, lazy: true, middleware: false, method: undefined },
+  { route: '/api/cancel-password', handler: _lazy_nIp1PR, lazy: true, middleware: false, method: "get" },
+  { route: '/api/cancel-password', handler: _lazy_7Gx3xu, lazy: true, middleware: false, method: "post" },
+  { route: '/api/cash-register', handler: _lazy_Ztljkv, lazy: true, middleware: false, method: "get" },
+  { route: '/api/cash-register/close', handler: _lazy_RQ3t17, lazy: true, middleware: false, method: "post" },
+  { route: '/api/cash-register/open', handler: _lazy_sacHZO, lazy: true, middleware: false, method: "post" },
+  { route: '/api/cash-transactions', handler: _lazy_v5UK4z, lazy: true, middleware: false, method: "get" },
+  { route: '/api/cash-transactions', handler: _lazy_9npnzi, lazy: true, middleware: false, method: "post" },
+  { route: '/api/cash-transactions/:id', handler: _lazy_tI3hMs, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/categories', handler: _lazy_FBYk03, lazy: true, middleware: false, method: "get" },
+  { route: '/api/categories', handler: _lazy_D5PpYs, lazy: true, middleware: false, method: "post" },
+  { route: '/api/categories/:id', handler: _lazy_23COSy, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/categories/:id', handler: _lazy_vriRoQ, lazy: true, middleware: false, method: "put" },
+  { route: '/api/contingency', handler: _lazy_DlBejw, lazy: true, middleware: false, method: "get" },
+  { route: '/api/contingency/:id/retry', handler: _lazy_63gHdJ, lazy: true, middleware: false, method: "post" },
+  { route: '/api/customers', handler: _lazy_fzyxiC, lazy: true, middleware: false, method: "get" },
+  { route: '/api/customers', handler: _lazy_BepBhz, lazy: true, middleware: false, method: "post" },
+  { route: '/api/customers/:id', handler: _lazy_6mZBUP, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/customers/:id', handler: _lazy_lxyfFT, lazy: true, middleware: false, method: "put" },
+  { route: '/api/customers/:id/sales', handler: _lazy_LCr5rs, lazy: true, middleware: false, method: "get" },
+  { route: '/api/customers/ensure-schema', handler: _lazy_SiD0kg, lazy: true, middleware: false, method: "post" },
+  { route: '/api/fiscal/:id/cancel', handler: _lazy_cg7Cjd, lazy: true, middleware: false, method: "post" },
+  { route: '/api/fiscal/certificates', handler: _lazy_drR5Qm, lazy: true, middleware: false, method: "get" },
+  { route: '/api/fiscal/certificates', handler: _lazy_UIMbgl, lazy: true, middleware: false, method: "post" },
+  { route: '/api/fiscal/certificates/:id', handler: _lazy_Gy8Ft8, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/fiscal/certificates/:id', handler: _lazy_T7sXkb, lazy: true, middleware: false, method: "patch" },
+  { route: '/api/fiscal/company-config', handler: _lazy_h3XcEI, lazy: true, middleware: false, method: "get" },
+  { route: '/api/fiscal/company-config', handler: _lazy_AzRBh9, lazy: true, middleware: false, method: "post" },
+  { route: '/api/fiscal/test-connection', handler: _lazy_XBuveo, lazy: true, middleware: false, method: "post" },
+  { route: '/api/migrate/categories', handler: _lazy_kq8Uzj, lazy: true, middleware: false, method: "post" },
+  { route: '/api/migrate/products', handler: _lazy_M7i7Ty, lazy: true, middleware: false, method: "post" },
+  { route: '/api/migrate/sales', handler: _lazy_HtdrVQ, lazy: true, middleware: false, method: "post" },
+  { route: '/api/motoboys', handler: _lazy_KWG9Cr, lazy: true, middleware: false, method: "get" },
+  { route: '/api/motoboys', handler: _lazy_QMoCtc, lazy: true, middleware: false, method: "post" },
+  { route: '/api/motoboys/:id', handler: _lazy_w196M_, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/motoboys/:id', handler: _lazy_YJXWvz, lazy: true, middleware: false, method: "put" },
+  { route: '/api/nfce', handler: _lazy_xGxOH9, lazy: true, middleware: false, method: "get" },
+  { route: '/api/nfce/:id/qr-code', handler: _lazy_zws91n, lazy: true, middleware: false, method: "get" },
+  { route: '/api/nfce/:sale_id', handler: _lazy_SCCVh6, lazy: true, middleware: false, method: "get" },
+  { route: '/api/nfce/emitir', handler: _lazy_r13XfM, lazy: true, middleware: false, method: "post" },
+  { route: '/api/nfce/xml/:id', handler: _lazy_h2FEJi, lazy: true, middleware: false, method: "get" },
+  { route: '/api/nfe', handler: _lazy_7S0Oqe, lazy: true, middleware: false, method: "get" },
+  { route: '/api/nfe/:saleId', handler: _lazy_AGDJ79, lazy: true, middleware: false, method: "get" },
+  { route: '/api/nfe/emitir', handler: _lazy_VPCRTW, lazy: true, middleware: false, method: "post" },
+  { route: '/api/nfe/xml/:id', handler: _lazy_U3hhYj, lazy: true, middleware: false, method: "get" },
+  { route: '/api/products', handler: _lazy_rL3pwQ, lazy: true, middleware: false, method: "get" },
+  { route: '/api/products', handler: _lazy_oAqIEX, lazy: true, middleware: false, method: "post" },
+  { route: '/api/products/:id', handler: _lazy_EcTtsY, lazy: true, middleware: false, method: "delete" },
+  { route: '/api/products/:id', handler: _lazy_dfJadE, lazy: true, middleware: false, method: "put" },
+  { route: '/api/sales', handler: _lazy_bUNuXH, lazy: true, middleware: false, method: "get" },
+  { route: '/api/sales', handler: _lazy_wHuJ7g, lazy: true, middleware: false, method: "post" },
+  { route: '/api/sales/:id/cancel', handler: _lazy_fqccYM, lazy: true, middleware: false, method: "post" },
+  { route: '/api/sales/:id/status', handler: _lazy_FemfvS, lazy: true, middleware: false, method: "put" },
+  { route: '/api/sales/:id/xml', handler: _lazy__W1WnR, lazy: true, middleware: false, method: "get" },
+  { route: '/api/test-db', handler: _lazy_b9Has_, lazy: true, middleware: false, method: "get" },
+  { route: '/api/upload', handler: _lazy_RSMg8p, lazy: true, middleware: false, method: "post" }
 ];
 
 function createNitroApp() {
@@ -3531,17 +3546,24 @@ function extractElement(xml, tag) {
 function buildSoapEnvelope(serviceNamespace, innerXml) {
   return `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body><nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg></soap:Body></soap:Envelope>`;
 }
+function createHttpsAgent(certificate, environment) {
+  const caCerts = trustedCertificates();
+  return new https.Agent({
+    pfx: certificate.pfxBuffer,
+    passphrase: certificate.password,
+    ca: caCerts,
+    // IMPORTANTE: rejectUnauthorized deve ser true em produção
+    // Mas para homologação, alguns ambientes podem ter certificados auto-assinados
+    rejectUnauthorized: environment === "producao",
+    keepAlive: true,
+    maxSockets: 5
+  });
+}
 function sendSoapRequest(url, soapBody, certificate, environment, soapAction) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     console.log(`[NFE] POST ${url} (${environment === "producao" ? "produ\xE7\xE3o" : "homologa\xE7\xE3o"})`);
-    const agent = new https.Agent({
-      pfx: certificate.pfxBuffer,
-      passphrase: certificate.password,
-      ca: trustedCertificates(),
-      rejectUnauthorized: true,
-      keepAlive: false
-    });
+    const agent = createHttpsAgent(certificate, environment);
     const request = https.request(urlObj, {
       agent,
       method: "POST",
@@ -3566,6 +3588,12 @@ function sendSoapRequest(url, soapBody, certificate, environment, soapAction) {
       });
     });
     request.on("error", (error) => {
+      console.error(`[NFE] Erro de comunica\xE7\xE3o com SEFAZ (${environment}):`, {
+        message: error.message,
+        code: error.code,
+        errno: error.errno,
+        syscall: error.syscall
+      });
       reject(new Error(`Erro de comunica\xE7\xE3o com a SEFAZ: ${error.message}`));
     });
     request.on("timeout", () => {

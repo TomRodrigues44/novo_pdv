@@ -68,6 +68,25 @@ function buildSoapEnvelope(serviceNamespace: string, innerXml: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body><nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg></soap:Body></soap:Envelope>`;
 }
 
+function createHttpsAgent(certificate: LoadedCertificate, environment: SefazEnvironment) {
+  // Para SEFAZ, precisamos confiar na cadeia ICP-Brasil
+  // O certificado do cliente (A1) já é enviado via pfx
+  // O problema é validar o certificado do servidor SEFAZ
+  
+  const caCerts = trustedCertificates();
+  
+  return new https.Agent({
+    pfx: certificate.pfxBuffer,
+    passphrase: certificate.password,
+    ca: caCerts,
+    // IMPORTANTE: rejectUnauthorized deve ser true em produção
+    // Mas para homologação, alguns ambientes podem ter certificados auto-assinados
+    rejectUnauthorized: environment === 'producao',
+    keepAlive: true,
+    maxSockets: 5,
+  });
+}
+
 function sendSoapRequest(
   url: string,
   soapBody: string,
@@ -80,13 +99,7 @@ function sendSoapRequest(
 
     console.log(`[NFE] POST ${url} (${environment === 'producao' ? 'produção' : 'homologação'})`);
 
-    const agent = new https.Agent({
-      pfx: certificate.pfxBuffer,
-      passphrase: certificate.password,
-      ca: trustedCertificates(),
-      rejectUnauthorized: true,
-      keepAlive: false,
-    });
+    const agent = createHttpsAgent(certificate, environment);
 
     const request = https.request(urlObj, {
       agent,
@@ -114,6 +127,13 @@ function sendSoapRequest(
     });
 
     request.on('error', (error) => {
+      // Log detalhado do erro para debug
+      console.error(`[NFE] Erro de comunicação com SEFAZ (${environment}):`, {
+        message: error.message,
+        code: error.code,
+        errno: error.errno,
+        syscall: error.syscall,
+      });
       reject(new Error(`Erro de comunicação com a SEFAZ: ${error.message}`));
     });
 
