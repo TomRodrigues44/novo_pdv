@@ -106,6 +106,14 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
     }
   };
 
+  // Styles for selected payment method tabs
+  const getTabClassName = (type: "debit" | "credit" | "pix" | "cash") => {
+    if (selectedType === type) {
+      return "bg-orange-100 text-orange-800 border-orange-300";
+    }
+    return "text-gray-500 hover:text-gray-600";
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl max-h-[95vh] p-0 overflow-hidden flex flex-col">
@@ -262,19 +270,31 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                   
                   <Tabs value={selectedType} onValueChange={(v) => setSelectedType(v as any)}>
                     <TabsList className="grid w-full grid-cols-4">
-                      <TabsTrigger value="debit" className="text-xs">
+                      <TabsTrigger
+                        value="debit"
+                        className={({ active }) => getTabClassName("debit") + (active ? " bg-orange-100 text-orange-800 border-orange-300" : "")}
+                      >
                         <CreditCard className="h-3 w-3 mr-1" />
                         Débito
                       </TabsTrigger>
-                      <TabsTrigger value="credit" className="text-xs">
+                      <TabsTrigger
+                        value="credit"
+                        className={({ active }) => getTabClassName("credit") + (active ? " bg-orange-100 text-orange-800 border-orange-300" : "")}
+                      >
                         <CreditCard className="h-3 w-3 mr-1" />
                         Crédito
                       </TabsTrigger>
-                      <TabsTrigger value="pix" className="text-xs">
+                      <TabsTrigger
+                        value="pix"
+                        className={({ active }) => getTabClassName("pix") + (active ? " bg-orange-100 text-orange-800 border-orange-300" : "")}
+                      >
                         <QrCode className="h-3 w-3 mr-1" />
                         Pix
                       </TabsTrigger>
-                      <TabsTrigger value="cash" className="text-xs">
+                      <TabsTrigger
+                        value="cash"
+                        className={({ active }) => getTabClassName("cash") + (active ? " bg-orange-100 text-orange-800 border-orange-300" : "")}
+                      >
                         <Banknote className="h-3 w-3 mr-1" />
                         Dinheiro
                       </TabsTrigger>
@@ -327,8 +347,8 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
                               </p>
                             )}
                             {parseFloat(amount) >= remaining && (
-                              <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                                <p className="text-sm text-green-700 font-medium">
+                              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
+                                <p className="text-sm text-orange-700 font-medium">
                                   Troco: R$ {(parseFloat(amount) - remaining).toFixed(2)}
                                 </p>
                               </div>
