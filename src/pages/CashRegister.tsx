@@ -23,7 +23,7 @@ const CashRegister = () => {
   const [finalClosingAmount, setFinalClosingAmount] = useState(0);
   const [transactionAmount, setTransactionAmount] = useState('');
   const [transactionDescription, setTransactionDescription] = useState('');
-  const [transactionCategory, setTransactionCategory] = useState('taxa_entrega');
+  const [transactionCategory, setTransactionCategory] = useState('ifood');
   const [notes, setNotes] = useState('');
   const [closeResult, setCloseResult] = useState<any>(null);
   const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
@@ -220,10 +220,8 @@ const CashRegister = () => {
       if (!printWindow) return;
   
       const openingAmount = parseFloat(register.opening_amount || 0);
-      // Total Vendas = soma de todas as formas de pagamento
       const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
   
-      // Calcular totais por categoria de sangria (apenas sangrias, sem vouchers/adições)
       const calculateTotalsByCategory = (transactions: any[]) => {
         const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
         return withdrawals.reduce((acc: any, t: any) => {
@@ -241,31 +239,22 @@ const CashRegister = () => {
       const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
       const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
       
-      // Vales e Adições (separados do Fechamento Caixa)
       const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
       const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
       
       const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
       const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
   
-      // Fechamento Caixa (Calc) = Total Vendas - Total Sangrias (como solicitado)
-      // Antigo: salesTotal - totalWithdrawals (que incluía vouchers/adições)
-      // Novo: apenas subtrair as sangrias, conforme a fórmula solicitada
       const calculatedClosingCash = salesTotal - totalSangrias;
       
-      // VALOR INFORMADO = Valor Contado (o que o operador digitou no fechamento)
-      // Vem do banco: register.closing_amount
       const valorInformado = parseFloat(register.closing_amount || 0);
       
-      // VALOR ESPERADO = Abertura + Vendas em Dinheiro + Adições - Sangrias - Vales
       const expectedAmount = register.expected_amount !== undefined 
         ? parseFloat(register.expected_amount) 
         : openingAmount + (register.salesByPayment?.cash || 0) + additionTotal - totalSangrias - voucherTotal;
       
-      // Diferença = Valor Informado - Valor Esperado
       const difference = valorInformado - expectedAmount;
 
-      // Formatação para impressora Epson T20 (receipt printer térmica)
       const html = `
             <!DOCTYPE html>
             <html>
@@ -302,7 +291,7 @@ const CashRegister = () => {
                   <h2 class="large center bold">EMPÓRIO DAS COXINHAS</h2>
                   <p class="medium center">Relatório de Fechamento de Caixa</p>
                   <p class="small center">
-                    ${formatDateTime(register.closed_at)}
+                    ${formatDateTime(new Date().toISOString())}
                   </p>
                   <div class="divider"></div>
                 </div>
@@ -349,9 +338,7 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">VALES:</span>
                   <br>
-                  ${vouchers.map((trans: any) =>
-                    `<span class="small">-${formatCurrency(parseFloat(trans.amount))} - ${trans.description || 'Sem descrição'}</span>`
-                  ).join('<br>')}
+                  ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')}
                   <br>
                   <span class="medium bold">Total de Vales:</span> ${formatCurrency(voucherTotal)}
                 </div>
@@ -363,9 +350,7 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">ADIÇÕES:</span>
                   <br>
-                  ${additions.map((trans: any) =>
-                    `<span class="small">+${formatCurrency(parseFloat(trans.amount))} - ${trans.description || 'Sem descrição'}</span>`
-                  ).join('<br>')}
+                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')}
                   <br>
                   <span class="medium bold">Total de Adições:</span> ${formatCurrency(additionTotal)}
                 </div>
@@ -495,9 +480,6 @@ const CashRegister = () => {
       </div>
     );
   }
-
-  const withdrawals = currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || [];
-  const totalsByCategory = calculateTotalsByCategory(currentRegister?.transactions || []);
 
   return (
     <div className="flex">
@@ -1174,217 +1156,6 @@ const CashRegister = () => {
                   </div>
                 )}
       </div>
-
-      <Dialog open={isCloseSuccessDialogOpen} onOpenChange={setIsCloseSuccessDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              Caixa Fechado com Sucesso!
-            </DialogTitle>
-          </DialogHeader>
-          
-          {(() => {
-                      const closedTotalsByCategory = calculateTotalsByCategory(closedRegisterData?.transactions || []);
-                                            const totalWithdrawals = Object.values(closedTotalsByCategory).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0) as number;
-                      
-                      return (
-              <div className="printable-receipt">
-                <div className="text-center mb-4 pb-2 border-b-2 border-dashed">
-                  <h2 className="text-xl font-bold">EMPÓRIO DAS COXINHAS</h2>
-                  <p className="text-sm text-gray-600">Relatório de Fechamento de Caixa</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {formatDateTime(new Date().toISOString())}
-                  </p>
-                </div>
-
-                <div className="space-y-2 mb-4 text-sm">
-                  <div className="flex justify-between">
-                    <span>Abertura:</span>
-                    <span className="font-semibold">{formatCurrency(parseFloat(closedRegisterData?.opening_amount || 0))}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Total Vendas:</span>
-                    <span className="font-semibold text-green-600">{formatCurrency(closeResult?.salesTotal || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Fechamento do Caixa (Calc):</span>
-                    <span className="font-semibold text-blue-600">{formatCurrency(closeResult?.closingCash || 0)}</span>
-                  </div>
-                </div>
-
-                <div className="mb-4 pb-2 border-b-2 border-dashed">
-                  <h4 className="font-bold text-sm mb-2">Vendas por Forma:</h4>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Dinheiro:</span>
-                      <span>{formatCurrency(closeResult?.cashSales || 0)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Débito:</span>
-                      <span>{formatCurrency(closedRegisterData?.salesByPayment?.debit || 0)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Crédito:</span>
-                      <span>{formatCurrency(closedRegisterData?.salesByPayment?.credit || 0)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Pix:</span>
-                      <span>{formatCurrency(closedRegisterData?.salesByPayment?.pix || 0)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {totalWithdrawals > 0 && (
-                  <div className="mb-4 pb-2 border-b-2 border-dashed">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-bold text-sm text-red-700">SANGRIAS:</h4>
-                      <span className="font-bold text-red-600">-{formatCurrency(totalWithdrawals)}</span>
-                    </div>
-                    
-                    {closedTotalsByCategory.taxa_entrega > 0 && (
-                      <div className="mb-2">
-                        <div className="flex justify-between font-semibold text-orange-700 text-xs mb-1">
-                          <span>Deliverys:</span>
-                          <span>-{formatCurrency(closedTotalsByCategory.taxa_entrega)}</span>
-                        </div>
-                        {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'taxa_entrega').map((trans: any) => (
-                          <div key={trans.id} className="flex justify-between text-xs">
-                            <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
-                            <span>-{formatCurrency(parseFloat(trans.amount))}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {closedTotalsByCategory.ifood > 0 && (
-                      <div className="mb-2">
-                        <div className="flex justify-between font-semibold text-red-700 text-xs mb-1">
-                          <span>Ifoods:</span>
-                          <span>-{formatCurrency(closedTotalsByCategory.ifood)}</span>
-                        </div>
-                        {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'ifood').map((trans: any) => (
-                          <div key={trans.id} className="flex justify-between text-xs">
-                            <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
-                            <span>-{formatCurrency(parseFloat(trans.amount))}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {closedTotalsByCategory.brigadeiros > 0 && (
-                      <div className="mb-2">
-                        <div className="flex justify-between font-semibold text-amber-700 text-xs mb-1">
-                          <span>Brigadeiros:</span>
-                          <span>-{formatCurrency(closedTotalsByCategory.brigadeiros)}</span>
-                        </div>
-                        {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'brigadeiros').map((trans: any) => (
-                          <div key={trans.id} className="flex justify-between text-xs">
-                            <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
-                            <span>-{formatCurrency(parseFloat(trans.amount))}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {closedTotalsByCategory.outros > 0 && (
-                      <div className="mb-2">
-                        <div className="flex justify-between font-semibold text-gray-700 text-xs mb-1">
-                          <span>Outros:</span>
-                          <span>-{formatCurrency(closedTotalsByCategory.outros)}</span>
-                        </div>
-                        {closedRegisterData?.transactions?.filter((t: any) => getCategoryFromDescription(t.description) === 'outros').map((trans: any) => (
-                          <div key={trans.id} className="flex justify-between text-xs">
-                            <span className="truncate max-w-[120px]">{getCleanDescription(trans.description)}</span>
-                            <span>-{formatCurrency(parseFloat(trans.amount))}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {closeResult?.vouchers > 0 && (
-                  <div className="mb-4 pb-2 border-b-2 border-dashed">
-                    <h4 className="font-bold text-sm mb-2 text-amber-700">VALES:</h4>
-                    <div className="space-y-1 text-sm">
-                      {closedRegisterData?.transactions?.filter((t: any) => t.type === 'voucher').map((trans: any) => (
-                        <div key={trans.id} className="flex justify-between">
-                          <span className="truncate max-w-[150px]">{trans.description || 'Sem descrição'}</span>
-                          <span className="text-amber-600">-{formatCurrency(parseFloat(trans.amount))}</span>
-                        </div>
-                      ))}
-                      <div className="flex justify-between font-bold pt-1 border-t">
-                        <span>Total:</span>
-                        <span className="text-amber-600">-{formatCurrency(closeResult?.vouchers || 0)}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {closeResult?.additions > 0 && (
-                  <div className="mb-4 pb-2 border-b-2 border-dashed">
-                    <h4 className="font-bold text-sm mb-2 text-green-700">ADIÇÕES:</h4>
-                    <div className="space-y-1 text-sm">
-                      {closedRegisterData?.transactions?.filter((t: any) => t.type === 'addition').map((trans: any) => (
-                        <div key={trans.id} className="flex justify-between">
-                          <span className="truncate max-w-[150px]">{trans.description || 'Sem descrição'}</span>
-                          <span className="text-green-600">+{formatCurrency(parseFloat(trans.amount))}</span>
-                        </div>
-                      ))}
-                      <div className="flex justify-between font-bold pt-1 border-t">
-                        <span>Total:</span>
-                        <span className="text-green-600">+{formatCurrency(closeResult?.additions || 0)}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mb-4 pb-2 border-b-2 border-dashed">
-                  <h4 className="font-bold text-sm mb-2">CONFERÊNCIA:</h4>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Valor Informado (Contado):</span>
-                      <span className="font-semibold">{formatCurrency(finalClosingAmount)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Valor Esperado:</span>
-                      <span className="font-semibold">{formatCurrency(closeResult?.expectedCashAmount || 0)}</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t">
-                      <span className="font-bold">DIFERENÇA:</span>
-                      <span className={`font-bold text-lg ${
-                        (closeResult?.difference || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {formatCurrency(closeResult?.difference || 0)}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 text-center mt-1">
-                    {(closeResult?.difference || 0) > 0 ? 'Sobrou dinheiro' : 
-                     (closeResult?.difference || 0) < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}
-                  </p>
-                </div>
-
-                <div className="text-center text-xs text-gray-500 pt-2">
-                  <p>*** OBRIGADO PELA PREFERÊNCIA ***</p>
-                  <p>Empório das Coxinhas</p>
-                </div>
-              </div>
-            );
-          })()}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCloseSuccessDialogOpen(false)}>
-              Fechar
-            </Button>
-            <Button onClick={handlePrint} className="flex-1">
-              <Printer className="h-4 w-4 mr-2" />
-              Imprimir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <style>{`
               @media print {
