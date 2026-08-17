@@ -217,213 +217,226 @@ const CashRegister = () => {
   };
 
   const handlePrintHistorical = (register: any) => {
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) return;
-  
-      const openingAmount = parseFloat(register.opening_amount || 0);
-      const expectedAmount = parseFloat(register.expected_amount || 0);
-      const difference = parseFloat(register.difference || 0);
-  
-      // Calcular Total Vendas a partir das vendas por forma
-      const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
-  
-      // Calcular fechamento do caixa = Total Vendas - Sangrias
-      const calculateTotalsByCategory = (transactions: any[]) => {
-        const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
-        return withdrawals.reduce((acc: any, t: any) => {
-          const desc = t.description || '';
-          let cat = 'outros';
-          if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
-          else if (desc.startsWith('iFood')) cat = 'ifood';
-          else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
-          
-          acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
-          return acc;
-        }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
-      };
-  
-      const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
-      const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
-      const closingAmount = salesTotal - totalSangrias;
-  
-      // Generate ESC/POS commands for Epson T20
-      const escPosCommands = generateEscPosCommands({
-        title: 'EMPÓRIO DAS COXINHAS',
-        subtitle: 'Relatório de Fechamento de Caixa',
-        date: formatDateTime(register.closed_at),
-        opening: `Abertura: R$ ${formatCurrency(openingAmount)}`,
-        salesTotal: `Total Vendas: R$ ${formatCurrency(salesTotal)}`,
-        closing: `Fechamento do Caixa: R$ ${formatCurrency(closingAmount)}`,
-        paymentBreakdown: [
-          `Dinheiro: R$ ${formatCurrency(register.salesByPayment?.cash || 0)}`,
-          `Débito: R$ ${formatCurrency(register.salesByPayment?.debit || 0)}`,
-          `Crédito: R$ ${formatCurrency(register.salesByPayment?.credit || 0)}`,
-          `Pix: R$ ${formatCurrency(register.salesByPayment?.pix || 0)}`
-        ],
-        sangrias: {
-          total: `SANGRIAS: ${formatCurrency(totalSangrias)}`,
-          breakdown: [
-            `Delivery: ${formatCurrency(totalsByCategory.taxa_entrega)}`,
-            `Ifood: ${formatCurrency(totalsByCategory.ifood)}`,
-            `Brigadeiros: ${formatCurrency(totalsByCategory.brigadeiros)}`,
-            `Outros: ${formatCurrency(totalsByCategory.outros)}`
-          ],
-          detailed: register.transactions?.filter((t: any) => t.type === 'withdrawal' && t.description?.startsWith('Taxa Entrega')).map((trans: any) =>
-            `${trans.description} ${formatCurrency(parseFloat(trans.amount))}`
-          ).join('\n') || '',
-          detailedIfood: register.transactions?.filter((t: any) => t.type === 'withdrawal' && t.description?.startsWith('iFood')).map((trans: any) =>
-            `${trans.description} ${formatCurrency(parseFloat(trans.amount))}`
-          ).join('\n') || '',
-          detailedBrigadeiros: register.transactions?.filter((t: any) => t.type === 'withdrawal' && t.description?.startsWith('Brigadeiros')).map((trans: any) =>
-            `${trans.description} ${formatCurrency(parseFloat(trans.amount))}`
-          ).join('\n') || '',
-          detailedOutros: register.transactions?.filter((t: any) => t.type === 'withdrawal' && !t.description?.startsWith('Taxa Entrega') && !t.description?.startsWith('iFood') && !t.description?.startsWith('Brigadeiros')).map((trans: any) =>
-            `${trans.description} ${formatCurrency(parseFloat(trans.amount))}`
-          ).join('\n') || ''
-        },
-        conference: {
-          valueInformed: `Valor Informado: R$ ${formatCurrency(closingAmount)}`,
-          expectedValue: `Valor Esperado: R$ ${formatCurrency(expectedAmount)}`,
-          difference: `DIFERENÇA: ${formatCurrency(difference)}`,
-          result: difference > 0 ? 'SOBROU DINHEIRO' : difference < 0 ? 'FALTOU DINHEIRO' : 'CAIXA FECHOU EXATO'
-        },
-        thanks: [
-          '*** OBRIGADO PELA PREFERÊNCIA ***',
-          'Empório das Coxinhas'
-        ]
-      });
-  
-      printWindow.document.write(escPosCommands);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const openingAmount = parseFloat(register.opening_amount || 0);
+    const expectedAmount = parseFloat(register.expected_amount || 0);
+    const difference = parseFloat(register.difference || 0);
+
+    // Calcular Total Vendas a partir das vendas por forma
+    const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
+
+    // Calcular fechamento do caixa = Total Vendas - Sangrias
+    const calculateTotalsByCategory = (transactions: any[]) => {
+      const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
+      return withdrawals.reduce((acc: any, t: any) => {
+        const desc = t.description || '';
+        let cat = 'outros';
+        if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
+        else if (desc.startsWith('iFood')) cat = 'ifood';
+        else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
+        
+        acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
+        return acc;
+      }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
     };
-  
-    // Generate ESC/POS commands for Epson T20 thermal printer
-    function generateEscPosCommands(data: {
-      title: string;
-      subtitle: string;
-      date: string;
-      opening: string;
-      salesTotal: string;
-      closing: string;
-      paymentBreakdown: string[];
-      sangrias: {
-        total: string;
-        breakdown: string[];
-        detailed: string;
-        detailedIfood: string;
-        detailedBrigadeiros: string;
-        detailedOutros: string;
-      };
-      conference: {
-        valueInformed: string;
-        expectedValue: string;
-        difference: string;
-        result: string;
-      };
-      thanks: string[];
-    }) {
-      // ESC/POS commands
-      const ESC = '\x1B';
-      const GS = '\x1D';
-      const RS = '\x1C';
-      const EOT = '\x04';
-      
-      // Command sequences
-      const ESC_ALIGN_CENTER = ESC + 'a' + '1'; // Center align
-      const ESC_ALIGN_LEFT = ESC + 'a' + '0'; // Left align
-      const ESC_BOLD_ON = ESC + 'E' + '1'; // Bold on
-      const ESC_BOLD_OFF = ESC + 'E' + '0'; // Bold off
-      const GS_ESC_PRINT = GS + ESC + 'V' + '1'; // Print text
-      const GS_ESC_SELECT = GS + ESC + '!' + '0'; // Select print mode
-      const GS_ESC_FONT = GS + ESC + '!' + '1'; // Select 12-dot font
-      const GS_ESC_FONT_12 = GS + ESC + '!' + '2'; // Select 12-dot font
-      const GS_ESC_FONT_10 = GS + ESC + '!' + '0'; // Select 10-dot font
-      const GS_ESC_UNDERLINE_ON = GS + 'U' + '1'; // Underline on
-      const GS_ESC_UNDERLINE_OFF = GS + 'U' + '0'; // Underline off
-      const GS_ESC_FS_DRAW_BARCODE = GS + 'F' + '1'; // Draw barcode
-      const GS_ESC_DRAW_IMAGE = GS + 'f' + '1'; // Draw image
-      const GS_ESC_CUT = GS + 'd' + '3'; // Cut paper
-      
-      // Helper functions
-      const printText = (text: string) => {
-        return GS + '!' + '0' + text + '\n';
-      };
-      
-      const printBoldText = (text: string) => {
-        return ESC + 'E' + '1' + text + ESC + 'E' + '0' + '\n';
-      };
-      
-      const printUnderlinedText = (text: string) => {
-        return GS + 'U' + '1' + text + GS + 'U' + '0' + '\n';
-      };
-      
-      const printCenteredText = (text: string) => {
-        return ESC + 'a' + '1' + text + ESC + 'a' + '0' + '\n';
-      };
-      
-      const printHeader = () => {
-        return [
-          ESC + '2' + '1', // Set double height
-          printCenteredText(data.title),
-          printCenteredText(data.subtitle),
-          ESC + '2' + '0', // Set normal height
-          printCenteredText(data.date),
-          '\n'
-        ].join('');
-      };
-      
-      const printFooter = () => {
-        return [
-          '\n',
-          ...data.thanks.map(printCenteredText),
-          ESC + 'd' + '3', // Cut paper
-        ].join('');
-      };
-      
-      // Build the report
-      const lines = [
-        // Header
-        printHeader(),
-        
-        // Opening
-        printBoldText(data.opening),
-        
-        // Sales breakdown
-        printBoldText('VENDAS POR FORMA:'),
-        ...data.paymentBreakdown.map(printText),
-        
-        // Closing
-        printBoldText('FECHAMENTO DO CAIXA:'),
-        printText(data.closing),
-        
-        // Sales total
-        printBoldText('TOTAL VENDAS:'),
-        printText(data.salesTotal),
-        
-        // Sangrias
-        printBoldText('SANGRIAS:'),
-        printText(data.sangrias.total),
-        ...data.sangrias.breakdown.map(printText),
-        ...(data.sangrias.detailed ? [data.sangrias.detailed] : []),
-        
-        // Conference
-        printBoldText('CONFERÊNCIA:'),
-        printText(data.conference.valueInformed),
-        printText(data.conference.expectedValue),
-        printText(data.conference.difference),
-        printText(data.conference.result),
-        
-        // Empty line
-        '\n',
-        
-        // Footer
-          printFooter()
-        ].flat();
-      
-      return lines.join('');
-    }
+
+    const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
+    const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
+    const closingAmount = salesTotal - totalSangrias;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Relatório de Fechamento de Caixa</title>
+        <style>
+          body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 5mm; color: black; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .font-bold { font-weight: bold; }
+          .border-b { border-bottom: 1px solid #000; }
+          .border-t { border-top: 1px solid #000; }
+          .border-dashed { border-top: 2px dashed #000; border-bottom: 2px dashed #000; }
+          .mt-1 { margin-top: 4px; }
+          .mt-2 { margin-top: 8px; }
+          .mb-2 { margin-bottom: 8px; }
+          .mb-4 { margin-bottom: 16px; }
+          .pb-2 { padding-bottom: 8px; }
+          .pt-2 { padding-top: 8px; }
+          .text-sm { font-size: 10px; }
+          .text-xs { font-size: 9px; }
+          .text-green-600 { color: #059669; }
+          .text-red-600 { color: #dc2626; }
+          .text-orange-600 { color: #ea580c; }
+          .text-blue-600 { color: #2563eb; }
+          .text-purple-600 { color: #9333ea; }
+          .text-amber-600 { color: #d97706; }
+          .text-gray-600 { color: #4b5563; }
+          .text-gray-700 { color: #374151; }
+          .flex { display: flex; justify-content: space-between; }
+          .page-break { page-break-after: always; }
+        </style>
+      </head>
+      <body>
+        <div class="text-center mb-4 pb-2 border-b-2 border-dashed">
+          <h2 style="font-size: 16px; text-align: center; margin-bottom: 5px; font-weight: bold;">EMPÓRIO DAS COXINHAS</h2>
+          <p class="text-sm text-gray-600">Relatório de Fechamento de Caixa</p>
+          <p class="text-xs text-gray-500 mt-1">
+            ${formatDateTime(register.closed_at)}
+          </p>
+        </div>
+
+        <div class="space-y-2 mb-4 text-sm">
+          <div class="flex justify-between">
+            <span>Abertura:</span>
+            <span class="font-bold">${formatCurrency(openingAmount)}</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Total Vendas:</span>
+            <span class="font-bold text-green-600">${formatCurrency(salesTotal)}</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Fechamento do Caixa:</span>
+            <span class="font-bold text-orange-600">${formatCurrency(closingAmount)}</span>
+          </div>
+        </div>
+
+        <div class="mb-4 pb-2 border-b-2 border-dashed">
+          <h4 class="font-bold text-sm mb-2">VENDAS POR FORMA:</h4>
+          <div class="space-y-1 text-sm">
+            <div class="flex justify-between">
+              <span>Dinheiro:</span>
+              <span>${formatCurrency(register.salesByPayment?.cash || 0)}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Débito:</span>
+              <span>${formatCurrency(register.salesByPayment?.debit || 0)}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Crédito:</span>
+              <span>${formatCurrency(register.salesByPayment?.credit || 0)}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Pix:</span>
+              <span>${formatCurrency(register.salesByPayment?.pix || 0)}</span>
+            </div>
+          </div>
+        </div>
+
+        ${totalSangrias > 0 ? `
+        <div class="mb-4 pb-2 border-b-2 border-dashed">
+          <div class="flex justify-between items-center mb-2">
+            <h4 class="font-bold text-sm text-red-700">SANGRIAS:</h4>
+            <span class="font-bold text-red-600">-${formatCurrency(totalSangrias)}</span>
+          </div>
+          
+          ${totalsByCategory.taxa_entrega > 0 ? `
+          <div class="mb-2">
+            <div class="flex justify-between font-semibold text-orange-700 text-xs mb-1">
+              <span>Deliverys:</span>
+              <span>-${formatCurrency(totalsByCategory.taxa_entrega)}</span>
+            </div>
+            ${register.transactions?.filter((t: any) => t.type === 'withdrawal' && t.description?.startsWith('Taxa Entrega')).map((trans: any) => `
+              <div class="flex justify-between text-xs">
+                <span class="truncate max-w-[120px]">${getCleanDescription(trans.description)}</span>
+                <span>-${formatCurrency(parseFloat(trans.amount))}</span>
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
+
+          ${totalsByCategory.ifood > 0 ? `
+          <div class="mb-2">
+            <div class="flex justify-between font-semibold text-red-700 text-xs mb-1">
+              <span>Ifood:</span>
+              <span>-${formatCurrency(totalsByCategory.ifood)}</span>
+            </div>
+            ${register.transactions?.filter((t: any) => t.type === 'withdrawal' && t.description?.startsWith('iFood')).map((trans: any) => `
+              <div class="flex justify-between text-xs">
+                <span class="truncate max-w-[120px]">${getCleanDescription(trans.description)}</span>
+                <span>-${formatCurrency(parseFloat(trans.amount))}</span>
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
+
+          ${totalsByCategory.brigadeiros > 0 ? `
+          <div class="mb-2">
+            <div class="flex justify-between font-semibold text-amber-700 text-xs mb-1">
+              <span>Brigadeiros:</span>
+              <span>-${formatCurrency(totalsByCategory.brigadeiros)}</span>
+            </div>
+            ${register.transactions?.filter((t: any) => t.type === 'withdrawal' && t.description?.startsWith('Brigadeiros')).map((trans: any) => `
+              <div class="flex justify-between text-xs">
+                <span class="truncate max-w-[120px]">${getCleanDescription(trans.description)}</span>
+                <span>-${formatCurrency(parseFloat(trans.amount))}</span>
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
+
+          ${totalsByCategory.outros > 0 ? `
+          <div class="mb-2">
+            <div class="flex justify-between font-semibold text-gray-700 text-xs mb-1">
+              <span>Outros:</span>
+              <span>-${formatCurrency(totalsByCategory.outros)}</span>
+            </div>
+            ${register.transactions?.filter((t: any) => t.type === 'withdrawal' && !t.description?.startsWith('Taxa Entrega') && !t.description?.startsWith('iFood') && !t.description?.startsWith('Brigadeiros')).map((trans: any) => `
+              <div class="flex justify-between text-xs">
+                <span class="truncate max-w-[120px]">${getCleanDescription(trans.description)}</span>
+                <span>-${formatCurrency(parseFloat(trans.amount))}</span>
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
+        </div>
+        ` : ''}
+
+        <div class="mb-4 pb-2 border-b-2 border-dashed">
+          <h4 class="font-bold text-sm mb-2">CONFERÊNCIA:</h4>
+          <div class="space-y-1 text-sm">
+            <div class="flex justify-between">
+              <span>Valor Informado:</span>
+              <span class="font-bold">${formatCurrency(closingAmount)}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Valor Esperado:</span>
+              <span class="font-bold">${formatCurrency(expectedAmount)}</span>
+            </div>
+            <div class="flex justify-between items-center pt-2 border-t">
+              <span class="font-bold">DIFERENÇA:</span>
+              <span class="font-bold text-lg ${difference >= 0 ? 'text-green-600' : 'text-red-600'}">
+                ${formatCurrency(difference)}
+              </span>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 text-center mt-1">
+            ${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}
+          </p>
+        </div>
+
+        ${register.notes ? `
+        <div class="mb-4 pb-2 border-b-2 border-dashed">
+          <h4 class="font-bold text-sm mb-2">OBSERVAÇÕES:</h4>
+          <p class="text-sm">${register.notes}</p>
+        </div>
+        ` : ''}
+
+        <div class="text-center text-xs text-gray-500 pt-2">
+          <p>*** OBRIGADO PELA PREFERÊNCIA ***</p>
+          <p>Empório das Coxinhas</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
 
   if (isLoading) {
     return (
