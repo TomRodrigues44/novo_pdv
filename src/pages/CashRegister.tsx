@@ -216,6 +216,229 @@ const CashRegister = () => {
     window.print();
   };
 
+  const handlePrintHistorical = (register: any) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const openingAmount = parseFloat(register.opening_amount || 0);
+    const closingAmount = parseFloat(register.closing_amount || 0);
+    const expectedAmount = parseFloat(register.expected_amount || 0);
+    const salesTotal = expectedAmount - openingAmount;
+    const difference = parseFloat(register.difference || 0);
+
+    // Calcular sangrias por categoria
+    const calculateTotalsByCategory = (transactions: any[]) => {
+      const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
+      return withdrawals.reduce((acc: any, t: any) => {
+        const desc = t.description || '';
+        let cat = 'outros';
+        if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
+        else if (desc.startsWith('iFood')) cat = 'ifood';
+        else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
+        
+        acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
+        return acc;
+      }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
+    };
+
+    const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Relatório de Fechamento de Caixa</title>
+        <style>
+          body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 5mm; color: black; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .font-bold { font-weight: bold; }
+          .border-b { border-bottom: 1px solid #000; }
+          .border-t { border-top: 1px solid #000; }
+          .border-dashed { border-top: 2px dashed #000; border-bottom: 2px dashed #000; }
+          .mt-1 { margin-top: 4px; }
+          .mt-2 { margin-top: 8px; }
+          .mb-2 { margin-bottom: 8px; }
+          .mb-4 { margin-bottom: 16px; }
+          .pb-2 { padding-bottom: 8px; }
+          .pt-2 { padding-top: 8px; }
+          .text-sm { font-size: 10px; }
+          .text-xs { font-size: 9px; }
+          .text-green-600 { color: #059669; }
+          .text-red-600 { color: #dc2626; }
+          .text-orange-600 { color: #ea580c; }
+          .text-blue-600 { color: #2563eb; }
+          .text-purple-600 { color: #9333ea; }
+          .text-amber-600 { color: #d97706; }
+          .text-gray-600 { color: #4b5563; }
+          .text-gray-700 { color: #374151; }
+          .flex { display: flex; justify-content: space-between; }
+          .page-break { page-break-after: always; }
+        </style>
+      </head>
+      <body>
+        <div class="text-center mb-4 pb-2 border-b-2 border-dashed">
+          <h2 style="font-size: 16px; text-align: center; margin-bottom: 5px; font-weight: bold;">EMPÓRIO DAS COXINHAS</h2>
+          <p class="text-sm text-gray-600">Relatório de Fechamento de Caixa</p>
+          <p class="text-xs text-gray-500 mt-1">
+            ${formatDateTime(register.closed_at)}
+          </p>
+        </div>
+
+        <div class="space-y-2 mb-4 text-sm">
+          <div class="flex justify-between">
+            <span>Abertura:</span>
+            <span class="font-bold">${formatCurrency(openingAmount)}</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Total Vendas:</span>
+            <span class="font-bold text-green-600">${formatCurrency(salesTotal)}</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Esperado:</span>
+            <span class="font-bold text-orange-600">${formatCurrency(expectedAmount)}</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Contado:</span>
+            <span class="font-bold">${formatCurrency(closingAmount)}</span>
+          </div>
+        </div>
+
+        <div class="mb-4 pb-2 border-b-2 border-dashed">
+          <h4 class="font-bold text-sm mb-2">VENDAS POR FORMA:</h4>
+          <div class="space-y-1 text-sm">
+            <div class="flex justify-between">
+              <span>Dinheiro:</span>
+              <span>${formatCurrency(register.salesByPayment?.cash || 0)}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Débito:</span>
+              <span>${formatCurrency(register.salesByPayment?.debit || 0)}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Crédito:</span>
+              <span>${formatCurrency(register.salesByPayment?.credit || 0)}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Pix:</span>
+              <span>${formatCurrency(register.salesByPayment?.pix || 0)}</span>
+            </div>
+          </div>
+        </div>
+
+        ${totalsByCategory.taxa_entrega > 0 || totalsByCategory.ifood > 0 || totalsByCategory.brigadeiros > 0 || totalsByCategory.outros > 0 ? `
+        <div class="mb-4 pb-2 border-b-2 border-dashed">
+          <div class="flex justify-between items-center mb-2">
+            <h4 class="font-bold text-sm text-red-700">SANGRIAS:</h4>
+            <span class="font-bold text-red-600">-${formatCurrency(totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros)}</span>
+          </div>
+          
+          ${totalsByCategory.taxa_entrega > 0 ? `
+          <div class="mb-2">
+            <div class="flex justify-between font-semibold text-orange-700 text-xs mb-1">
+              <span>Delivery:</span>
+              <span>-${formatCurrency(totalsByCategory.taxa_entrega)}</span>
+            </div>
+            ${register.transactions?.filter((t: any) => t.type === 'withdrawal' && t.description?.startsWith('Taxa Entrega')).map((trans: any) => `
+              <div class="flex justify-between text-xs">
+                <span class="truncate max-w-[120px]">${getCleanDescription(trans.description)}</span>
+                <span>-${formatCurrency(parseFloat(trans.amount))}</span>
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
+
+          ${totalsByCategory.ifood > 0 ? `
+          <div class="mb-2">
+            <div class="flex justify-between font-semibold text-red-700 text-xs mb-1">
+              <span>Ifood:</span>
+              <span>-${formatCurrency(totalsByCategory.ifood)}</span>
+            </div>
+            ${register.transactions?.filter((t: any) => t.type === 'withdrawal' && t.description?.startsWith('iFood')).map((trans: any) => `
+              <div class="flex justify-between text-xs">
+                <span class="truncate max-w-[120px]">${getCleanDescription(trans.description)}</span>
+                <span>-${formatCurrency(parseFloat(trans.amount))}</span>
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
+
+          ${totalsByCategory.brigadeiros > 0 ? `
+          <div class="mb-2">
+            <div class="flex justify-between font-semibold text-amber-700 text-xs mb-1">
+              <span>Brigadeiros:</span>
+              <span>-${formatCurrency(totalsByCategory.brigadeiros)}</span>
+            </div>
+            ${register.transactions?.filter((t: any) => t.type === 'withdrawal' && t.description?.startsWith('Brigadeiros')).map((trans: any) => `
+              <div class="flex justify-between text-xs">
+                <span class="truncate max-w-[120px]">${getCleanDescription(trans.description)}</span>
+                <span>-${formatCurrency(parseFloat(trans.amount))}</span>
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
+
+          ${totalsByCategory.outros > 0 ? `
+          <div class="mb-2">
+            <div class="flex justify-between font-semibold text-gray-700 text-xs mb-1">
+              <span>Outros:</span>
+              <span>-${formatCurrency(totalsByCategory.outros)}</span>
+            </div>
+            ${register.transactions?.filter((t: any) => t.type === 'withdrawal' && !t.description?.startsWith('Taxa Entrega') && !t.description?.startsWith('iFood') && !t.description?.startsWith('Brigadeiros')).map((trans: any) => `
+              <div class="flex justify-between text-xs">
+                <span class="truncate max-w-[120px]">${getCleanDescription(trans.description)}</span>
+                <span>-${formatCurrency(parseFloat(trans.amount))}</span>
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
+        </div>
+        ` : ''}
+
+        <div class="mb-4 pb-2 border-b-2 border-dashed">
+          <h4 class="font-bold text-sm mb-2">CONFERÊNCIA:</h4>
+          <div class="space-y-1 text-sm">
+            <div class="flex justify-between">
+              <span>Valor Informado:</span>
+              <span class="font-bold">${formatCurrency(closingAmount)}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Valor Esperado:</span>
+              <span class="font-bold">${formatCurrency(expectedAmount)}</span>
+            </div>
+            <div class="flex justify-between items-center pt-2 border-t">
+              <span class="font-bold">DIFERENÇA:</span>
+              <span class="font-bold text-lg ${difference >= 0 ? 'text-green-600' : 'text-red-600'}">
+                ${formatCurrency(difference)}
+              </span>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 text-center mt-1">
+            ${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}
+          </p>
+        </div>
+
+        ${register.notes ? `
+        <div class="mb-4 pb-2 border-b-2 border-dashed">
+          <h4 class="font-bold text-sm mb-2">OBSERVAÇÕES:</h4>
+          <p class="text-sm">${register.notes}</p>
+        </div>
+        ` : ''}
+
+        <div class="text-center text-xs text-gray-500 pt-2">
+          <p>*** OBRIGADO PELA PREFERÊNCIA ***</p>
+          <p>Empório das Coxinhas</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
   if (isLoading) {
     return (
       <div className="flex">
@@ -814,40 +1037,48 @@ const CashRegister = () => {
         )}
 
         {history.length > 0 && (
-          <div className="mt-8">
-            <h2 className="text-2xl font-bold mb-4">Histórico de Fechamentos</h2>
-            <div className="space-y-4">
-              {history.map((register: any) => (
-                <Card key={register.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">
-                        {formatDateTime(register.closed_at)}
-                      </CardTitle>
-                      <div className="flex items-center gap-2">
-                        {register.difference > 0 ? (
-                          <div className="flex items-center gap-1 text-green-600">
-                            <TrendingUp className="h-4 w-4" />
-                            <span className="font-semibold">
-                              +{formatCurrency(register.difference)}
-                            </span>
-                          </div>
-                        ) : register.difference < 0 ? (
-                          <div className="flex items-center gap-1 text-red-600">
-                            <TrendingDown className="h-4 w-4" />
-                            <span className="font-semibold">
-                              {formatCurrency(register.difference)}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-blue-600">
-                            <CheckCircle className="h-4 w-4" />
-                            <span className="font-semibold">Exato</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
+                  <div className="mt-8">
+                    <h2 className="text-2xl font-bold mb-4">Histórico de Fechamentos</h2>
+                    <div className="space-y-4">
+                      {history.map((register: any) => (
+                        <Card key={register.id}>
+                          <CardHeader>
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-lg">
+                                {formatDateTime(register.closed_at)}
+                              </CardTitle>
+                              <div className="flex items-center gap-2">
+                                {register.difference > 0 ? (
+                                  <div className="flex items-center gap-1 text-green-600">
+                                    <TrendingUp className="h-4 w-4" />
+                                    <span className="font-semibold">
+                                      +{formatCurrency(register.difference)}
+                                    </span>
+                                  </div>
+                                ) : register.difference < 0 ? (
+                                  <div className="flex items-center gap-1 text-red-600">
+                                    <TrendingDown className="h-4 w-4" />
+                                    <span className="font-semibold">
+                                      {formatCurrency(register.difference)}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 text-blue-600">
+                                    <CheckCircle className="h-4 w-4" />
+                                    <span className="font-semibold">Exato</span>
+                                  </div>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handlePrintHistorical(register)}
+                                  className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                >
+                                  <Printer className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
