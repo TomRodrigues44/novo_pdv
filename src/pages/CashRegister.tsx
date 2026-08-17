@@ -221,12 +221,13 @@ const CashRegister = () => {
     if (!printWindow) return;
 
     const openingAmount = parseFloat(register.opening_amount || 0);
-    const closingAmount = salesTotal - (totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros);
     const expectedAmount = parseFloat(register.expected_amount || 0);
-    const salesTotal = (register.salesByPayment.cash || 0) + (register.salesByPayment.debit || 0) + (register.salesByPayment.credit || 0) + (register.salesByPayment.pix || 0);
     const difference = parseFloat(register.difference || 0);
 
-    // Calcular sangrias por categoria
+    // Calcular Total Vendas a partir das vendas por forma
+    const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
+
+    // Calcular fechamento do caixa = Total Vendas - Sangrias
     const calculateTotalsByCategory = (transactions: any[]) => {
       const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
       return withdrawals.reduce((acc: any, t: any) => {
@@ -242,6 +243,8 @@ const CashRegister = () => {
     };
 
     const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
+    const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
+    const closingAmount = salesTotal - totalSangrias;
 
     const html = `
       <!DOCTYPE html>
@@ -322,11 +325,11 @@ const CashRegister = () => {
           </div>
         </div>
 
-        ${totalsByCategory.taxa_entrega > 0 || totalsByCategory.ifood > 0 || totalsByCategory.brigadeiros > 0 || totalsByCategory.outros > 0 ? `
+        ${totalSangrias > 0 ? `
         <div class="mb-4 pb-2 border-b-2 border-dashed">
           <div class="flex justify-between items-center mb-2">
             <h4 class="font-bold text-sm text-red-700">SANGRIAS:</h4>
-            <span class="font-bold text-red-600">-${formatCurrency(totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros)}</span>
+            <span class="font-bold text-red-600">-${formatCurrency(totalSangrias)}</span>
           </div>
           
           ${totalsByCategory.taxa_entrega > 0 ? `
