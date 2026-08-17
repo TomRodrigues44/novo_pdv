@@ -127,11 +127,10 @@ const CashRegister = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-         closingAmount: amount,
-         notes,
-         finalClosingAmount: amount,
-         }),
-         });
+          closingAmount: amount,
+          notes,
+        }),
+      });
 
       if (response.ok) {
         const result = await response.json();
@@ -244,10 +243,8 @@ const CashRegister = () => {
       };
   
       const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
-            const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
-            const valorContado = salesTotal - totalSangrias;
-                  const valorContado = parseFloat(register.closing_amount || 0);
-            const valorContado = parseFloat(register.closing_amount || 0);
+      const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
+      const closingAmount = salesTotal - totalSangrias;
 
       // Calcular Vales e Adições
       const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
@@ -370,16 +367,16 @@ const CashRegister = () => {
 
                 <!-- ÁREA 6: Conferencia e Diferença -->
                 <div class="line">
-                                  <span class="medium bold">CONFERÊNCIA:</span>
-                                  <br>
-                                  <span class="small">Valor Informado: ${formatCurrency(valorContado)}</span>
-                                  <br>
-                                  <span class="small">Valor Esperado: ${formatCurrency(expectedAmount)}</span>
-                                  <br>
-                                  <span class="medium bold">DIFERENÇA: ${formatCurrency(difference)}</span>
-                                  <br>
-                                  <span class="small">${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}</span>
-                                </div>
+                  <span class="medium bold">CONFERÊNCIA:</span>
+                  <br>
+                  <span class="small">Valor Informado: ${formatCurrency(closingAmount)}</span>
+                  <br>
+                  <span class="small">Valor Esperado: ${formatCurrency(expectedAmount)}</span>
+                  <br>
+                  <span class="medium bold">DIFERENÇA: ${formatCurrency(difference)}</span>
+                  <br>
+                  <span class="small">${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}</span>
+                </div>
                 <div class="divider"></div>
 
                 <div class="line">
