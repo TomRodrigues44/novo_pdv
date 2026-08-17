@@ -222,7 +222,7 @@ const CashRegister = () => {
       // Total Vendas = soma de todas as formas de pagamento
       const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
   
-      // Calcular totais por categoria de sangria
+      // Calcular totais por categoria de sangria (apenas sangrias, sem vouchers/adições)
       const calculateTotalsByCategory = (transactions: any[]) => {
         const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
         return withdrawals.reduce((acc: any, t: any) => {
@@ -240,26 +240,23 @@ const CashRegister = () => {
       const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
       const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
       
-      // Vales e Adições
+      // Vales e Adições (separados do Fechamento Caixa)
       const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
       const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
       
       const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
       const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
   
-      // Total de Saques = Sangrias + Vales
-      // Adições entram como redução de saque (ou aumento de disponível)
-      const totalWithdrawals = totalSangrias + voucherTotal - additionTotal;
-      
-      // Fechamento Caixa (Calculado) = Total Vendas - Total Saques
-      const calculatedClosingCash = salesTotal - totalWithdrawals;
+      // Fechamento Caixa (Calc) = Total Vendas - Total Sangrias (como solicitado)
+      // Antigo: salesTotal - totalWithdrawals (que incluía vouchers/adições)
+      // Novo: apenas subtrair as sangrias, conforme a fórmula solicitada
+      const calculatedClosingCash = salesTotal - totalSangrias;
       
       // VALOR INFORMADO = Valor Contado (o que o operador digitou no fechamento)
       // Vem do banco: register.closing_amount
       const valorInformado = parseFloat(register.closing_amount || 0);
       
       // VALOR ESPERADO = Abertura + Vendas em Dinheiro + Adições - Sangrias - Vales
-      // Ou usar o expected_amount salvo no banco se disponível
       const expectedAmount = register.expected_amount !== undefined 
         ? parseFloat(register.expected_amount) 
         : openingAmount + (register.salesByPayment?.cash || 0) + additionTotal - totalSangrias - voucherTotal;
@@ -309,7 +306,7 @@ const CashRegister = () => {
                   <div class="divider"></div>
                 </div>
 
-                <!-- ÁREA 1: Abertura, Total Vendas e Fechamento Caixa (Calculado) -->
+                <!-- ÁREA 1: Abertura, Total Vendas e Fechamento Caixa (Calc) -->
                 <div class="line">
                   <span class="medium bold">Abertura:</span> ${formatCurrency(openingAmount)}
                   <br>
