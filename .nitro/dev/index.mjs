@@ -24,7 +24,7 @@ import { SourceMapConsumer } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node
 import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
-import nodemailer from 'nodemailer';
+import nodemailer from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/nodemailer@9.0.5/node_modules/nodemailer/lib/nodemailer.js';
 import forge from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/node-forge@1.4.0/node_modules/node-forge/lib/index.js';
 import QRCode from 'file://C:/Users/tomsa/dyad-apps/novo-pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
 import https from 'node:https';
