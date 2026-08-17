@@ -940,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"32a43-rNQ7ZPPpF05w2fFssEmkAo9MeVc\"",
-    "mtime": "2026-08-17T15:46:48.263Z",
-    "size": 207427,
+    "etag": "\"3509b-mnvNxzjbFJw3rO3IZlCBIFHkxM4\"",
+    "mtime": "2026-08-17T15:59:30.690Z",
+    "size": 217243,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"beab5-OYRwumpgz2njWsYdAjFSilokxw8\"",
-    "mtime": "2026-08-17T15:46:48.263Z",
-    "size": 780981,
+    "etag": "\"c903e-92OajafWciTiTcNuDX3faRMR6GU\"",
+    "mtime": "2026-08-17T15:59:30.691Z",
+    "size": 823358,
     "path": "index.mjs.map"
   }
 };
@@ -1979,6 +1979,14 @@ function createTransporter() {
   if (!config.user || !config.pass) {
     throw new Error("Configura\xE7\xF5es de e-mail (SMTP_USER, SMTP_PASS) n\xE3o definidas");
   }
+  console.log("\u{1F527} Configura\xE7\xE3o SMTP:", {
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    user: config.user,
+    pass: "***"
+    // Não logar senha real
+  });
   return nodemailer.createTransport({
     host: config.host,
     port: config.port,
@@ -2013,7 +2021,7 @@ function generateReportHtml(data) {
     valorInformado,
     expectedAmount,
     difference,
-    closedAt: closedAt2,
+    closedAt,
     notes
   } = data;
   return `
@@ -2046,7 +2054,7 @@ function generateReportHtml(data) {
         <div class="header">
           <h1>EMP\xD3RIO DAS COXINHAS</h1>
           <p>Relat\xF3rio de Fechamento de Caixa</p>
-          <p>${formatDateTime(closedAt2)}</p>
+          <p>${formatDateTime(closedAt)}</p>
         </div>
 
         <div class="section">
@@ -2127,23 +2135,32 @@ function generateReportHtml(data) {
 async function sendCashRegisterCloseEmail(data) {
   try {
     const transporter = createTransporter();
+    const fromEmail = process.env.SMTP_USER || "";
     const toEmail = process.env.CASH_REGISTER_EMAIL_TO || "tom.santanna@gmail.com";
-    const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || "";
     if (!fromEmail) {
-      throw new Error("E-mail remetente (SMTP_FROM ou SMTP_USER) n\xE3o configurado");
+      throw new Error("E-mail remetente (SMTP_USER) n\xE3o configurado");
     }
+    console.log("\u{1F4E7} Iniciando envio de e-mail...");
+    console.log("   Remetente:", fromEmail);
+    console.log("   Destinat\xE1rio:", toEmail);
     const html = generateReportHtml(data);
-    const subject = `\u{1F4CA} Fechamento de Caixa - Emp\xF3rio das Coxinhas - ${formatDateTime(closedAt)}`;
-    await transporter.sendMail({
+    const subject = `\u{1F4CA} Fechamento de Caixa - Emp\xF3rio das Coxinhas - ${formatDateTime(data.closedAt)}`;
+    const info = await transporter.sendMail({
       from: `"Emp\xF3rio das Coxinhas" <${fromEmail}>`,
       to: toEmail,
       subject,
       html
     });
-    console.log(`\u2705 E-mail de fechamento de caixa enviado para ${toEmail}`);
+    console.log("\u2705 E-mail enviado com sucesso!", info.messageId);
     return { success: true };
   } catch (error) {
-    console.error("\u274C Erro ao enviar e-mail de fechamento:", error);
+    console.error("\u274C Erro detalhado ao enviar e-mail:", {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode
+    });
     return { success: false, error: error.message };
   }
 }
