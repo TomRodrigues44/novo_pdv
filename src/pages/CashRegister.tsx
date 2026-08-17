@@ -55,10 +55,8 @@ const CashRegister = () => {
       setTimeElapsed(Math.max(0, diffInMinutes));
     };
 
-    // Calcular imediatamente
     calculateTimeElapsed();
 
-    // Atualizar a cada segundo
     const interval = setInterval(() => {
       calculateTimeElapsed();
     }, 1000);
@@ -221,13 +219,10 @@ const CashRegister = () => {
       if (!printWindow) return;
   
       const openingAmount = parseFloat(register.opening_amount || 0);
-      const expectedAmount = parseFloat(register.expected_amount || 0);
-      const difference = parseFloat(register.difference || 0);
-  
-      // Calcular Total Vendas a partir das vendas por forma
+      // Total Vendas = soma de todas as formas de pagamento
       const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
   
-      // Calcular fechamento do caixa = Total Vendas - Sangrias
+      // Calcular totais por categoria de sangria
       const calculateTotalsByCategory = (transactions: any[]) => {
         const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
         return withdrawals.reduce((acc: any, t: any) => {
@@ -244,17 +239,35 @@ const CashRegister = () => {
   
       const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
       const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
-      const closingAmount = salesTotal - totalSangrias;
-
-      // Calcular Vales e Adições
+      
+      // Vales e Adições
       const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
       const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
       
       const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
       const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
   
+      // Total de Saques = Sangrias + Vales
+      // Adições entram como redução de saque (ou aumento de disponível)
+      const totalWithdrawals = totalSangrias + voucherTotal - additionTotal;
+      
+      // Fechamento Caixa (Calculado) = Total Vendas - Total Saques
+      const calculatedClosingCash = salesTotal - totalWithdrawals;
+      
+      // VALOR INFORMADO = Valor Contado (o que o operador digitou no fechamento)
+      // Vem do banco: register.closing_amount
+      const valorInformado = parseFloat(register.closing_amount || 0);
+      
+      // VALOR ESPERADO = Abertura + Vendas em Dinheiro + Adições - Sangrias - Vales
+      // Ou usar o expected_amount salvo no banco se disponível
+      const expectedAmount = register.expected_amount !== undefined 
+        ? parseFloat(register.expected_amount) 
+        : openingAmount + (register.salesByPayment?.cash || 0) + additionTotal - totalSangrias - voucherTotal;
+      
+      // Diferença = Valor Informado - Valor Esperado
+      const difference = valorInformado - expectedAmount;
+
       // Formatação para impressora Epson T20 (receipt printer térmica)
-      // Usa fonte monospace, layout estreito, sem cores (impressão B&W térmica)
       const html = `
             <!DOCTYPE html>
             <html>
@@ -262,7 +275,6 @@ const CashRegister = () => {
               <meta charset="utf-8">
               <title>Relatório Fechamento Caixa - Epson T20</title>
               <style>
-                /* Estilo para impressora Epson T20 - térmica 58mm/80mm */
                 body {
                   font-family: 'Courier New', Courier, monospace;
                   font-size: 10px;
@@ -284,9 +296,6 @@ const CashRegister = () => {
                 .flex { display: flex; justify-content: space-between; }
                 .gap-2 { gap: 2mm; }
                 .gap-1 { gap: 1mm; }
-                
-                /* Quebras de página para impressão */
-                .page-break { page-break-after: always; }
               </style>
             </head>
             <body>
@@ -300,13 +309,13 @@ const CashRegister = () => {
                   <div class="divider"></div>
                 </div>
 
-                <!-- ÁREA 1: Abertura, Total Vendas e Fechamento Caixa -->
+                <!-- ÁREA 1: Abertura, Total Vendas e Fechamento Caixa (Calculado) -->
                 <div class="line">
                   <span class="medium bold">Abertura:</span> ${formatCurrency(openingAmount)}
                   <br>
                   <span class="medium bold">Total Vendas:</span> ${formatCurrency(salesTotal)}
                   <br>
-                  <span class="medium bold">Fechamento Caixa:</span> ${formatCurrency(closingAmount)}
+                  <span class="medium bold">Fechamento Caixa (Calc):</span> ${formatCurrency(calculatedClosingCash)}
                 </div>
                 <div class="divider"></div>
 
@@ -365,11 +374,11 @@ const CashRegister = () => {
                 <div class="divider"></div>
                 ` : ''}
 
-                <!-- ÁREA 6: Conferencia e Diferença -->
+                <!-- ÁREA 6: Conferencia -->
                 <div class="line">
                   <span class="medium bold">CONFERÊNCIA:</span>
                   <br>
-                  <span class="small">Valor Informado: ${formatCurrency(closingAmount)}</span>
+                  <span class="small">Valor Informado (Contado): ${formatCurrency(valorInformado)}</span>
                   <br>
                   <span class="small">Valor Esperado: ${formatCurrency(expectedAmount)}</span>
                   <br>
@@ -865,8 +874,8 @@ const CashRegister = () => {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 mb-4">
-                  Ao fechar o caixa, você precisará informar o valor total em dinheiro.
-                  O sistema calculará a diferença apenas após a confirmação.
+                  Ao fechar o caixa, você precisará informar o valor total em dinheiro contado.
+                  O sistema calculará a diferença entre o valor contado e o valor esperado.
                 </p>
                 <Dialog open={isCloseDialogOpen} onOpenChange={setIsCloseDialogOpen}>
                   <DialogTrigger asChild>
@@ -883,7 +892,7 @@ const CashRegister = () => {
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium mb-2">
-                          Valor em Dinheiro (Contado)
+                          Valor Contado em Dinheiro
                         </label>
                         <Input
                           type="number"
@@ -1099,7 +1108,7 @@ const CashRegister = () => {
                     <span className="font-semibold text-green-600">{formatCurrency(closeResult?.salesTotal || 0)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Fechamento do Caixa:</span>
+                    <span>Fechamento do Caixa (Calc):</span>
                     <span className="font-semibold text-blue-600">{formatCurrency(closeResult?.closingCash || 0)}</span>
                   </div>
                 </div>
@@ -1235,7 +1244,7 @@ const CashRegister = () => {
                   <h4 className="font-bold text-sm mb-2">CONFERÊNCIA:</h4>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span>Valor Informado:</span>
+                      <span>Valor Informado (Contado):</span>
                       <span className="font-semibold">{formatCurrency(finalClosingAmount)}</span>
                     </div>
                     <div className="flex justify-between">
@@ -1346,7 +1355,6 @@ const CashRegister = () => {
                 }
               }
               
-              /* Estilo específico para Epson T20 - impressão térmica */
               @media print {
                 .epson-t20-receipt {
                   font-family: 'Courier New', Courier, monospace !important;
