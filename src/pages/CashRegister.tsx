@@ -221,8 +221,10 @@ const CashRegister = () => {
       if (!printWindow) return;
   
       const openingAmount = parseFloat(register.opening_amount || 0);
-      const expectedAmount = parseFloat(register.expected_amount || 0);
-      const difference = parseFloat(register.difference || 0);
+            // Calcular Valor Esperado com base na fórmula correta
+            const totalWithdrawals = totalSangrias + voucherTotal + additionTotal;
+            const expectedAmount = openingAmount + salesTotal - totalWithdrawals;
+            const difference = parseFloat(register.closing_amount || 0) - expectedAmount;
   
       // Calcular Total Vendas a partir das vendas por forma
       const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
@@ -369,7 +371,7 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">CONFERÊNCIA:</span>
                   <br>
-                  <span class="small">Valor Informado: ${formatCurrency(closingAmount)}</span>
+                  <span class="small">Valor Informado: ${formatCurrency(register.closing_amount)}</span>
                   <br>
                   <span class="small">Valor Esperado: ${formatCurrency(expectedAmount)}</span>
                   <br>
