@@ -936,7 +936,22 @@ const plugins = [
   
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"327a8-y+3dJOPPrUQpyjWzif05kr9TLlA\"",
+    "mtime": "2026-08-17T13:29:29.219Z",
+    "size": 206760,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"be674-gDmNQIqwK6/NRcrQIFmwFnjKRzQ\"",
+    "mtime": "2026-08-17T13:29:29.220Z",
+    "size": 779892,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1853,6 +1868,53 @@ const cancelPassword_post$1 = /*#__PURE__*/Object.freeze({
   default: cancelPassword_post
 });
 
+async function getRegisterDetails(register) {
+  const salesAndPayments = await sql`
+    SELECT
+      s.id,
+      s.total_amount,
+      s.status,
+      s.xml_status,
+      sp.payment_type,
+      sp.amount
+    FROM sales s
+    LEFT JOIN sale_payments sp ON s.id = sp.sale_id
+    WHERE s.created_at >= ${register.opened_at}
+      AND s.status != 'cancelled'
+      AND s.xml_status != 'cancelled'
+  `;
+  let salesTotal = 0;
+  const salesByPayment = {
+    cash: 0,
+    debit: 0,
+    credit: 0,
+    pix: 0
+  };
+  const processedSales = /* @__PURE__ */ new Set();
+  salesAndPayments.forEach((row) => {
+    if (!processedSales.has(row.id)) {
+      salesTotal += parseFloat(row.total_amount);
+      processedSales.add(row.id);
+    }
+    if (row.payment_type && row.amount) {
+      const type = row.payment_type.toLowerCase();
+      if (salesByPayment[type] !== void 0) {
+        salesByPayment[type] += parseFloat(row.amount);
+      }
+    }
+  });
+  const transactionsResult = await sql`
+    SELECT * FROM cash_transactions
+    WHERE cash_register_id = ${register.id}
+    ORDER BY created_at DESC
+  `;
+  return {
+    ...register,
+    salesTotal,
+    salesByPayment,
+    transactions: transactionsResult
+  };
+}
 const cashRegister_get = defineEventHandler(async () => {
   try {
     const openRegisterResult = await sql`
@@ -1862,67 +1924,30 @@ const cashRegister_get = defineEventHandler(async () => {
       LIMIT 1
     `;
     if (openRegisterResult.length === 0) {
-      const history2 = await sql`
+      const historyRaw2 = await sql`
         SELECT * FROM cash_registers
         WHERE status = 'closed'
         ORDER BY closed_at DESC
         LIMIT 10
       `;
+      const history2 = await Promise.all(
+        historyRaw2.map((register) => getRegisterDetails(register))
+      );
       return { current: null, history: history2 };
     }
     const currentRegister = openRegisterResult[0];
-    const salesAndPayments = await sql`
-      SELECT 
-        s.id,
-        s.total_amount,
-        s.status,
-        s.xml_status,
-        sp.payment_type,
-        sp.amount
-      FROM sales s
-      LEFT JOIN sale_payments sp ON s.id = sp.sale_id
-      WHERE s.created_at >= ${currentRegister.opened_at}
-        AND s.status != 'cancelled'
-        AND s.xml_status != 'cancelled'
-    `;
-    let salesTotal = 0;
-    const salesByPayment = {
-      cash: 0,
-      debit: 0,
-      credit: 0,
-      pix: 0
-    };
-    const processedSales = /* @__PURE__ */ new Set();
-    salesAndPayments.forEach((row) => {
-      if (!processedSales.has(row.id)) {
-        salesTotal += parseFloat(row.total_amount);
-        processedSales.add(row.id);
-      }
-      if (row.payment_type && row.amount) {
-        const type = row.payment_type.toLowerCase();
-        if (salesByPayment[type] !== void 0) {
-          salesByPayment[type] += parseFloat(row.amount);
-        }
-      }
-    });
-    const transactionsResult = await sql`
-      SELECT * FROM cash_transactions
-      WHERE cash_register_id = ${currentRegister.id}
-      ORDER BY created_at DESC
-    `;
-    const history = await sql`
+    const currentDetails = await getRegisterDetails(currentRegister);
+    const historyRaw = await sql`
       SELECT * FROM cash_registers
       WHERE status = 'closed'
       ORDER BY closed_at DESC
       LIMIT 10
     `;
+    const history = await Promise.all(
+      historyRaw.map((register) => getRegisterDetails(register))
+    );
     return {
-      current: {
-        ...currentRegister,
-        salesTotal,
-        salesByPayment,
-        transactions: transactionsResult
-      },
+      current: currentDetails,
       history
     };
   } catch (error) {

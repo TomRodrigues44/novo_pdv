@@ -221,9 +221,9 @@ const CashRegister = () => {
     if (!printWindow) return;
 
     const openingAmount = parseFloat(register.opening_amount || 0);
-    const closingAmount = parseFloat(register.closing_amount || 0);
+    const closingAmount = salesTotal - (totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros);
     const expectedAmount = parseFloat(register.expected_amount || 0);
-    const salesTotal = expectedAmount - openingAmount;
+    const salesTotal = (register.salesByPayment.cash || 0) + (register.salesByPayment.debit || 0) + (register.salesByPayment.credit || 0) + (register.salesByPayment.pix || 0);
     const difference = parseFloat(register.difference || 0);
 
     // Calcular sangrias por categoria
@@ -295,12 +295,8 @@ const CashRegister = () => {
             <span class="font-bold text-green-600">${formatCurrency(salesTotal)}</span>
           </div>
           <div class="flex justify-between">
-            <span>Esperado:</span>
-            <span class="font-bold text-orange-600">${formatCurrency(expectedAmount)}</span>
-          </div>
-          <div class="flex justify-between">
-            <span>Contado:</span>
-            <span class="font-bold">${formatCurrency(closingAmount)}</span>
+            <span>Fechamento do Caixa:</span>
+            <span class="font-bold text-orange-600">${formatCurrency(closingAmount)}</span>
           </div>
         </div>
 
@@ -336,7 +332,7 @@ const CashRegister = () => {
           ${totalsByCategory.taxa_entrega > 0 ? `
           <div class="mb-2">
             <div class="flex justify-between font-semibold text-orange-700 text-xs mb-1">
-              <span>Delivery:</span>
+              <span>Deliverys:</span>
               <span>-${formatCurrency(totalsByCategory.taxa_entrega)}</span>
             </div>
             ${register.transactions?.filter((t: any) => t.type === 'withdrawal' && t.description?.startsWith('Taxa Entrega')).map((trans: any) => `
