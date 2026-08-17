@@ -19,6 +19,9 @@ declare module "nitropack/types" {
     '/api/cash-register/open': {
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/cash-register/open.post').default>>>>
     }
+    '/api/cash-register/send-email': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/cash-register/send-email.post').default>>>>
+    }
     '/api/cash-transactions': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/cash-transactions.get').default>>>>
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/cash-transactions.post').default>>>>
