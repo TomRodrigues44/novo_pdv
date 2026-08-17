@@ -24,7 +24,6 @@ import { SourceMapConsumer } from 'file://C:/Users/1793579/dyad-apps/novo-pdv/no
 import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793579/dyad-apps/novo-pdv/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
-import nodemailer from 'nodemailer';
 import forge from 'file://C:/Users/1793579/dyad-apps/novo-pdv/node_modules/.pnpm/node-forge@1.4.0/node_modules/node-forge/lib/index.js';
 import QRCode from 'file://C:/Users/1793579/dyad-apps/novo-pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
 import https from 'node:https';
@@ -940,16 +939,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"32a43-u9ukQE3yxnT6zlgyfUotr21RXvs\"",
-    "mtime": "2026-08-17T13:46:33.810Z",
-    "size": 207427,
+    "etag": "\"327a8-y+3dJOPPrUQpyjWzif05kr9TLlA\"",
+    "mtime": "2026-08-17T13:29:29.219Z",
+    "size": 206760,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"beab5-OYRwumpgz2njWsYdAjFSilokxw8\"",
-    "mtime": "2026-08-17T13:46:33.811Z",
-    "size": 780981,
+    "etag": "\"be674-gDmNQIqwK6/NRcrQIFmwFnjKRzQ\"",
+    "mtime": "2026-08-17T13:29:29.220Z",
+    "size": 779892,
     "path": "index.mjs.map"
   }
 };
@@ -1968,68 +1967,95 @@ const cashRegister_get$1 = /*#__PURE__*/Object.freeze({
 const close_post = defineEventHandler(async (event) => {
   try {
     const { closingAmount, notes } = await readBody(event);
-    const { closingAmount: ca, notes: n, salesTotal, cashSales, closingCash, difference, expectedCashAmount } = closeResult;
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port: parseInt(process.env.SMTP_PORT || "587"),
-      secure: process.env.SMTP_SECURE === "true",
-      // true para 465, false para outros ports
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+    const openRegister = await sql`
+      SELECT * FROM cash_registers
+      WHERE status = 'open'
+      ORDER BY opened_at DESC
+      LIMIT 1
+    `;
+    if (openRegister.length === 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Nenhum caixa aberto encontrado"
+      });
+    }
+    const register = openRegister[0];
+    const sales = await sql`
+      SELECT
+        s.id,
+        s.total_amount,
+        COALESCE(SUM(sp.amount) FILTER (WHERE sp.payment_type = 'cash'), 0) AS cash_paid,
+        COALESCE(SUM(sp.amount) FILTER (WHERE sp.payment_type <> 'cash'), 0) AS non_cash_paid
+      FROM sales s
+      LEFT JOIN sale_payments sp ON sp.sale_id = s.id
+      WHERE s.created_at >= ${register.opened_at}
+        AND s.status != 'cancelled'
+        AND s.xml_status != 'cancelled'
+      GROUP BY s.id, s.total_amount
+    `;
+    let salesTotal = 0;
+    let cashSales = 0;
+    sales.forEach((sale) => {
+      const total = parseFloat(sale.total_amount);
+      const cashPaid = parseFloat(sale.cash_paid);
+      const nonCashPaid = parseFloat(sale.non_cash_paid);
+      const netCash = Math.min(cashPaid, Math.max(total - nonCashPaid, 0));
+      salesTotal += total;
+      cashSales += netCash;
+    });
+    const transactionsResult = await sql`
+      SELECT type, COALESCE(SUM(amount), 0) as total
+      FROM cash_transactions
+      WHERE cash_register_id = ${register.id}
+      GROUP BY type
+    `;
+    let withdrawals = 0;
+    let additions = 0;
+    let vouchers = 0;
+    transactionsResult.forEach((trans) => {
+      const total = parseFloat(trans.total);
+      if (trans.type === "withdrawal") {
+        withdrawals += total;
+      } else if (trans.type === "addition") {
+        additions += total;
+      } else if (trans.type === "voucher") {
+        vouchers += total;
       }
     });
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || "PDV Emp\xF3rio das Coxinhas <noreply@emporiodascoxinhas.com>",
-      to: "tom.santanna@gmail.com",
-      subject: `Relat\xF3rio de Fechamento de Caixa - ${(/* @__PURE__ */ new Date()).toLocaleDateString("pt-BR")}`,
-      html: `
-        <h2>Relat\xF3rio de Fechamento de Caixa</h2>
-        <p><strong>Data:</strong> ${(/* @__PURE__ */ new Date()).toLocaleString("pt-BR")}</p>
-        <p><strong>Abertura:</strong> R$ ${salesTotal ? (parseFloat(process.env.opening_amount) || 0).toFixed(2) : "0,00"}</p>
-        <p><strong>Total Vendas:</strong> R$ ${salesTotal.toFixed(2)}</p>
-        <p><strong>Fechamento Caixa (Calc):</strong> R$ ${closingCash.toFixed(2)}</p>
-        <p><strong>Valor Contado:</strong> R$ ${(closingAmount || 0).toFixed(2)}</p>
-        <p><strong>Diferen\xE7a:</strong> R$ ${difference.toFixed(2)} ${difference >= 0 ? "Sobrou" : "Faltou"}</p>
-        <hr />
-        <p><strong>Detalhes:</strong></p>
-        <ul>
-          <li>Vendas Dinheiro: R$ ${cashSales.toFixed(2)}</li>
-          <li>Vendas D\xE9bito/Cr\xE9dito/Pix: ${Object.keys(cashSalesByPayment || {}).map((k) => `${k}: R$ ${(cashSalesByPayment[k] || 0).toFixed(2)}`).join("<li>")}</li>
-          <li>Sangrias totais: R$ ${(totalSangrias || 0).toFixed(2)}</li>
-          <li>Vales totais: R$ ${(voucherTotal || 0).toFixed(2)}</li>
-          <li>Adi\xE7\xF5es totais: R$ ${(additionTotal || 0).toFixed(2)}</li>
-        </ul>
-        <p><small>Este \xE9 um relat\xF3rio autom\xE1tico do sistema PDV Emp\xF3rio das Coxinhas.</small></p>
-      `,
-      text: `
-        Relat\xF3rio de Fechamento de Caixa
-        Data: ${(/* @__PURE__ */ new Date()).toLocaleString("pt-BR")}
-        Abertura: R$ ${(parseFloat(process.env.opening_amount) || 0).toFixed(2)}
-        Total Vendas: R$ ${salesTotal.toFixed(2)}
-        Fechamento Caixa (Calc): R$ ${closingCash.toFixed(2)}
-        Valor Contado: R$ ${(closingAmount || 0).toFixed(2)}
-        Diferen\xE7a: R$ ${difference.toFixed(2)} ${difference >= 0 ? "Sobrou" : "Faltou"}
-        Vendas Dinheiro: R$ ${cashSales.toFixed(2)}
-        Sangrias totais: R$ ${(totalSangrias || 0).toFixed(2)}
-        Vales totais: R$ ${(voucherTotal || 0).toFixed(2)}
-        Adi\xE7\xF5es totais: R$ ${(additionTotal || 0).toFixed(2)}
-        ---
-        Este \xE9 um relat\xF3rio autom\xE1tico do sistema PDV Emp\xF3rio das Coxinhas.
-      `
-    };
-    await transporter.sendMail(mailOptions);
+    const openingAmount = parseFloat(register.opening_amount);
+    const closingCash = salesTotal - withdrawals;
+    const expectedCashAmount = openingAmount + cashSales + additions - withdrawals - vouchers;
+    const expectedTotalAmount = openingAmount + salesTotal + additions - withdrawals - vouchers;
+    const difference = closingAmount - expectedCashAmount;
+    await sql`
+      UPDATE cash_registers
+      SET
+        closed_at = CURRENT_TIMESTAMP,
+        closing_amount = ${closingAmount},
+        expected_amount = ${expectedCashAmount},
+        difference = ${difference},
+        status = 'closed',
+        notes = ${notes || null}
+      WHERE id = ${register.id}
+    `;
     return {
-      ...closeResult,
-      emailSent: true,
-      emailMessage: "Relat\xF3rio enviado com sucesso para tom.santanna@gmail.com"
+      success: true,
+      salesTotal,
+      cashSales,
+      closingCash,
+      expectedCashAmount,
+      expectedTotalAmount,
+      withdrawals,
+      additions,
+      vouchers,
+      // NOVO: Total de Vales
+      difference
     };
   } catch (error) {
-    console.error("Error sending email report:", error);
-    if (error.statusCode) throw error;
+    console.error("Error closing cash register:", error);
     throw createError({
       statusCode: 500,
-      statusMessage: error.message || "Error sending email report"
+      statusMessage: "Error closing cash register"
     });
   }
 });
