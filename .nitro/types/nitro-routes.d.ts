@@ -54,13 +54,6 @@ declare module "nitropack/types" {
     '/api/customers/ensure-schema': {
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/customers/ensure-schema.post').default>>>>
     }
-    '/api/email/config': {
-      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/email/config.get').default>>>>
-      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/email/config.post').default>>>>
-    }
-    '/api/email/test': {
-      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/email/test.post').default>>>>
-    }
     '/api/fiscal/:id/cancel': {
       'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/routes/api/fiscal/[id]/cancel.post').default>>>>
     }
