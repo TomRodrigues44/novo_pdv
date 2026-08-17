@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, TrendingUp, TrendingDown, Clock, CheckCircle, Plus, Lock, Unlock, Minus, CreditCard, QrCode, Banknote, Printer, Receipt, Bike, Utensils, Smartphone } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, Clock, CheckCircle, Plus, Lock, Unlock, Minus, CreditCard, QrCode, Banknote, Printer, Receipt, Bike, Utensils, Smartphone, Mail } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -28,6 +28,7 @@ const CashRegister = () => {
   const [closeResult, setCloseResult] = useState<any>(null);
   const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
 
   const { data: cashData, isLoading, refetch } = useQuery({
     queryKey: ['cash-register'],
@@ -399,6 +400,88 @@ const CashRegister = () => {
       printWindow.focus();
       printWindow.print();
     };
+
+  // Nova função para enviar e-mail do fechamento de caixa
+  const handleSendEmail = async (register: any) => {
+    setSendingEmail(register.id);
+    
+    try {
+      // Preparar dados para o e-mail
+      const openingAmount = parseFloat(register.opening_amount || 0);
+      const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
+      
+      const calculateTotalsByCategory = (transactions: any[]) => {
+        const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
+        return withdrawals.reduce((acc: any, t: any) => {
+          const desc = t.description || '';
+          let cat = 'outros';
+          if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
+          else if (desc.startsWith('iFood')) cat = 'ifood';
+          else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
+          
+          acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
+          return acc;
+        }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
+      };
+      
+      const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
+      const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
+      
+      const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
+      const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
+      
+      const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
+      const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
+      
+      const calculatedClosingCash = salesTotal - totalSangrias;
+      const valorInformado = parseFloat(register.closing_amount || 0);
+      const expectedAmount = register.expected_amount !== undefined 
+        ? parseFloat(register.expected_amount) 
+        : openingAmount + (register.salesByPayment?.cash || 0) + additionTotal - totalSangrias - voucherTotal;
+      const difference = valorInformado - expectedAmount;
+
+      const emailData = {
+        openingAmount,
+        salesTotal,
+        calculatedClosingCash,
+        salesByPayment: {
+          cash: register.salesByPayment?.cash || 0,
+          debit: register.salesByPayment?.debit || 0,
+          credit: register.salesByPayment?.credit || 0,
+          pix: register.salesByPayment?.pix || 0,
+        },
+        totalsByCategory,
+        totalSangrias,
+        vouchers: vouchers.map((t: any) => ({ description: t.description, amount: parseFloat(t.amount) })),
+        voucherTotal,
+        additions: additions.map((t: any) => ({ description: t.description, amount: parseFloat(t.amount) })),
+        additionTotal,
+        valorInformado,
+        expectedAmount,
+        difference,
+        closedAt: register.closed_at,
+        notes: register.notes,
+      };
+
+      const response = await fetch('/api/cash-register/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailData),
+      });
+
+      if (response.ok) {
+        toast.success('E-mail do fechamento de caixa enviado com sucesso!');
+      } else {
+        const error = await response.json();
+        toast.error(error.statusMessage || 'Erro ao enviar e-mail');
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      toast.error('Erro ao enviar e-mail');
+    } finally {
+      setSendingEmail(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -1029,47 +1112,67 @@ const CashRegister = () => {
                                     <span className="font-semibold">Exato</span>
                                   </div>
                                 )}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handlePrintHistorical(register)}
-                                  className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                                >
-                                  <Printer className="h-4 w-4" />
-                                </Button>
+                                
+                                {/* AÇÕES: Impressão e Email */}
+                                <div className="flex items-center gap-2 ml-4">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handlePrintHistorical(register)}
+                                    className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                    title="Imprimir relatório"
+                                  >
+                                    <Printer className="h-4 w-4" />
+                                  </Button>
+                                  
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleSendEmail(register)}
+                                    disabled={sendingEmail === register.id}
+                                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    title="Enviar relatório por e-mail"
+                                  >
+                                    {sendingEmail === register.id ? (
+                                      <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                                    ) : (
+                                      <Mail className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-500">Abertura</p>
-                        <p className="font-semibold">{formatCurrency(register.opening_amount)}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Vendas</p>
-                        <p className="font-semibold text-green-600">{formatCurrency(register.expected_amount - register.opening_amount)}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Esperado</p>
-                        <p className="font-semibold text-orange-600">{formatCurrency(register.expected_amount)}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Contado</p>
-                        <p className="font-semibold">{formatCurrency(register.closing_amount)}</p>
-                      </div>
+                          <CardContent>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div>
+                                <p className="text-gray-500">Abertura</p>
+                                <p className="font-semibold">{formatCurrency(register.opening_amount)}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Vendas</p>
+                                <p className="font-semibold text-green-600">{formatCurrency(register.expected_amount - register.opening_amount)}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Esperado</p>
+                                <p className="font-semibold text-orange-600">{formatCurrency(register.expected_amount)}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Contado</p>
+                                <p className="font-semibold">{formatCurrency(register.closing_amount)}</p>
+                              </div>
+                            </div>
+                            {register.notes && (
+                              <div className="mt-3 pt-3 border-t">
+                                <p className="text-xs text-gray-500">Observações: {register.notes}</p>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
-                    {register.notes && (
-                      <div className="mt-3 pt-3 border-t">
-                        <p className="text-xs text-gray-500">Observações: {register.notes}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
+                  </div>
+                )}
       </div>
 
       <Dialog open={isCloseSuccessDialogOpen} onOpenChange={setIsCloseSuccessDialogOpen}>
