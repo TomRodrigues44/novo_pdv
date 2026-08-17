@@ -24,6 +24,7 @@ import { SourceMapConsumer } from 'file://C:/Users/1793579/dyad-apps/novo-pdv/no
 import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname as dirname$1, resolve as resolve$1 } from 'file://C:/Users/1793579/dyad-apps/novo-pdv/node_modules/.pnpm/pathe@2.0.3/node_modules/pathe/dist/index.mjs';
+import nodemailer from 'file://C:/Users/1793579/dyad-apps/novo-pdv/node_modules/.pnpm/nodemailer@9.0.5/node_modules/nodemailer/lib/nodemailer.js';
 import forge from 'file://C:/Users/1793579/dyad-apps/novo-pdv/node_modules/.pnpm/node-forge@1.4.0/node_modules/node-forge/lib/index.js';
 import QRCode from 'file://C:/Users/1793579/dyad-apps/novo-pdv/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/index.js';
 import https from 'node:https';
@@ -939,16 +940,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"327a8-y+3dJOPPrUQpyjWzif05kr9TLlA\"",
-    "mtime": "2026-08-17T13:29:29.219Z",
-    "size": 206760,
+    "etag": "\"32a43-rNQ7ZPPpF05w2fFssEmkAo9MeVc\"",
+    "mtime": "2026-08-17T15:46:48.263Z",
+    "size": 207427,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"be674-gDmNQIqwK6/NRcrQIFmwFnjKRzQ\"",
-    "mtime": "2026-08-17T13:29:29.220Z",
-    "size": 779892,
+    "etag": "\"beab5-OYRwumpgz2njWsYdAjFSilokxw8\"",
+    "mtime": "2026-08-17T15:46:48.263Z",
+    "size": 780981,
     "path": "index.mjs.map"
   }
 };
@@ -1964,7 +1965,191 @@ const cashRegister_get$1 = /*#__PURE__*/Object.freeze({
   default: cashRegister_get
 });
 
+function getEmailConfig() {
+  return {
+    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    port: parseInt(process.env.SMTP_PORT || "587"),
+    secure: process.env.SMTP_SECURE === "true",
+    user: process.env.SMTP_USER || "",
+    pass: process.env.SMTP_PASS || ""
+  };
+}
+function createTransporter() {
+  const config = getEmailConfig();
+  if (!config.user || !config.pass) {
+    throw new Error("Configura\xE7\xF5es de e-mail (SMTP_USER, SMTP_PASS) n\xE3o definidas");
+  }
+  return nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: {
+      user: config.user,
+      pass: config.pass
+    }
+  });
+}
+function formatCurrency(value) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  }).format(value);
+}
+function formatDateTime(dateStr) {
+  return new Date(dateStr).toLocaleString("pt-BR");
+}
+function generateReportHtml(data) {
+  const {
+    openingAmount,
+    salesTotal,
+    calculatedClosingCash,
+    salesByPayment,
+    totalsByCategory,
+    totalSangrias,
+    vouchers,
+    voucherTotal,
+    additions,
+    additionTotal,
+    valorInformado,
+    expectedAmount,
+    difference,
+    closedAt: closedAt2,
+    notes
+  } = data;
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: 'Courier New', Courier, monospace; font-size: 12px; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 20px; }
+        .header h1 { margin: 0; font-size: 18px; color: #e67e22; }
+        .header p { margin: 5px 0; font-size: 11px; color: #666; }
+        .section { margin-bottom: 15px; }
+        .section-title { font-weight: bold; font-size: 12px; border-bottom: 1px solid #000; margin-bottom: 8px; padding-bottom: 2px; }
+        .row { display: flex; justify-content: space-between; margin: 4px 0; font-size: 11px; }
+        .row.bold { font-weight: bold; }
+        .row.green { color: #27ae60; }
+        .row.red { color: #e74c3c; }
+        .row.blue { color: #3498db; }
+        .row.orange { color: #e67e22; }
+        .row.amber { color: #f39c12; }
+        .divider { border-top: 1px dashed #000; margin: 10px 0; }
+        .footer { text-align: center; font-size: 10px; color: #999; margin-top: 20px; padding-top: 10px; border-top: 2px dashed #000; }
+        .sub-row { margin-left: 15px; font-size: 10px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>EMP\xD3RIO DAS COXINHAS</h1>
+          <p>Relat\xF3rio de Fechamento de Caixa</p>
+          <p>${formatDateTime(closedAt2)}</p>
+        </div>
+
+        <div class="section">
+          <div class="section-title">RESUMO</div>
+          <div class="row"><span>Abertura:</span><span>${formatCurrency(openingAmount)}</span></div>
+          <div class="row"><span>Total Vendas:</span><span class="green">${formatCurrency(salesTotal)}</span></div>
+          <div class="row bold"><span>Fechamento Caixa (Calc):</span><span class="blue">${formatCurrency(calculatedClosingCash)}</span></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section">
+          <div class="section-title">VENDAS POR FORMA</div>
+          <div class="row"><span>Dinheiro:</span><span class="green">${formatCurrency(salesByPayment.cash)}</span></div>
+          <div class="row"><span>D\xE9bito:</span><span class="blue">${formatCurrency(salesByPayment.debit)}</span></div>
+          <div class="row"><span>Cr\xE9dito:</span><span class="purple">${formatCurrency(salesByPayment.credit)}</span></div>
+          <div class="row"><span>Pix:</span><span class="teal">${formatCurrency(salesByPayment.pix)}</span></div>
+        </div>
+
+        <div class="divider"></div>
+
+        ${totalSangrias > 0 ? `
+        <div class="section">
+          <div class="section-title">SANGRIAS: ${formatCurrency(totalSangrias)}</div>
+          ${totalsByCategory.taxa_entrega > 0 ? `<div class="row sub-row"><span>Deliverys:</span><span class="orange">-${formatCurrency(totalsByCategory.taxa_entrega)}</span></div>` : ""}
+          ${totalsByCategory.ifood > 0 ? `<div class="row sub-row"><span>Ifood:</span><span class="red">-${formatCurrency(totalsByCategory.ifood)}</span></div>` : ""}
+          ${totalsByCategory.brigadeiros > 0 ? `<div class="row sub-row"><span>Brigadeiros:</span><span class="amber">-${formatCurrency(totalsByCategory.brigadeiros)}</span></div>` : ""}
+          ${totalsByCategory.outros > 0 ? `<div class="row sub-row"><span>Outros:</span><span>-${formatCurrency(totalsByCategory.outros)}</span></div>` : ""}
+        </div>
+        <div class="divider"></div>
+        ` : ""}
+
+        ${voucherTotal > 0 ? `
+        <div class="section">
+          <div class="section-title">VALES: ${formatCurrency(voucherTotal)}</div>
+          ${vouchers.map((v) => `<div class="row sub-row"><span>${v.description}:</span><span class="amber">-${formatCurrency(v.amount)}</span></div>`).join("")}
+        </div>
+        <div class="divider"></div>
+        ` : ""}
+
+        ${additionTotal > 0 ? `
+        <div class="section">
+          <div class="section-title">ADI\xC7\xD5ES: ${formatCurrency(additionTotal)}</div>
+          ${additions.map((a) => `<div class="row sub-row"><span>${a.description}:</span><span class="green">+${formatCurrency(a.amount)}</span></div>`).join("")}
+        </div>
+        <div class="divider"></div>
+        ` : ""}
+
+        <div class="section">
+          <div class="section-title">CONFER\xCANCIA</div>
+          <div class="row"><span>Valor Informado (Contado):</span><span class="bold">${formatCurrency(valorInformado)}</span></div>
+          <div class="row"><span>Valor Esperado:</span><span>${formatCurrency(expectedAmount)}</span></div>
+          <div class="row bold ${difference >= 0 ? "green" : "red"}"><span>DIFEREN\xC7A:</span><span>${formatCurrency(difference)}</span></div>
+          <div class="row" style="font-size: 10px; color: ${difference > 0 ? "#27ae60" : difference < 0 ? "#e74c3c" : "#3498db"};">
+            <span></span>
+            <span>${difference > 0 ? "Sobrou dinheiro" : difference < 0 ? "Faltou dinheiro" : "Caixa fechou exato"}</span>
+          </div>
+        </div>
+
+        ${notes ? `
+        <div class="divider"></div>
+        <div class="section">
+          <div class="section-title">OBSERVA\xC7\xD5ES</div>
+          <p style="font-size: 11px; white-space: pre-wrap;">${notes}</p>
+        </div>
+        ` : ""}
+
+        <div class="footer">
+          <p>*** OBRIGADO PELA PREFER\xCANCIA ***</p>
+          <p>Emp\xF3rio das Coxinhas</p>
+          <p>Enviado automaticamente em ${formatDateTime((/* @__PURE__ */ new Date()).toISOString())}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+async function sendCashRegisterCloseEmail(data) {
+  try {
+    const transporter = createTransporter();
+    const toEmail = process.env.CASH_REGISTER_EMAIL_TO || "tom.santanna@gmail.com";
+    const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || "";
+    if (!fromEmail) {
+      throw new Error("E-mail remetente (SMTP_FROM ou SMTP_USER) n\xE3o configurado");
+    }
+    const html = generateReportHtml(data);
+    const subject = `\u{1F4CA} Fechamento de Caixa - Emp\xF3rio das Coxinhas - ${formatDateTime(closedAt)}`;
+    await transporter.sendMail({
+      from: `"Emp\xF3rio das Coxinhas" <${fromEmail}>`,
+      to: toEmail,
+      subject,
+      html
+    });
+    console.log(`\u2705 E-mail de fechamento de caixa enviado para ${toEmail}`);
+    return { success: true };
+  } catch (error) {
+    console.error("\u274C Erro ao enviar e-mail de fechamento:", error);
+    return { success: false, error: error.message };
+  }
+}
+
 const close_post = defineEventHandler(async (event) => {
+  var _a, _b, _c, _d;
   try {
     const { closingAmount, notes } = await readBody(event);
     const openRegister = await sql`
@@ -2004,53 +2189,99 @@ const close_post = defineEventHandler(async (event) => {
       cashSales += netCash;
     });
     const transactionsResult = await sql`
-      SELECT type, COALESCE(SUM(amount), 0) as total
-      FROM cash_transactions
+      SELECT * FROM cash_transactions
       WHERE cash_register_id = ${register.id}
-      GROUP BY type
+      ORDER BY created_at DESC
     `;
+    const transactions = transactionsResult;
     let withdrawals = 0;
     let additions = 0;
     let vouchers = 0;
-    transactionsResult.forEach((trans) => {
-      const total = parseFloat(trans.total);
+    const vouchersList = [];
+    const additionsList = [];
+    const totalsByCategory = {
+      taxa_entrega: 0,
+      ifood: 0,
+      brigadeiros: 0,
+      outros: 0
+    };
+    transactions.forEach((trans) => {
+      const total = parseFloat(trans.amount);
+      const desc = trans.description || "";
       if (trans.type === "withdrawal") {
         withdrawals += total;
+        if (desc.startsWith("Taxa Entrega")) {
+          totalsByCategory.taxa_entrega += total;
+        } else if (desc.startsWith("iFood")) {
+          totalsByCategory.ifood += total;
+        } else if (desc.startsWith("Brigadeiros")) {
+          totalsByCategory.brigadeiros += total;
+        } else {
+          totalsByCategory.outros += total;
+        }
       } else if (trans.type === "addition") {
         additions += total;
+        additionsList.push({ description: desc, amount: total });
       } else if (trans.type === "voucher") {
         vouchers += total;
+        vouchersList.push({ description: desc, amount: total });
       }
     });
+    const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
     const openingAmount = parseFloat(register.opening_amount);
-    const closingCash = salesTotal - withdrawals;
-    const expectedCashAmount = openingAmount + cashSales + additions - withdrawals - vouchers;
-    const expectedTotalAmount = openingAmount + salesTotal + additions - withdrawals - vouchers;
-    const difference = closingAmount - expectedCashAmount;
+    const calculatedClosingCash = salesTotal - totalSangrias;
+    const valorInformado = parseFloat(closingAmount) || 0;
+    const expectedAmount = openingAmount + cashSales + additions - totalSangrias - vouchers;
+    const difference = valorInformado - expectedAmount;
     await sql`
       UPDATE cash_registers
       SET
         closed_at = CURRENT_TIMESTAMP,
         closing_amount = ${closingAmount},
-        expected_amount = ${expectedCashAmount},
+        expected_amount = ${expectedAmount},
         difference = ${difference},
         status = 'closed',
         notes = ${notes || null}
       WHERE id = ${register.id}
     `;
-    return {
+    const result = {
       success: true,
       salesTotal,
       cashSales,
-      closingCash,
-      expectedCashAmount,
-      expectedTotalAmount,
-      withdrawals,
+      closingCash: calculatedClosingCash,
+      expectedCashAmount: expectedAmount,
+      expectedTotalAmount: openingAmount + salesTotal + additions - totalSangrias - vouchers,
+      withdrawals: totalSangrias,
       additions,
       vouchers,
-      // NOVO: Total de Vales
       difference
     };
+    const emailData = {
+      openingAmount,
+      salesTotal,
+      calculatedClosingCash,
+      salesByPayment: {
+        cash: ((_a = register.salesByPayment) == null ? void 0 : _a.cash) || 0,
+        debit: ((_b = register.salesByPayment) == null ? void 0 : _b.debit) || 0,
+        credit: ((_c = register.salesByPayment) == null ? void 0 : _c.credit) || 0,
+        pix: ((_d = register.salesByPayment) == null ? void 0 : _d.pix) || 0
+      },
+      totalsByCategory,
+      totalSangrias,
+      vouchers: vouchersList,
+      voucherTotal: vouchers,
+      additions: additionsList,
+      additionTotal: additions,
+      valorInformado,
+      expectedAmount,
+      difference,
+      closedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      notes
+    };
+    sendCashRegisterCloseEmail(emailData).catch((err) => {
+      console.error("Erro ao enviar e-mail (background):", err);
+    });
+    return result;
   } catch (error) {
     console.error("Error closing cash register:", error);
     throw createError({

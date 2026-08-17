@@ -1,4 +1,5 @@
 import { sql } from '../../../utils/db';
+import { sendCashRegisterCloseEmail } from '../../../lib/email';
 
 export default defineEventHandler(async (event) => {
   try {
@@ -48,41 +49,70 @@ export default defineEventHandler(async (event) => {
       cashSales += netCash;
     });
     
-    // Calcular transações (sangrias/adições/vales)
+    // Calcular transações para este caixa
     const transactionsResult = await sql`
-      SELECT type, COALESCE(SUM(amount), 0) as total
-      FROM cash_transactions
+      SELECT * FROM cash_transactions
       WHERE cash_register_id = ${register.id}
-      GROUP BY type
+      ORDER BY created_at DESC
     `;
+    
+    const transactions = transactionsResult;
     
     let withdrawals = 0;  // Sangrias
     let additions = 0;   // Adições
     let vouchers = 0;    // Vales
     
-    transactionsResult.forEach((trans) => {
-      const total = parseFloat(trans.total);
+    const vouchersList: Array<{ description: string; amount: number }> = [];
+    const additionsList: Array<{ description: string; amount: number }> = [];
+    
+    const totalsByCategory = {
+      taxa_entrega: 0,
+      ifood: 0,
+      brigadeiros: 0,
+      outros: 0,
+    };
+    
+    transactions.forEach((trans) => {
+      const total = parseFloat(trans.amount);
+      const desc = trans.description || '';
+      
       if (trans.type === 'withdrawal') {
         withdrawals += total;
+        
+        // Categorizar sangria
+        if (desc.startsWith('Taxa Entrega')) {
+          totalsByCategory.taxa_entrega += total;
+        } else if (desc.startsWith('iFood')) {
+          totalsByCategory.ifood += total;
+        } else if (desc.startsWith('Brigadeiros')) {
+          totalsByCategory.brigadeiros += total;
+        } else {
+          totalsByCategory.outros += total;
+        }
       } else if (trans.type === 'addition') {
         additions += total;
+        additionsList.push({ description: desc, amount: total });
       } else if (trans.type === 'voucher') {
         vouchers += total;
+        vouchersList.push({ description: desc, amount: total });
       }
     });
     
+    const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
+    
     const openingAmount = parseFloat(register.opening_amount);
     
-    // Fechamento do Caixa = Total Vendas - Apenas Sangrias (Vales não entram aqui)
-    const closingCash = salesTotal - withdrawals;
+    // Fechamento Caixa (Calc) = Total Vendas - Total Sangrias
+    const calculatedClosingCash = salesTotal - totalSangrias;
     
-    // Valor esperado em dinheiro = Abertura + Vendas em Dinheiro + Adições - Sangrias - Vales
-    const expectedCashAmount = openingAmount + cashSales + additions - withdrawals - vouchers;
+    // VALOR INFORMADO = Valor Contado (o que o operador digitou)
+    const valorInformado = parseFloat(closingAmount) || 0;
     
-    // Valor esperado total = Abertura + Todas as Vendas + Adições - Sangrias - Vales
-    const expectedTotalAmount = openingAmount + salesTotal + additions - withdrawals - vouchers;
+    // VALOR ESPERADO = Abertura + Vendas em Dinheiro + Adições - Sangrias - Vales
+    const expectedAmount = openingAmount + cashSales + additions - totalSangrias - vouchers;
     
-    const difference = closingAmount - expectedCashAmount;
+    // Diferença = Valor Informado - Valor Esperado
+    const difference = valorInformado - expectedAmount;
     
     // Atualizar caixa
     await sql`
@@ -90,25 +120,56 @@ export default defineEventHandler(async (event) => {
       SET
         closed_at = CURRENT_TIMESTAMP,
         closing_amount = ${closingAmount},
-        expected_amount = ${expectedCashAmount},
+        expected_amount = ${expectedAmount},
         difference = ${difference},
         status = 'closed',
         notes = ${notes || null}
       WHERE id = ${register.id}
     `;
     
-    return { 
+    const result = { 
       success: true, 
       salesTotal,
       cashSales,
-      closingCash,
-      expectedCashAmount,
-      expectedTotalAmount,
-      withdrawals,
+      closingCash: calculatedClosingCash,
+      expectedCashAmount: expectedAmount,
+      expectedTotalAmount: openingAmount + salesTotal + additions - totalSangrias - vouchers,
+      withdrawals: totalSangrias,
       additions,
-      vouchers, // NOVO: Total de Vales
+      vouchers,
       difference
     };
+
+    // Enviar e-mail de forma assíncrona (não bloquear a resposta)
+    const emailData = {
+      openingAmount,
+      salesTotal,
+      calculatedClosingCash,
+      salesByPayment: {
+        cash: register.salesByPayment?.cash || 0,
+        debit: register.salesByPayment?.debit || 0,
+        credit: register.salesByPayment?.credit || 0,
+        pix: register.salesByPayment?.pix || 0,
+      },
+      totalsByCategory,
+      totalSangrias,
+      vouchers: vouchersList,
+      voucherTotal: vouchers,
+      additions: additionsList,
+      additionTotal: additions,
+      valorInformado,
+      expectedAmount,
+      difference,
+      closedAt: new Date().toISOString(),
+      notes,
+    };
+
+    // Disparar e-mail em background
+    sendCashRegisterCloseEmail(emailData).catch((err) => {
+      console.error('Erro ao enviar e-mail (background):', err);
+    });
+
+    return result;
   } catch (error) {
     console.error('Error closing cash register:', error);
     throw createError({
