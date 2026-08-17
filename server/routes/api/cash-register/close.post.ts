@@ -140,7 +140,7 @@ export default defineEventHandler(async (event) => {
       difference
     };
 
-    // Enviar e-mail de forma assíncrona (não bloquear a resposta)
+    // Preparar dados do e-mail
     const emailData = {
       openingAmount,
       salesTotal,
@@ -164,17 +164,25 @@ export default defineEventHandler(async (event) => {
       notes,
     };
 
-    // Disparar e-mail em background
-    sendCashRegisterCloseEmail(emailData).catch((err) => {
-      console.error('Erro ao enviar e-mail (background):', err);
-    });
+    // Enviar e-mail de forma síncrona para que erros sejam reportados
+    console.log('📧 Iniciando envio de e-mail de fechamento...');
+    const emailResult = await sendCashRegisterCloseEmail(emailData);
+    
+    if (emailResult.success) {
+      console.log('✅ E-mail enviado com sucesso!');
+      result.emailSent = true;
+    } else {
+      console.error('❌ Erro ao enviar e-mail:', emailResult.error);
+      result.emailSent = false;
+      result.emailError = emailResult.error;
+    }
 
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error closing cash register:', error);
     throw createError({
       statusCode: 500,
-      statusMessage: 'Error closing cash register',
+      statusMessage: error.message || 'Error closing cash register',
     });
   }
 });
