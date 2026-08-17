@@ -937,22 +937,7 @@ const plugins = [
   
 ];
 
-const assets = {
-  "/index.mjs": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"34ebd-crBSnwBXMLBskZT6CJeKZBgkm54\"",
-    "mtime": "2026-08-17T20:30:32.510Z",
-    "size": 216765,
-    "path": "index.mjs"
-  },
-  "/index.mjs.map": {
-    "type": "application/json",
-    "etag": "\"c8fda-9s03BG3LPXR/IrW2OV0bEsZ0HWM\"",
-    "mtime": "2026-08-17T20:30:32.510Z",
-    "size": 823258,
-    "path": "index.mjs.map"
-  }
-};
+const assets = {};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -1291,7 +1276,6 @@ const _lazy_aAbfzC = () => Promise.resolve().then(function () { return _action_$
 const _lazy_nIp1PR = () => Promise.resolve().then(function () { return cancelPassword_get$1; });
 const _lazy_7Gx3xu = () => Promise.resolve().then(function () { return cancelPassword_post$1; });
 const _lazy_Ztljkv = () => Promise.resolve().then(function () { return cashRegister_get$1; });
-const _lazy_odsREt = () => Promise.resolve().then(function () { return sendEmail_post$1; });
 const _lazy_RQ3t17 = () => Promise.resolve().then(function () { return close_post$1; });
 const _lazy_sacHZO = () => Promise.resolve().then(function () { return open_post$1; });
 const _lazy_v5UK4z = () => Promise.resolve().then(function () { return cashTransactions_get$1; });
@@ -1352,7 +1336,6 @@ const handlers = [
   { route: '/api/cancel-password', handler: _lazy_nIp1PR, lazy: true, middleware: false, method: "get" },
   { route: '/api/cancel-password', handler: _lazy_7Gx3xu, lazy: true, middleware: false, method: "post" },
   { route: '/api/cash-register', handler: _lazy_Ztljkv, lazy: true, middleware: false, method: "get" },
-  { route: '/api/cash-register/:id/send-email', handler: _lazy_odsREt, lazy: true, middleware: false, method: "post" },
   { route: '/api/cash-register/close', handler: _lazy_RQ3t17, lazy: true, middleware: false, method: "post" },
   { route: '/api/cash-register/open', handler: _lazy_sacHZO, lazy: true, middleware: false, method: "post" },
   { route: '/api/cash-transactions', handler: _lazy_v5UK4z, lazy: true, middleware: false, method: "get" },
@@ -2149,149 +2132,6 @@ async function sendCashRegisterCloseEmail(data) {
     return { success: false, error: error.message };
   }
 }
-
-const sendEmail_post = defineEventHandler(async (event) => {
-  try {
-    const id = getRouterParam(event, "id");
-    if (!id) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "ID do caixa \xE9 obrigat\xF3rio"
-      });
-    }
-    const registerResult = await sql`
-      SELECT * FROM cash_registers
-      WHERE id = ${id} AND status = 'closed'
-      LIMIT 1
-    `;
-    if (registerResult.length === 0) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: "Caixa fechado n\xE3o encontrado"
-      });
-    }
-    const register = registerResult[0];
-    const salesAndPayments = await sql`
-      SELECT
-        s.id,
-        s.total_amount,
-        s.status,
-        s.xml_status,
-        sp.payment_type,
-        sp.amount
-      FROM sales s
-      LEFT JOIN sale_payments sp ON s.id = sp.sale_id
-      WHERE s.created_at >= ${register.opened_at}
-        AND s.status != 'cancelled'
-        AND s.xml_status != 'cancelled'
-    `;
-    let salesTotal = 0;
-    const salesByPayment = {
-      cash: 0,
-      debit: 0,
-      credit: 0,
-      pix: 0
-    };
-    const processedSales = /* @__PURE__ */ new Set();
-    salesAndPayments.forEach((row) => {
-      if (!processedSales.has(row.id)) {
-        salesTotal += parseFloat(row.total_amount);
-        processedSales.add(row.id);
-      }
-      if (row.payment_type && row.amount) {
-        const type = row.payment_type.toLowerCase();
-        if (salesByPayment[type] !== void 0) {
-          salesByPayment[type] += parseFloat(row.amount);
-        }
-      }
-    });
-    const transactionsResult = await sql`
-      SELECT * FROM cash_transactions
-      WHERE cash_register_id = ${register.id}
-      ORDER BY created_at DESC
-    `;
-    const transactions = transactionsResult;
-    let withdrawals = 0;
-    let additions = 0;
-    let vouchers = 0;
-    const vouchersList = [];
-    const additionsList = [];
-    const totalsByCategory = {
-      taxa_entrega: 0,
-      ifood: 0,
-      brigadeiros: 0,
-      outros: 0
-    };
-    transactions.forEach((trans) => {
-      const total = parseFloat(trans.amount);
-      const desc = trans.description || "";
-      if (trans.type === "withdrawal") {
-        withdrawals += total;
-        if (desc.startsWith("Taxa Entrega")) {
-          totalsByCategory.taxa_entrega += total;
-        } else if (desc.startsWith("iFood")) {
-          totalsByCategory.ifood += total;
-        } else if (desc.startsWith("Brigadeiros")) {
-          totalsByCategory.brigadeiros += total;
-        } else {
-          totalsByCategory.outros += total;
-        }
-      } else if (trans.type === "addition") {
-        additions += total;
-        additionsList.push({ description: desc, amount: total });
-      } else if (trans.type === "voucher") {
-        vouchers += total;
-        vouchersList.push({ description: desc, amount: total });
-      }
-    });
-    const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
-    const openingAmount = parseFloat(register.opening_amount);
-    const calculatedClosingCash = salesTotal - totalSangrias;
-    const valorInformado = parseFloat(register.closing_amount) || 0;
-    const expectedAmount = parseFloat(register.expected_amount) || openingAmount + salesByPayment.cash + additions - totalSangrias - vouchers;
-    const difference = parseFloat(register.difference) || valorInformado - expectedAmount;
-    const emailData = {
-      openingAmount,
-      salesTotal,
-      calculatedClosingCash,
-      salesByPayment,
-      totalsByCategory,
-      totalSangrias,
-      vouchers: vouchersList,
-      voucherTotal: vouchers,
-      additions: additionsList,
-      additionTotal: additions,
-      valorInformado,
-      expectedAmount,
-      difference,
-      closedAt: register.closed_at,
-      notes: register.notes
-    };
-    const result = await sendCashRegisterCloseEmail(emailData);
-    if (!result.success) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: result.error || "Erro ao enviar e-mail"
-      });
-    }
-    return {
-      success: true,
-      message: "E-mail de fechamento reenviado com sucesso!"
-    };
-  } catch (error) {
-    console.error("Error sending cash register close email:", error);
-    if (error.statusCode) throw error;
-    throw createError({
-      statusCode: 500,
-      statusMessage: error.message || "Erro ao enviar e-mail de fechamento"
-    });
-  }
-});
-
-const sendEmail_post$1 = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  default: sendEmail_post
-});
 
 const close_post = defineEventHandler(async (event) => {
   var _a, _b, _c, _d;
