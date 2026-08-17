@@ -205,7 +205,7 @@ export async function sendCashRegisterCloseEmail(data: CashRegisterReportData): 
 
     const html = generateReportHtml(data);
     
-    const subject = `📊 Fechamento de Caixa - Empório das Coxinhas - ${formatDateTime(closedAt)}`;
+    const subject = `📊 Fechamento de Caixa - Loja 1 - Aparecida - ${formatDateTime(data.closedAt)}`;
 
     await transporter.sendMail({
       from: `"Empório das Coxinhas" <${fromEmail}>`,

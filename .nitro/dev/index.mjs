@@ -1998,7 +1998,7 @@ function generateReportHtml(data) {
     valorInformado,
     expectedAmount,
     difference,
-    closedAt: closedAt2,
+    closedAt,
     notes
   } = data;
   return `
@@ -2031,7 +2031,7 @@ function generateReportHtml(data) {
         <div class="header">
           <h1>EMP\xD3RIO DAS COXINHAS</h1>
           <p>Relat\xF3rio de Fechamento de Caixa</p>
-          <p>${formatDateTime(closedAt2)}</p>
+          <p>${formatDateTime(closedAt)}</p>
         </div>
 
         <div class="section">
@@ -2118,7 +2118,7 @@ async function sendCashRegisterCloseEmail(data) {
       throw new Error("E-mail remetente (SMTP_FROM ou SMTP_USER) n\xE3o configurado");
     }
     const html = generateReportHtml(data);
-    const subject = `\u{1F4CA} Fechamento de Caixa - Emp\xF3rio das Coxinhas - ${formatDateTime(closedAt)}`;
+    const subject = `\u{1F4CA} Fechamento de Caixa - Loja 1 - Aparecida - ${formatDateTime(data.closedAt)}`;
     await transporter.sendMail({
       from: `"Emp\xF3rio das Coxinhas" <${fromEmail}>`,
       to: toEmail,
