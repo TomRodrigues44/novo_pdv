@@ -53,14 +53,6 @@ function createTransporter() {
     throw new Error('Configurações de e-mail (SMTP_USER, SMTP_PASS) não definidas');
   }
 
-  console.log('🔧 Configuração SMTP:', {
-    host: config.host,
-    port: config.port,
-    secure: config.secure,
-    user: config.user,
-    pass: '***' // Não logar senha real
-  });
-
   return nodemailer.createTransport({
     host: config.host,
     port: config.port,
@@ -204,39 +196,28 @@ export async function sendCashRegisterCloseEmail(data: CashRegisterReportData): 
   try {
     const transporter = createTransporter();
     
-    // Usar apenas SMTP_USER como remetente (evita problemas de autenticação)
-    const fromEmail = process.env.SMTP_USER || '';
     const toEmail = process.env.CASH_REGISTER_EMAIL_TO || 'tom.santanna@gmail.com';
+    const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || '';
     
     if (!fromEmail) {
-      throw new Error('E-mail remetente (SMTP_USER) não configurado');
+      throw new Error('E-mail remetente (SMTP_FROM ou SMTP_USER) não configurado');
     }
-
-    console.log('📧 Iniciando envio de e-mail...');
-    console.log('   Remetente:', fromEmail);
-    console.log('   Destinatário:', toEmail);
 
     const html = generateReportHtml(data);
     
-    const subject = `📊 Fechamento de Caixa - Empório das Coxinhas - ${formatDateTime(data.closedAt)}`;
+    const subject = `📊 Fechamento de Caixa - Empório das Coxinhas - ${formatDateTime(closedAt)}`;
 
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: `"Empório das Coxinhas" <${fromEmail}>`,
       to: toEmail,
       subject,
       html,
     });
 
-    console.log('✅ E-mail enviado com sucesso!', info.messageId);
+    console.log(`✅ E-mail de fechamento de caixa enviado para ${toEmail}`);
     return { success: true };
   } catch (error: any) {
-    console.error('❌ Erro detalhado ao enviar e-mail:', {
-      message: error.message,
-      code: error.code,
-      command: error.command,
-      response: error.response,
-      responseCode: error.responseCode,
-    });
+    console.error('❌ Erro ao enviar e-mail de fechamento:', error);
     return { success: false, error: error.message };
   }
 }
