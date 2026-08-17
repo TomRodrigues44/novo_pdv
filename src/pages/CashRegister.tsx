@@ -245,6 +245,13 @@ const CashRegister = () => {
       const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
       const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
       const closingAmount = salesTotal - totalSangrias;
+
+      // Calcular Vales e Adições
+      const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
+      const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
+      
+      const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
+      const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
   
       // Formatação para impressora Epson T20 (receipt printer térmica)
       // Usa fonte monospace, layout estreito, sem cores (impressão B&W térmica)
@@ -263,7 +270,6 @@ const CashRegister = () => {
                   padding: 2mm;
                   background: white;
                   color: black;
-                  /* Removido text-shadow para impressão térmica */
                 }
                 .center { text-align: center; }
                 .right { text-align: right; }
@@ -279,9 +285,6 @@ const CashRegister = () => {
                 .gap-2 { gap: 2mm; }
                 .gap-1 { gap: 1mm; }
                 
-                /* Evitar que cores sejam impressas - usar apenas texto */
-                .no-print-color { display: none; }
-                
                 /* Quebras de página para impressão */
                 .page-break { page-break-after: always; }
               </style>
@@ -296,7 +299,8 @@ const CashRegister = () => {
                   </p>
                   <div class="divider"></div>
                 </div>
-      
+
+                <!-- ÁREA 1: Abertura, Total Vendas e Fechamento Caixa -->
                 <div class="line">
                   <span class="medium bold">Abertura:</span> ${formatCurrency(openingAmount)}
                   <br>
@@ -304,9 +308,11 @@ const CashRegister = () => {
                   <br>
                   <span class="medium bold">Fechamento Caixa:</span> ${formatCurrency(closingAmount)}
                 </div>
-      
+                <div class="divider"></div>
+
+                <!-- ÁREA 2: Vendas por Forma -->
                 <div class="line">
-                  <span class="medium bold">Vendas por Forma:</span>
+                  <span class="medium bold">VENDAS POR FORMA:</span>
                   <br>
                   <span class="small">Dinheiro: ${formatCurrency(register.salesByPayment?.cash || 0)}</span>
                   <br>
@@ -316,7 +322,9 @@ const CashRegister = () => {
                   <br>
                   <span class="small">Pix: ${formatCurrency(register.salesByPayment?.pix || 0)}</span>
                 </div>
-      
+                <div class="divider"></div>
+
+                <!-- ÁREA 3: Sangrias -->
                 ${totalSangrias > 0 ? `
                 <div class="line">
                   <span class="medium bold">SANGRIAS:</span> ${formatCurrency(totalSangrias)}
@@ -326,8 +334,38 @@ const CashRegister = () => {
                   ${totalsByCategory.brigadeiros > 0 ? `<span class="small">Brigadeiros: -${formatCurrency(totalsByCategory.brigadeiros)}</span><br>` : ''}
                   ${totalsByCategory.outros > 0 ? `<span class="small">Outros: -${formatCurrency(totalsByCategory.outros)}</span><br>` : ''}
                 </div>
+                <div class="divider"></div>
                 ` : ''}
-      
+
+                <!-- ÁREA 4: Vales -->
+                ${vouchers.length > 0 ? `
+                <div class="line">
+                  <span class="medium bold">VALES:</span>
+                  <br>
+                  ${vouchers.map((trans: any) =>
+                    `<span class="small">-${formatCurrency(parseFloat(trans.amount))} - ${trans.description || 'Sem descrição'}</span>`
+                  ).join('<br>')}
+                  <br>
+                  <span class="medium bold">Total de Vales:</span> ${formatCurrency(voucherTotal)}
+                </div>
+                <div class="divider"></div>
+                ` : ''}
+
+                <!-- ÁREA 5: Adições -->
+                ${additions.length > 0 ? `
+                <div class="line">
+                  <span class="medium bold">ADIÇÕES:</span>
+                  <br>
+                  ${additions.map((trans: any) =>
+                    `<span class="small">+${formatCurrency(parseFloat(trans.amount))} - ${trans.description || 'Sem descrição'}</span>`
+                  ).join('<br>')}
+                  <br>
+                  <span class="medium bold">Total de Adições:</span> ${formatCurrency(additionTotal)}
+                </div>
+                <div class="divider"></div>
+                ` : ''}
+
+                <!-- ÁREA 6: Conferencia e Diferença -->
                 <div class="line">
                   <span class="medium bold">CONFERÊNCIA:</span>
                   <br>
@@ -339,15 +377,8 @@ const CashRegister = () => {
                   <br>
                   <span class="small">${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}</span>
                 </div>
-      
-                ${register.notes ? `
-                <div class="line">
-                  <span class="medium bold">OBSERVAÇÕES:</span>
-                  <br>
-                  <span class="small">${register.notes}</span>
-                </div>
-                ` : ''}
-      
+                <div class="divider"></div>
+
                 <div class="line">
                   <p class="medium center small">*** OBRIGADO PELA PREFERÊNCIA ***</p>
                   <p class="medium center small">Empório das Coxinhas</p>
