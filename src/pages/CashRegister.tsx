@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, TrendingUp, TrendingDown, Clock, CheckCircle, Plus, Lock, Unlock, Minus, CreditCard, QrCode, Banknote, Printer, Receipt, Bike, Utensils, Smartphone } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, Clock, CheckCircle, Plus, Lock, Unlock, Minus, CreditCard, QrCode, Banknote, Printer, Receipt, Bike, Utensils, Smartphone, Mail } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -28,6 +28,8 @@ const CashRegister = () => {
   const [closeResult, setCloseResult] = useState<any>(null);
   const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
+  const [sendEmail, setSendEmail] = useState(false);
+  const [emailConfigured, setEmailConfigured] = useState(false);
 
   const { data: cashData, isLoading, refetch } = useQuery({
     queryKey: ['cash-register'],
@@ -63,6 +65,22 @@ const CashRegister = () => {
 
     return () => clearInterval(interval);
   }, [currentRegister]);
+
+  // Verificar se a configuração de e-mail está configurada
+  useEffect(() => {
+    const checkEmailConfig = async () => {
+      try {
+        const response = await fetch('/api/email/config');
+        if (response.ok) {
+          const data = await response.json();
+          setEmailConfigured(data.configured);
+        }
+      } catch (error) {
+        console.error('Error checking email config:', error);
+      }
+    };
+    checkEmailConfig();
+  }, []);
 
   const getCategoryFromDescription = (desc: string | null | undefined) => {
     if (!desc) return 'outros';
@@ -127,6 +145,7 @@ const CashRegister = () => {
         body: JSON.stringify({
           closingAmount: amount,
           notes,
+          sendEmail,
         }),
       });
 
@@ -137,7 +156,14 @@ const CashRegister = () => {
         setIsCloseDialogOpen(false);
         setClosingAmount('');
         setNotes('');
+        setSendEmail(false);
         refetch();
+        
+        if (result.emailSent) {
+          toast.success('Caixa fechado e relatório enviado por e-mail!');
+        } else if (sendEmail) {
+          toast.warning('Caixa fechado, mas o e-mail não foi enviado. Verifique a configuração.');
+        }
       } else {
         const error = await response.json();
         toast.error(error.statusMessage || 'Erro ao fechar caixa');
@@ -491,7 +517,7 @@ const CashRegister = () => {
                   </p>
                 </CardContent>
               </Card>
-            </div>
+            </Card>
 
             <Card>
               <CardHeader>
@@ -874,6 +900,25 @@ const CashRegister = () => {
                   Ao fechar o caixa, você precisará informar o valor total em dinheiro contado.
                   O sistema calculará a diferença entre o valor contado e o valor esperado.
                 </p>
+                
+                {emailConfigured && (
+                  <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        id="sendEmail"
+                        checked={sendEmail}
+                        onChange={(e) => setSendEmail(e.target.checked)}
+                        className="w-5 h-5 text-orange-600 rounded"
+                      />
+                      <label htmlFor="sendEmail" className="flex items-center gap-2 text-blue-700 cursor-pointer">
+                        <Mail className="h-5 w-5" />
+                        <span className="font-medium">Enviar relatório por e-mail ao fechar o caixa</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+                
                 <Dialog open={isCloseDialogOpen} onOpenChange={setIsCloseDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-orange-600 hover:bg-orange-700">
@@ -910,6 +955,22 @@ const CashRegister = () => {
                           placeholder="Ex: Troco quebrado, notas rasgadas..."
                         />
                       </div>
+
+                      {emailConfigured && (
+                        <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                          <input
+                            type="checkbox"
+                            id="sendEmailDialog"
+                            checked={sendEmail}
+                            onChange={(e) => setSendEmail(e.target.checked)}
+                            className="w-5 h-5 text-orange-600 rounded"
+                          />
+                          <label htmlFor="sendEmailDialog" className="flex items-center gap-2 text-blue-700 cursor-pointer">
+                            <Mail className="h-5 w-5" />
+                            <span>Enviar relatório por e-mail</span>
+                          </label>
+                        </div>
+                      )}
                     </div>
 
                     <DialogFooter>

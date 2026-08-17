@@ -17,6 +17,11 @@ import {
   Trash2,
   Lock,
   Save,
+  Mail,
+  Send,
+  TestTube,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -69,6 +74,20 @@ const AdminFiscal = () => {
   const [cancelPasswordConfigured, setCancelPasswordConfigured] = useState(false);
   const [loadingCancelPassword, setLoadingCancelPassword] = useState(false);
 
+  // Configuração de E-mail
+  const [emailConfig, setEmailConfig] = useState({
+    host: "",
+    port: "",
+    user: "",
+    pass: "",
+    from_email: "",
+    to_email: "",
+  });
+  const [emailConfigured, setEmailConfigured] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [emailTestResult, setEmailTestResult] = useState<any>(null);
+
   const fetchCertificates = async () => {
     try {
       const response = await fetch('/api/fiscal/certificates');
@@ -99,6 +118,28 @@ const AdminFiscal = () => {
     }
   };
 
+  const fetchEmailConfig = async () => {
+    try {
+      const response = await fetch('/api/email/config');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.configured) {
+          setEmailConfig({
+            host: data.host || "",
+            port: String(data.port || ""),
+            user: data.user || "",
+            pass: "",
+            from_email: data.from || "",
+            to_email: data.to || "",
+          });
+          setEmailConfigured(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching email config:', error);
+    }
+  };
+
   const handleActivateCert = async (id: string) => {
     try {
       const response = await fetch(`/api/fiscal/certificates/${id}`, {
@@ -123,6 +164,7 @@ const AdminFiscal = () => {
     fetchCompanyConfig();
     fetchCertificates();
     fetchCancelPassword();
+    fetchEmailConfig();
   }, []);
 
   const fetchCompanyConfig = async () => {
@@ -136,7 +178,7 @@ const AdminFiscal = () => {
             razao_social: config.razao_social || "",
             nome_fantasia: config.nome_fantasia || "",
             inscricao_estadual: config.inscricao_estadual || "",
-            inscricao_municipal: config.inscricao_municipal || "",
+            inscunicipio_municipal: config.inscunicipio_municipal || "",
             cnae: config.cnae || "",
             cnpj_matriz: config.cnpj_matriz || "",
             regime_tributario: config.regime_tributario || "simples_nacional",
@@ -303,6 +345,62 @@ const AdminFiscal = () => {
     }
   };
 
+  const handleSaveEmailConfig = async () => {
+    try {
+      const response = await fetch('/api/email/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailConfig),
+      });
+
+      if (response.ok) {
+        toast.success('Configuração de e-mail salva com sucesso!');
+        setEmailConfigured(true);
+        fetchEmailConfig();
+      } else {
+        try {
+          const error = await response.json();
+          toast.error(error.statusMessage || 'Erro ao salvar configuração de e-mail');
+        } catch (e) {
+          toast.error('Erro ao salvar configuração de e-mail');
+        }
+      }
+    } catch (error) {
+      toast.error('Erro ao salvar configuração de e-mail');
+    }
+  };
+
+  const handleTestEmail = async () => {
+    setTestingEmail(true);
+    setEmailTestResult(null);
+
+    try {
+      const response = await fetch('/api/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          host: emailConfig.host,
+          port: parseInt(emailConfig.port),
+          user: emailConfig.user,
+          pass: emailConfig.pass,
+        }),
+      });
+
+      const result = await response.json();
+      setEmailTestResult(result);
+      
+      if (result.success) {
+        toast.success('Conexão SMTP testada com sucesso!');
+      } else {
+        toast.error('Erro ao testar SMTP: ' + result.message);
+      }
+    } catch (error) {
+      toast.error('Erro ao testar SMTP');
+    } finally {
+      setTestingEmail(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex">
@@ -331,7 +429,7 @@ const AdminFiscal = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="empresa">
               <Building2 className="h-4 w-4 mr-2" />
               Dados da Empresa
@@ -347,6 +445,10 @@ const AdminFiscal = () => {
             <TabsTrigger value="cancelamento">
               <Lock className="h-4 w-4 mr-2" />
               Senha de Cancelamento
+            </TabsTrigger>
+            <TabsTrigger value="email">
+              <Mail className="h-4 w-4 mr-2" />
+              E-mail
             </TabsTrigger>
           </TabsList>
 
@@ -387,7 +489,7 @@ const AdminFiscal = () => {
                       />
                     </div>
                     <div>
-                      <Label>Inscrição Estadual</Label>
+                      <Label>Incrição Estadual</Label>
                       <Input
                         value={companyConfig.inscricao_estadual}
                         onChange={(e) => setCompanyConfig({ ...companyConfig, inscricao_estadual: e.target.value })}
@@ -395,10 +497,10 @@ const AdminFiscal = () => {
                       />
                     </div>
                     <div>
-                      <Label>Inscrição Municipal</Label>
+                      <Label>Incrição Municipal</Label>
                       <Input
-                        value={companyConfig.inscricao_municipal}
-                        onChange={(e) => setCompanyConfig({ ...companyConfig, inscricao_municipal: e.target.value })}
+                        value={companyConfig.inscunicipio_municipal}
+                        onChange={(e) => setCompanyConfig({ ...companyConfig, inscunicipio_municipal: e.target.value })}
                         placeholder="Isento ou número"
                       />
                     </div>
@@ -466,7 +568,7 @@ const AdminFiscal = () => {
                       />
                     </div>
                     <div>
-                      <Label>Logradouro</Label>
+                      <Label>Logadouro</Label>
                       <Input
                         value={companyConfig.logradouro}
                         onChange={(e) => setCompanyConfig({ ...companyConfig, logradouro: e.target.value })}
@@ -878,6 +980,173 @@ const AdminFiscal = () => {
                         <CheckCircle className="h-5 w-5 text-green-600" />
                         <p className="text-green-800 font-medium">
                           Senha de cancelamento configurada com sucesso!
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab: E-mail */}
+          <TabsContent value="email">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configuração de E-mail</CardTitle>
+                <CardDescription>
+                  Configure o envio automático de relatórios por e-mail ao fechar o caixa
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <Mail className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-blue-900">Como funciona</h4>
+                      <p className="text-sm text-blue-700 mt-1">
+                        Ao fechar o caixa, o relatório será enviado automaticamente para o e-mail configurado.
+                        Isso permite que gestores recebam as informações de fechamento em tempo real.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>SMTP Host</Label>
+                      <Input
+                        value={emailConfig.host}
+                        onChange={(e) => setEmailConfig({ ...emailConfig, host: e.target.value })}
+                        placeholder="Ex: smtp.gmail.com"
+                      />
+                    </div>
+                    <div>
+                      <Label>Porta</Label>
+                      <Input
+                        type="number"
+                        value={emailConfig.port}
+                        onChange={(e) => setEmailConfig({ ...emailConfig, port: e.target.value })}
+                        placeholder="Ex: 587"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Usuário</Label>
+                      <Input
+                        value={emailConfig.user}
+                        onChange={(e) => setEmailConfig({ ...emailConfig, user: e.target.value })}
+                        placeholder="Ex: seu.email@gmail.com"
+                      />
+                    </div>
+                    <div>
+                      <Label>Senha</Label>
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          value={emailConfig.pass}
+                          onChange={(e) => setEmailConfig({ ...emailConfig, pass: e.target.value })}
+                          placeholder="Senha de aplicação ou SMTP"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>E-mail Remetente</Label>
+                      <Input
+                        type="email"
+                        value={emailConfig.from_email}
+                        onChange={(e) => setEmailConfig({ ...emailConfig, from_email: e.target.value })}
+                        placeholder="Ex: pdv@emporiocoxinhas.com"
+                      />
+                    </div>
+                    <div>
+                      <Label>E-mail Destinatário</Label>
+                      <Input
+                        type="email"
+                        value={emailConfig.to_email}
+                        onChange={(e) => setEmailConfig({ ...emailConfig, to_email: e.target.value })}
+                        placeholder="Ex: tom.santanna@gmail.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-yellow-900">Dica para Gmail</h4>
+                        <p className="text-sm text-yellow-800 mt-1">
+                          Se estiver usando Gmail, você precisará ativar a verificação em duas etapas e gerar uma 
+                          "Senha de Aplicação" para usar no campo Senha.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={handleTestEmail}
+                      disabled={testingEmail || !emailConfig.host}
+                      className="flex-1"
+                    >
+                      {testingEmail ? (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          Testando...
+                        </>
+                      ) : (
+                        <>
+                          <TestTube className="mr-2 h-4 w-4" />
+                          Testar Conexão
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={handleSaveEmailConfig}
+                      className="flex-1 bg-orange-600 hover:bg-orange-700"
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      Salvar Configuração
+                    </Button>
+                  </div>
+
+                  {emailTestResult && (
+                    <div className={`p-4 rounded-lg ${
+                      emailTestResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                    }`}>
+                      <p className={`font-semibold ${
+                        emailTestResult.success ? 'text-green-800' : 'text-red-800'
+                      }`}>
+                        {emailTestResult.success ? 'Conexão bem-sucedida!' : 'Erro na conexão'}
+                      </p>
+                      <p className="text-sm mt-1">
+                        {emailTestResult.message}
+                      </p>
+                    </div>
+                  )}
+
+                  {emailConfigured && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <p className="text-green-800 font-medium">
+                          Configuração de e-mail salva com sucesso!
                         </p>
                       </div>
                     </div>

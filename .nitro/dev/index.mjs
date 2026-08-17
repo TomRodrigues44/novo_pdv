@@ -939,16 +939,16 @@ const plugins = [
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"327a8-y+3dJOPPrUQpyjWzif05kr9TLlA\"",
-    "mtime": "2026-08-17T13:29:29.219Z",
-    "size": 206760,
+    "etag": "\"32a43-u9ukQE3yxnT6zlgyfUotr21RXvs\"",
+    "mtime": "2026-08-17T15:40:44.127Z",
+    "size": 207427,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"be674-gDmNQIqwK6/NRcrQIFmwFnjKRzQ\"",
-    "mtime": "2026-08-17T13:29:29.220Z",
-    "size": 779892,
+    "etag": "\"beab5-OYRwumpgz2njWsYdAjFSilokxw8\"",
+    "mtime": "2026-08-17T15:40:44.130Z",
+    "size": 780981,
     "path": "index.mjs.map"
   }
 };

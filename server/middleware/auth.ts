@@ -26,6 +26,7 @@ const cashierRoutes = [
   '/api/kitchen',       // Added: Cozinha
   '/api/cancel-password', // Added: Senha de cancelamento
   '/api/nfe',           // Added: NF-e geral
+  '/api/email',         // Added: Configuração de e-mail
 ];
 
 const managerRoutes = [
@@ -34,6 +35,7 @@ const managerRoutes = [
   '/api/fiscal/test-connection',
   '/api/upload',
   '/api/cancel-password',
+  '/api/email',
 ];
 
 function isAllowed(path: string, role: UserRole) {
