@@ -283,6 +283,11 @@ const CashRegister = () => {
                 .flex { display: flex; justify-content: space-between; }
                 .gap-2 { gap: 2mm; }
                 .gap-1 { gap: 1mm; }
+                table { width: 100%; border-collapse: collapse; margin: 1mm 0; }
+                td { padding: 0 1mm; }
+                .label { width: 60%; text-align: left; }
+                .value { width: 40%; text-align: right; }
+                .total-row { border-top: 1px solid #000; margin-top: 1mm; }
               </style>
             </head>
             <body>
@@ -298,11 +303,11 @@ const CashRegister = () => {
 
                 <!-- ÁREA 1: Abertura, Total Vendas e Fechamento Caixa (Calc) -->
                 <div class="line">
-                  <span class="medium bold">Abertura:</span> ${formatCurrency(openingAmount)}
-                  <br>
-                  <span class="medium bold">Total Vendas:</span> ${formatCurrency(salesTotal)}
-                  <br>
-                  <span class="medium bold">Fechamento Caixa (Calc):</span> ${formatCurrency(calculatedClosingCash)}
+                  <table>
+                    <tr><td class="label"><span class="medium bold">Abertura:</span></td><td class="value"><span class="medium bold">${formatCurrency(openingAmount)}</span></td></tr>
+                    <tr><td class="label"><span class="medium bold">Total Vendas:</span></td><td class="value"><span class="medium bold">${formatCurrency(salesTotal)}</span></td></tr>
+                    <tr><td class="label"><span class="medium bold">Fechamento Caixa (Calc):</span></td><td class="value"><span class="medium bold">${formatCurrency(calculatedClosingCash)}</span></td></tr>
+                  </table>
                 </div>
                 <div class="divider"></div>
 
@@ -310,13 +315,12 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">VENDAS POR FORMA:</span>
                   <br>
-                  <span class="small">Dinheiro: ${formatCurrency(register.salesByPayment?.cash || 0)}</span>
-                  <br>
-                  <span class="small">Débito: ${formatCurrency(register.salesByPayment?.debit || 0)}</span>
-                  <br>
-                  <span class="small">Crédito: ${formatCurrency(register.salesByPayment?.credit || 0)}</span>
-                  <br>
-                  <span class="small">Pix: ${formatCurrency(register.salesByPayment?.pix || 0)}</span>
+                  <table>
+                    <tr><td class="label"><span class="small">Dinheiro:</span></td><td class="value"><span class="small">${formatCurrency(register.salesByPayment?.cash || 0)}</span></td></tr>
+                    <tr><td class="label"><span class="small">Débito:</span></td><td class="value"><span class="small">${formatCurrency(register.salesByPayment?.debit || 0)}</span></td></tr>
+                    <tr><td class="label"><span class="small">Crédito:</span></td><td class="value"><span class="small">${formatCurrency(register.salesByPayment?.credit || 0)}</span></td></tr>
+                    <tr><td class="label"><span class="small">Pix:</span></td><td class="value"><span class="small">${formatCurrency(register.salesByPayment?.pix || 0)}</span></td></tr>
+                  </table>
                 </div>
                 <div class="divider"></div>
 
@@ -325,10 +329,10 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">SANGRIAS:</span> ${formatCurrency(totalSangrias)}
                   <br>
-                  ${totalsByCategory.taxa_entrega > 0 ? `<span class="small">Deliverys: -${formatCurrency(totalsByCategory.taxa_entrega)}</span><br>` : ''}
-                  ${totalsByCategory.ifood > 0 ? `<span class="small">Ifood: -${formatCurrency(totalsByCategory.ifood)}</span><br>` : ''}
-                  ${totalsByCategory.brigadeiros > 0 ? `<span class="small">Brigadeiros: -${formatCurrency(totalsByCategory.brigadeiros)}</span><br>` : ''}
-                  ${totalsByCategory.outros > 0 ? `<span class="small">Outros: -${formatCurrency(totalsByCategory.outros)}</span><br>` : ''}
+                  ${totalsByCategory.taxa_entrega > 0 ? `<table><tr><td class="label"><span class="small">Deliverys:</span></td><td class="value"><span class="small">-${formatCurrency(totalsByCategory.taxa_entrega)}</span></td></tr></table><br>` : ''}
+                  ${totalsByCategory.ifood > 0 ? `<table><tr><td class="label"><span class="small">Ifood:</span></td><td class="value"><span class="small">-${formatCurrency(totalsByCategory.ifood)}</span></td></tr></table><br>` : ''}
+                  ${totalsByCategory.brigadeiros > 0 ? `<table><tr><td class="label"><span class="small">Brigadeiros:</span></td><td class="value"><span class="small">-${formatCurrency(totalsByCategory.brigadeiros)}</span></td></tr></table><br>` : ''}
+                  ${totalsByCategory.outros > 0 ? `<table><tr><td class="label"><span class="small">Outros:</span></td><td class="value"><span class="small">-${formatCurrency(totalsByCategory.outros)}</span></td></tr></table><br>` : ''}
                 </div>
                 <div class="divider"></div>
                 ` : ''}
@@ -338,7 +342,7 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">VALES:</span>
                   <br>
-                  ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')}
+                  ${vouchers.map(v => `<table><tr><td class="label"><span class="small">${v.description || 'Sem descrição'}:</span></td><td class="value"><span class="small">-${formatCurrency(parseFloat(v.amount))}</span></td></tr></table>`).join('<br>')}
                   <br>
                   <span class="medium bold">Total de Vales:</span> ${formatCurrency(voucherTotal)}
                 </div>
@@ -350,7 +354,7 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">ADIÇÕES:</span>
                   <br>
-                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')}
+                  ${additions.map(a => `<table><tr><td class="label"><span class="small">${a.description || 'Sem descrição'}:</span></td><td class="value"><span class="small">+${formatCurrency(parseFloat(a.amount))}</span></td></tr></table>`).join('<br>')}
                   <br>
                   <span class="medium bold">Total de Adições:</span> ${formatCurrency(additionTotal)}
                 </div>
@@ -359,15 +363,13 @@ const CashRegister = () => {
 
                 <!-- ÁREA 6: Conferencia -->
                 <div class="line">
-                  <span class="medium bold">CONFERÊNCIA:</span>
-                  <br>
-                  <span class="small">Valor Informado (Contado): ${formatCurrency(valorInformado)}</span>
-                  <br>
-                  <span class="small">Valor Esperado: ${formatCurrency(expectedAmount)}</span>
-                  <br>
-                  <span class="medium bold">DIFERENÇA: ${formatCurrency(difference)}</span>
-                  <br>
-                  <span class="small">${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}</span>
+                  <table>
+                    <tr><td class="label"><span class="medium bold">CONFERÊNCIA:</span></td><td class="value"></td></tr>
+                    <tr><td class="label"><span class="small">Valor Informado (Contado):</span></td><td class="value"><span class="small">${formatCurrency(valorInformado)}</span></td></tr>
+                    <tr><td class="label"><span class="small">Valor Esperado:</span></td><td class="value"><span class="small">${formatCurrency(expectedAmount)}</span></td></tr>
+                    <tr><td class="label"><span class="medium bold">DIFERENÇA:</span></td><td class="value"><span class="small">${formatCurrency(difference)}</span></td></tr>
+                    <tr><td class="label"><span class="small">${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}</span></td><td class="value"></td></tr>
+                  </table>
                 </div>
                 <div class="divider"></div>
 
@@ -637,8 +639,8 @@ const CashRegister = () => {
                     </div>
 
                     <div className="flex justify-between items-center border-t pt-2">
-                      <span class="text-gray-600 font-medium">Total de Sangrias:</span>
-                      <span class="text-xl font-bold text-red-600">
+                      <span className="text-gray-600 font-medium">Total de Sangrias:</span>
+                      <span className="text-xl font-bold text-red-600">
                         {formatCurrency(withdrawals.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0))}
                       </span>
                     </div>
@@ -854,7 +856,7 @@ const CashRegister = () => {
                           currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
                         )}
                       </span>
-                    </div>
+                    </div
                     
                     <Dialog open={isAdditionDialogOpen} onOpenChange={setIsAdditionDialogOpen}>
                       <DialogTrigger asChild>
@@ -1032,7 +1034,7 @@ const CashRegister = () => {
                       <p className="text-xs text-gray-500 mt-1">
                         Informe quanto dinheiro há no caixa antes de começar
                       </p>
-                    </div>
+                    </div
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
@@ -1147,7 +1149,7 @@ const CashRegister = () => {
                             {register.notes && (
                               <div className="mt-3 pt-3 border-t">
                                 <p className="text-xs text-gray-500">Observações: {register.notes}</p>
-                              </div>
+                              </div
                             )}
                           </CardContent>
                         </Card>
