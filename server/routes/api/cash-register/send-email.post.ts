@@ -1,4 +1,4 @@
-import { sendCashRegisterCloseEmail } from '../../../../lib/email';
+import { sendCashRegisterCloseEmail } from '../../../lib/email';
 
 export default defineEventHandler(async (event) => {
   try {
