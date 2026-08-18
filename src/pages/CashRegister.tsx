@@ -733,21 +733,21 @@ const CashRegister = () => {
                       </DialogContent>
                     </Dialog>
 
-                    {withdrawals.length > 0 && (
-                      <div className="space-y-2 mt-4 max-h-48 overflow-y-auto">
-                        {withdrawals.map((trans: any) => (
-                          <div key={trans.id} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{getCleanDescription(trans.description)}</p>
-                              <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
-                            </div>
-                            <span className="font-bold text-red-600 ml-2">
-                              -{formatCurrency(parseFloat(trans.amount))}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {(currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || []).length > 0 && (
+                                          <div className="space-y-2 mt-4 max-h-48 overflow-y-auto">
+                                            {(currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || []).map((trans: any) => (
+                                              <div key={trans.id} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
+                                                <div className="flex-1 min-w-0">
+                                                  <p className="font-medium truncate">{getCleanDescription(trans.description)}</p>
+                                                  <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
+                                                </div>
+                                                <span className="font-bold text-red-600 ml-2">
+                                                  -{formatCurrency(parseFloat(trans.amount))}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
                   </div>
                 </CardContent>
               </Card>
