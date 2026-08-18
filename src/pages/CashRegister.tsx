@@ -639,11 +639,11 @@ const CashRegister = () => {
                     </div>
 
                     <div className="flex justify-between items-center border-t pt-2">
-                      <span className="text-gray-600 font-medium">Total de Sangrias:</span>
-                      <span className="text-xl font-bold text-red-600">
-                        {formatCurrency(withdrawals.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0))}
-                      </span>
-                    </div>
+                                              <span className="text-gray-600 font-medium">Total de Sangrias:</span>
+                                              <span className="text-xl font-bold text-red-600">
+                                                {formatCurrency(totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros)}
+                                              </span>
+                                            </div>
                     
                     <Dialog open={isWithdrawalDialogOpen} onOpenChange={setIsWithdrawalDialogOpen}>
                       <DialogTrigger asChild>
