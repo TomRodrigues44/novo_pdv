@@ -263,169 +263,169 @@ const CashRegister = () => {
   };
 
   const handlePrintHistorical = (register: any) => {
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
   
-      const openingAmount = parseFloat(register.opening_amount || 0);
-      const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
+    const openingAmount = parseFloat(register.opening_amount || 0);
+    const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
   
-      const calculateTotalsByCategory = (transactions: any[]) => {
-        const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
-        return withdrawals.reduce((acc: any, t: any) => {
-          const desc = t.description || '';
-          let cat = 'outros';
-          if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
-          else if (desc.startsWith('iFood')) cat = 'ifood';
-          else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
-          
-          acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
-          return acc;
-        }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
-      };
+    const calculateTotalsByCategory = (transactions: any[]) => {
+      const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
+      return withdrawals.reduce((acc: any, t: any) => {
+        const desc = t.description || '';
+        let cat = 'outros';
+        if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
+        else if (desc.startsWith('iFood')) cat = 'ifood';
+        else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
+        
+        acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
+        return acc;
+      }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
+    };
   
-      const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
-      const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
-      
-      const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
-      const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
-      
-      const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
-      const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
+    const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
+    const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
+    
+    const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
+    const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
+    
+    const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
+    const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
   
-      const calculatedClosingCash = salesTotal - totalSangrias;
-      
-      const valorInformado = parseFloat(register.closing_amount || 0);
-      
-      const expectedAmount = register.expected_amount !== undefined 
-        ? parseFloat(register.expected_amount) 
-        : openingAmount + (register.salesByPayment?.cash || 0) + additionTotal - totalSangrias - voucherTotal;
-      
-      const difference = valorInformado - expectedAmount;
+    const calculatedClosingCash = salesTotal - totalSangrias;
+    
+    const valorInformado = parseFloat(register.closing_amount || 0);
+    
+    const expectedAmount = register.expected_amount !== undefined 
+      ? parseFloat(register.expected_amount) 
+      : openingAmount + (register.salesByPayment?.cash || 0) + additionTotal - totalSangrias - voucherTotal;
+    
+    const difference = valorInformado - expectedAmount;
 
-      const html = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <meta charset="utf-8">
-              <title>Relatório Fechamento Caixa - Epson T20</title>
-              <style>
-                body {
-                  font-family: 'Courier New', Courier, monospace;
-                  font-size: 10px;
-                  margin: 0;
-                  padding: 2mm;
-                  background: white;
-                  color: black;
-                }
-                .center { text-align: center; }
-                .right { text-align: right; }
-                .bold { font-weight: bold; }
-                .underline { text-decoration: underline; }
-                .divider { border-bottom: 1px solid #000; margin: 1mm 0; }
-                .dashed { border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 1mm 0; }
-                .line { margin: 1mm 0; }
-                .small { font-size: 8px; }
-                .medium { font-size: 10px; }
-                .large { font-size: 12px; }
-                .flex { display: flex; justify-content: space-between; }
-                .gap-2 { gap: 2mm; }
-                .gap-1 { gap: 1mm; }
-              </style>
-            </head>
-            <body>
-              <div class="epson-t20-receipt">
-                <div class="line">
-                  <h2 class="large center bold">EMPÓRIO DAS COXINHAS</h2>
-                  <p class="medium center">Relatório de Fechamento de Caixa</p>
-                  <p class="small center">
-                    ${formatDateTime(new Date().toISOString())}
-                  </p>
-                  <div class="divider"></div>
-                </div>
-
-                <!-- ÁREA 1: Abertura, Total Vendas e Fechamento Caixa (Calc) -->
-                <div class="line">
-                  <span class="medium bold">Abertura:</span> ${formatCurrency(openingAmount)}
-                  <br>
-                  <span class="medium bold">Total Vendas:</span> ${formatCurrency(salesTotal)}
-                  <br>
-                  <span class="medium bold">Fechamento Caixa (Calc):</span> ${formatCurrency(calculatedClosingCash)}
-                </div>
+    const html = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Relatório Fechamento Caixa - Epson T20</title>
+            <style>
+              body {
+                font-family: 'Courier New', Courier, monospace;
+                font-size: 10px;
+                margin: 0;
+                padding: 2mm;
+                background: white;
+                color: black;
+              }
+              .center { text-align: center; }
+              .right { text-align: right; }
+              .bold { font-weight: bold; }
+              .underline { text-decoration: underline; }
+              .divider { border-bottom: 1px solid #000; margin: 1mm 0; }
+              .dashed { border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 1mm 0; }
+              .line { margin: 1mm 0; }
+              .small { font-size: 8px; }
+              .medium { font-size: 10px; }
+              .large { font-size: 12px; }
+              .flex { display: flex; justify-content: space-between; }
+              .gap-2 { gap: 2mm; }
+              .gap-1 { gap: 1mm; }
+            </style>
+          </head>
+          <body>
+            <div class="epson-t20-receipt">
+              <div class="line">
+                <h2 class="large center bold">EMPÓRIO DAS COXINHAS</h2>
+                <p class="medium center">Relatório de Fechamento de Caixa</p>
+                <p class="small center">
+                  ${formatDateTime(new Date().toISOString())}
+                </p>
                 <div class="divider"></div>
-
-                <!-- ÁREA 2: Vendas por Forma -->
-                <div class="line">
-                  <span class="medium bold">VENDAS POR FORMA:</span>
-                  <br>
-                  <span class="small">Dinheiro: ${formatCurrency(register.salesByPayment?.cash || 0)}</span>
-                  <br>
-                  <span class="small">Débito: ${formatCurrency(register.salesByPayment?.debit || 0)}</span>
-                  <br>
-                  <span class="small">Crédito: ${formatCurrency(register.salesByPayment?.credit || 0)}</span>
-                  <br>
-                  <span class="small">Pix: ${formatCurrency(register.salesByPayment?.pix || 0)}</span>
-                </div>
-                <div class="divider"></div>
-
-                <!-- ÁREA 3: Sangrias -->
-                ${totalSangrias > 0 ? `
-                <div class="line">
-                  <span class="medium bold">SANGRIAS:</span> ${formatCurrency(totalSangrias)}
-                  <br>
-                  ${totalsByCategory.taxa_entrega > 0 ? `<span class="small">Deliverys: -${formatCurrency(totalsByCategory.taxa_entrega)}</span><br>` : ''}
-                  ${totalsByCategory.ifood > 0 ? `<span class="small">Ifood: -${formatCurrency(totalsByCategory.ifood)}</span><br>` : ''}
-                  ${totalsByCategory.brigadeiros > 0 ? `<span class="small">Brigadeiros: -${formatCurrency(totalsByCategory.brigadeiros)}</span><br>` : ''}
-                  ${totalsByCategory.outros > 0 ? `<span class="small">Outros: -${formatCurrency(totalsByCategory.outros)}</span><br>` : ''}
-                </div>
-                <div class="divider"></div>
-                ` : ''}
-
-                <!-- ÁREA 4: Vales -->
-                ${vouchers.length > 0 ? `
-                <div class="line">
-                  <span class="medium bold">VALES:</span>
-                  <br>
-                  ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')}
-                  <br>
-                  <span class="medium bold">Total de Vales:</span> ${formatCurrency(voucherTotal)}
-                </div>
-                <div class="divider"></div>
-                ` : ''}
-
-                <!-- ÁREA 5: Adições -->
-                ${additions.length > 0 ? `
-                <div class="line">
-                  <span class="medium bold">ADIÇÕES:</span>
-                  <br>
-                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')}
-                  <br>
-                  <span class="medium bold">Total de Adições:</span> ${formatCurrency(additionTotal)}
-                </div>
-                <div class="divider"></div>
-                ` : ''}
-
-                <!-- ÁREA 6: Conferencia -->
-                <div class="line">
-                  <span class="medium bold">CONFERÊNCIA:</span>
-                  <br>
-                  <span class="small">Valor Informado (Contado): ${formatCurrency(valorInformado)}</span>
-                  <br>
-                  <span class="small">Valor Esperado: ${formatCurrency(expectedAmount)}</span>
-                  <br>
-                  <span class="medium bold">DIFERENÇA: ${formatCurrency(difference)}</span>
-                  <br>
-                  <span class="small">${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}</span>
-                </div>
-                <div class="divider"></div>
-
-                <div class="line">
-                  <p class="medium center small">*** OBRIGADO PELA PREFERÊNCIA ***</p>
-                  <p class="medium center small">Empório das Coxinhas</p>
-                </div>
               </div>
-            </body>
-            </html>
-          `;
+
+              <!-- ÁREA 1: Abertura, Total Vendas e Fechamento Caixa (Calc) -->
+              <div class="line">
+                <span class="medium bold">Abertura:</span> ${formatCurrency(openingAmount)}
+                <br>
+                <span class="medium bold">Total Vendas:</span> ${formatCurrency(salesTotal)}
+                <br>
+                <span class="medium bold">Fechamento Caixa (Calc):</span> ${formatCurrency(calculatedClosingCash)}
+              </div>
+              <div class="divider"></div>
+
+              <!-- ÁREA 2: Vendas por Forma -->
+              <div class="line">
+                <span class="medium bold">VENDAS POR FORMA:</span>
+                <br>
+                <span class="small">Dinheiro: ${formatCurrency(register.salesByPayment?.cash || 0)}</span>
+                <br>
+                <span class="small">Débito: ${formatCurrency(register.salesByPayment?.debit || 0)}</span>
+                <br>
+                <span class="small">Crédito: ${formatCurrency(register.salesByPayment?.credit || 0)}</span>
+                <br>
+                <span class="small">Pix: ${formatCurrency(register.salesByPayment?.pix || 0)}</span>
+              </div>
+              <div class="divider"></div>
+
+              <!-- ÁREA 3: Sangrias -->
+              ${totalSangrias > 0 ? `
+              <div class="line">
+                <span class="medium bold">SANGRIAS:</span> ${formatCurrency(totalSangrias)}
+                <br>
+                ${totalsByCategory.taxa_entrega > 0 ? `<span class="small">Deliverys: -${formatCurrency(totalsByCategory.taxa_entrega)}</span><br>` : ''}
+                ${totalsByCategory.ifood > 0 ? `<span class="small">Ifood: -${formatCurrency(totalsByCategory.ifood)}</span><br>` : ''}
+                ${totalsByCategory.brigadeiros > 0 ? `<span class="small">Brigadeiros: -${formatCurrency(totalsByCategory.brigadeiros)}</span><br>` : ''}
+                ${totalsByCategory.outros > 0 ? `<span class="small">Outros: -${formatCurrency(totalsByCategory.outros)}</span><br>` : ''}
+              </div>
+              <div class="divider"></div>
+              ` : ''}
+
+              <!-- ÁREA 4: Vales -->
+              ${vouchers.length > 0 ? `
+              <div class="line">
+                <span class="medium bold">VALES:</span>
+                <br>
+                ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')}
+                <br>
+                <span class="medium bold">Total de Vales:</span> ${formatCurrency(voucherTotal)}
+              </div>
+              <div class="divider"></div>
+              ` : ''}
+
+              <!-- ÁREA 5: Adições -->
+              ${additions.length > 0 ? `
+              <div class="line">
+                <span class="medium bold">ADIÇÕES:</span>
+                <br>
+                ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')}
+                <br>
+                <span class="medium bold">Total de Adições:</span> ${formatCurrency(additionTotal)}
+              </div>
+              <div class="divider"></div>
+              ` : ''}
+
+              <!-- ÁREA 6: Conferencia -->
+              <div class="line">
+                <span class="medium bold">CONFERÊNCIA:</span>
+                <br>
+                <span class="small">Valor Informado (Contado): ${formatCurrency(valorInformado)}</span>
+                <br>
+                <span class="small">Valor Esperado: ${formatCurrency(expectedAmount)}</span>
+                <br>
+                <span class="medium bold">DIFERENÇA: ${formatCurrency(difference)}</span>
+                <br>
+                <span class="small">${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}</span>
+              </div>
+              <div class="divider"></div>
+
+              <div class="line">
+                <p class="medium center small">*** OBRIGADO PELA PREFERÊNCIA ***</p>
+                <p class="medium center small">Empório das Coxinhas</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
   
       printWindow.document.write(html);
       printWindow.document.close();
@@ -466,7 +466,7 @@ const CashRegister = () => {
           </div>
         </div>
       </div>
-    </div>
+    );
   }
 
   return (
@@ -1051,10 +1051,10 @@ const CashRegister = () => {
                     )}
                   </CardContent>
                 </Card>
-              </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
