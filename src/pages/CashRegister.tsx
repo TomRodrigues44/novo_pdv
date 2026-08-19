@@ -263,7 +263,7 @@ const CashRegister = () => {
     window.print();
   };
 
-  // Modern thermal printer layout with 10px bold font, tight spacing, aligned values
+  // Modern thermal printer layout with larger bold fonts and proper alignment
   const handlePrintHistorical = (register: any) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -313,11 +313,11 @@ const CashRegister = () => {
         <style>
           @media print {
             @page { margin: 0; size: 80mm auto; }
-            body { margin: 0; padding: 1mm; font-size: 10px; line-height: 1.1; }
+            body { margin: 0; padding: 1mm; font-size: 11px; line-height: 1.1; }
           }
           body {
             font-family: 'Arial', 'Helvetica', sans-serif;
-            font-size: 10px;
+            font-size: 11px;
             font-weight: bold;
             line-height: 1.1;
             margin: 0;
@@ -334,11 +334,11 @@ const CashRegister = () => {
           .line { display: flex; justify-content: space-between; align-items: center; margin: 1px 0; }
           .label { flex: 1; }
           .value { flex: 1; text-align: right; }
-          .section-title { font-size: 10px; font-weight: bold; margin: 2px 0; text-transform: uppercase; }
-          .total-value { font-size: 12px; font-weight: bold; }
-          .large-value { font-size: 11px; font-weight: bold; }
-          .medium-value { font-size: 10px; font-weight: bold; }
-          .small-value { font-size: 9px; }
+          .section-title { font-size: 11px; font-weight: bold; margin: 1px 0; text-transform: uppercase; }
+          .total-value { font-size: 13px; font-weight: bold; }
+          .large-value { font-size: 12px; font-weight: bold; }
+          .medium-value { font-size: 11px; font-weight: bold; }
+          .small-value { font-size: 10px; font-weight: bold; }
         </style>
       </head>
       <body>
@@ -360,7 +360,7 @@ const CashRegister = () => {
           <div class="value medium-value">${formatCurrency(salesTotal)}</div>
         </div>
         <div class="line">
-          <div class="label">Fechamento Caixa (Calc):</div>
+          <div class="label">Fechamento Caixa:</div>
           <div class="value large-value">${formatCurrency(calculatedClosingCash)}</div>
         </div>
         <div class="divider"></div>
