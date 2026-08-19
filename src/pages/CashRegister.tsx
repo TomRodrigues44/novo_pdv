@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useReactToPrint } from 'react-to-print';
 import { format } from 'date-fns';
+import { useEffect } from 'react';
 
 const CashRegister = () => {
   const queryClient = useQueryClient();
@@ -31,7 +32,7 @@ const CashRegister = () => {
   const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
-  const receiptDataRef = useRef<any>(null);
+  const receiptDataRef = useRef<any>(null); // Store data for email sending after receipt dialog closes
 
   const { data: cashData, isLoading, refetch } = useQuery({
     queryKey: ['cash-register'],
@@ -46,6 +47,7 @@ const CashRegister = () => {
   const currentRegister = cashData?.current;
   const history = cashData?.history || [];
 
+  // Calcular totalsByCategory e withdrawals no escopo do componente
   const totalsByCategory = useMemo(() => {
     if (!currentRegister?.transactions) {
       return { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 };
@@ -64,6 +66,7 @@ const CashRegister = () => {
     }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
   }, [currentRegister?.transactions]);
 
+  // Calcular withdrawals separadamente para uso no JSX
   const withdrawals = useMemo(() => {
     return currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || [];
   }, [currentRegister?.transactions]);
@@ -138,8 +141,10 @@ const CashRegister = () => {
       setFinalClosingAmount(amount);
       setClosedRegisterData(currentRegister);
 
+      // Store data for email sending after receipt dialog closes
       const paymentMethods = currentRegister.payments || [];
       const items = currentRegister.items || [];
+      const fiscalData = currentRegister.fiscal ?? {};
       const nfceData = currentRegister.xml_envio ? { ...currentRegister } : null;
 
       receiptDataRef.current = {
@@ -161,16 +166,18 @@ const CashRegister = () => {
         nfceData,
       };
 
+      // Open receipt dialog
       setIsReceiptDialogOpen(true);
     } catch (error) {
       toast.error('Erro ao fechar caixa');
     }
   };
 
+  // Handle receipt dialog close - send email after dialog closes
   useEffect(() => {
     if (!isReceiptDialogOpen && receiptDataRef.current) {
       handleSendEmail(receiptDataRef.current);
-      receiptDataRef.current = null;
+      receiptDataRef.current = null; // Reset after sending
     }
   }, [isReceiptDialogOpen, receiptDataRef.current, handleSendEmail]);
 
@@ -206,10 +213,6 @@ const CashRegister = () => {
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(valueconst formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
@@ -347,7 +350,7 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">VALES:</span>
                   <br>
-                  ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')}
+                  ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')
                   <br>
                   <span class="medium bold">Total de Vales:</span> ${formatCurrency(voucherTotal)}
                 </div>
@@ -359,7 +362,7 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">ADIÇÕES:</span>
                   <br>
-                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')}
+                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')
                   <br>
                   <span class="medium bold">Total de Adições:</span> ${formatCurrency(additionTotal)}
                 </div>
@@ -428,7 +431,7 @@ const CashRegister = () => {
           </div>
         </div>
       </div>
-    );
+    </div>
   }
 
   return (
@@ -573,7 +576,7 @@ const CashRegister = () => {
                         <p className="font-bold text-orange-600">{formatCurrency(totalsByCategory.taxa_entrega)}</p>
                       </div>
                       <div className="bg-red-50 p-2 rounded text-center">
-                        <p className="text-xs text-red-700 font-medium">Ifoods</p>
+                        <p className="text-xs text-red-700 font-medium">iFoods</p>
                         <p className="font-bold text-red-600">{formatCurrency(totalsByCategory.ifood)}</p>
                       </div>
                       <div className="bg-amber-50 p-2 rounded text-center">
@@ -1013,7 +1016,7 @@ const CashRegister = () => {
                             )}
                           </CardContent>
                         </Card>
-                      ))}
+                      </div>
                     </div>
                   </div>
                 </div>
