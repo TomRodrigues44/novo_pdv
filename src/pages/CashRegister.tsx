@@ -1,14 +1,52 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import AdminSidebar from '@/components/AdminSidebar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, TrendingUp, TrendingDown, Clock, CheckCircle, Plus, Lock, Unlock, Minus, CreditCard, QrCode, Banknote, Printer, Receipt, Bike, Utensils, Smartphone, Mail } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  CheckCircle,
+  Plus,
+  Lock,
+  Unlock,
+  Minus,
+  CreditCard,
+  QrCode,
+  Banknote,
+  Printer,
+  Receipt,
+  Bike,
+  Utensils,
+  Smartphone,
+  Mail,
+} from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useReactToPrint } from 'react-to-print';
+import { format } from 'date-fns';
 
 const CashRegister = () => {
   const queryClient = useQueryClient();
@@ -18,6 +56,7 @@ const CashRegister = () => {
   const [isWithdrawalDialogOpen, setIsWithdrawalDialogOpen] = useState(false);
   const [isAdditionDialogOpen, setIsAdditionDialogOpen] = useState(false);
   const [isVoucherDialogOpen, setIsVoucherDialogOpen] = useState(false);
+  const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
   const [openingAmount, setOpeningAmount] = useState('');
   const [closingAmount, setClosingAmount] = useState('');
   const [finalClosingAmount, setFinalClosingAmount] = useState(0);
@@ -29,6 +68,7 @@ const CashRegister = () => {
   const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+  const receiptDataRef = useRef<any>(null);
 
   const { data: cashData, isLoading, refetch } = useQuery({
     queryKey: ['cash-register'],
@@ -42,6 +82,30 @@ const CashRegister = () => {
 
   const currentRegister = cashData?.current;
   const history = cashData?.history || [];
+
+  // Calcular totalsByCategory e withdrawals no escopo do componente
+  const totalsByCategory = useMemo(() => {
+    if (!currentRegister?.transactions) {
+      return { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 };
+    }
+    
+    const withdrawals = currentRegister.transactions.filter((t: any) => t.type === 'withdrawal');
+    return withdrawals.reduce((acc: any, t: any) => {
+      const desc = t.description || '';
+      let cat = 'outros';
+      if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
+      else if (desc.startsWith('iFood')) cat = 'ifood';
+      else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
+      
+      acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
+      return acc;
+    }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
+  }, [currentRegister?.transactions]);
+
+  // Calcular withdrawals separadamente para uso no JSX
+  const withdrawals = useMemo(() => {
+    return currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || [];
+  }, [currentRegister?.transactions]);
 
   useEffect(() => {
     if (!currentRegister) {
@@ -81,17 +145,6 @@ const CashRegister = () => {
     return desc;
   };
 
-  const calculateTotalsByCategory = (transactions: any[]) => {
-    const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
-    return withdrawals.reduce((acc: any, t: any) => {
-      const cat = getCategoryFromDescription(t.description);
-      acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
-      return acc;
-    }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
-  };
-
-  const totalsByCategory = calculateTotalsByCategory(currentRegister?.transactions || []);
-
   const handleOpenRegister = async () => {
     try {
       const response = await fetch('/api/cash-register/open', {
@@ -124,83 +177,76 @@ const CashRegister = () => {
       setFinalClosingAmount(amount);
       setClosedRegisterData(currentRegister);
 
-      const response = await fetch('/api/cash-register/close', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          closingAmount: amount,
-          notes,
-        }),
-      });
+      // Store data for email sending after receipt dialog closes
+      const paymentMethods = currentRegister.payments || [];
+      const items = currentRegister.items || [];
+      const fiscalData = currentRegister.fiscal ?? {};
+      const nfceData = currentRegister.xml_envio ? { ...currentRegister } : null;
 
-      if (response.ok) {
-        const result = await response.json();
-        setCloseResult(result);
-        setIsCloseSuccessDialogOpen(true);
-        setIsCloseDialogOpen(false);
-        setClosingAmount('');
-        setNotes('');
-        refetch();
-      } else {
-        const error = await response.json();
-        toast.error(error.statusMessage || 'Erro ao fechar caixa');
-      }
+      receiptDataRef.current = {
+        total: parseFloat(currentRegister.total_amount || 0),
+        freight: parseFloat(currentRegister.freight || 0),
+        cartItems: items.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          price: Number(item.price),
+          quantity: Number(item.quantity),
+          flavors: item.flavors,
+        })),
+        payments: paymentMethods.map((p: any) => ({
+          type: p.type,
+          amount: Number(p.amount),
+        })),
+        documentType: currentRegister.xml_status === 'cancelled' ? 'quote' : 'fiscal',
+        saleId: String(currentRegister.daily_sale_number || ''),
+        nfceData,
+      };
+
+      // Open receipt dialog
+      setIsReceiptDialogOpen(true);
     } catch (error) {
       toast.error('Erro ao fechar caixa');
     }
   };
 
-  const handleTransaction = async (type: 'withdrawal' | 'addition' | 'voucher') => {
-    try {
-      let finalDescription = transactionDescription;
-      
-      if (type === 'withdrawal') {
-        const categoryPrefix = {
-          taxa_entrega: 'Taxa Entrega',
-          ifood: 'iFood',
-          brigadeiros: 'Brigadeiros',
-          outros: 'Outros'
-        }[transactionCategory];
-        
-        finalDescription = transactionCategory === 'outros' 
-          ? transactionDescription 
-          : `${categoryPrefix}: ${transactionDescription}`;
-      }
+  // Handle receipt dialog close - send email after dialog closes
+  useEffect(() => {
+    if (!isReceiptDialogOpen && receiptDataRef.current) {
+      handleSendEmail(receiptDataRef.current);
+      receiptDataRef.current = null; // Reset after sending
+    }
+  }, [isReceiptDialogOpen, receiptDataRef.current]);
 
-      const response = await fetch('/api/cash-transactions', {
+  const handleGenerateDocument = async (type: 'quote' | 'fiscal') => {
+    setCurrentDocumentType(type);
+    setIsDocumentDialogOpen(true);
+  };
+
+  const handleReceiptClose = () => {
+    setIsReceiptDialogOpen(false);
+  };
+
+  const handleSendEmail = useCallback(async (data: any) => {
+    try {
+      const response = await fetch('/api/cash-register/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type,
-          amount: parseFloat(transactionAmount) || 0,
-          description: finalDescription,
-        }),
+        body: JSON.stringify(data),
       });
 
       if (response.ok) {
-        const typeName = type === 'withdrawal' ? 'Sangria' : type === 'addition' ? 'Adição' : 'Vale';
-        toast.success(`${typeName} registrada com sucesso!`);
-        
-        if (type === 'withdrawal') {
-          setIsWithdrawalDialogOpen(false);
-        } else if (type === 'addition') {
-          setIsAdditionDialogOpen(false);
-        } else {
-          setIsVoucherDialogOpen(false);
-        }
-        
-        setTransactionAmount('');
-        setTransactionDescription('');
-        setTransactionCategory('ifood');
-        refetch();
+        toast.success('E-mail do fechamento de caixa enviado com sucesso!');
       } else {
         const error = await response.json();
-        toast.error(error.statusMessage || 'Erro ao registrar transação');
+        toast.error(error.statusMessage || 'Erro ao enviar e-mail');
       }
     } catch (error) {
-      toast.error('Erro ao registrar transação');
+      console.error('Error sending email:', error);
+      toast.error('Erro ao enviar e-mail');
+    } finally {
+      setSendingEmail(null);
     }
-  };
+  }, []);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -217,257 +263,167 @@ const CashRegister = () => {
     window.print();
   };
 
+  // Modern thermal printer layout for historical records
   const handlePrintHistorical = (register: any) => {
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) return;
-  
-      const openingAmount = parseFloat(register.opening_amount || 0);
-      const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
-  
-      const calculateTotalsByCategory = (transactions: any[]) => {
-        const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
-        return withdrawals.reduce((acc: any, t: any) => {
-          const desc = t.description || '';
-          let cat = 'outros';
-          if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
-          else if (desc.startsWith('iFood')) cat = 'ifood';
-          else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
-          
-          acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
-          return acc;
-        }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
-      };
-  
-      const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
-      const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
-      
-      const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
-      const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
-      
-      const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
-      const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
-  
-      const calculatedClosingCash = salesTotal - totalSangrias;
-      
-      const valorInformado = parseFloat(register.closing_amount || 0);
-      
-      const expectedAmount = register.expected_amount !== undefined 
-        ? parseFloat(register.expected_amount) 
-        : openingAmount + (register.salesByPayment?.cash || 0) + additionTotal - totalSangrias - voucherTotal;
-      
-      const difference = valorInformado - expectedAmount;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
 
-      const html = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <meta charset="utf-8">
-              <title>Relatório Fechamento Caixa - Epson T20</title>
-              <style>
-                body {
-                  font-family: 'Courier New', Courier, monospace;
-                  font-size: 10px;
-                  margin: 0;
-                  padding: 2mm;
-                  background: white;
-                  color: black;
-                }
-                .center { text-align: center; }
-                .right { text-align: right; }
-                .bold { font-weight: bold; }
-                .underline { text-decoration: underline; }
-                .divider { border-bottom: 1px solid #000; margin: 1mm 0; }
-                .dashed { border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 1mm 0; }
-                .line { margin: 1mm 0; }
-                .small { font-size: 8px; }
-                .medium { font-size: 10px; }
-                .large { font-size: 12px; }
-                .flex { display: flex; justify-content: space-between; }
-                .gap-2 { gap: 2mm; }
-                .gap-1 { gap: 1mm; }
-              </style>
-            </head>
-            <body>
-              <div class="epson-t20-receipt">
-                <div class="line">
-                  <h2 class="large center bold">EMPÓRIO DAS COXINHAS</h2>
-                  <p class="medium center">Relatório de Fechamento de Caixa</p>
-                  <p class="small center">
-                    ${formatDateTime(new Date().toISOString())}
-                  </p>
-                  <div class="divider"></div>
-                </div>
+    const openingAmount = parseFloat(register.opening_amount || 0);
+    const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
 
-                <!-- ÁREA 1: Abertura, Total Vendas e Fechamento Caixa (Calc) -->
-                <div class="line">
-                  <span class="medium bold">Abertura:</span> ${formatCurrency(openingAmount)}
-                  <br>
-                  <span class="medium bold">Total Vendas:</span> ${formatCurrency(salesTotal)}
-                  <br>
-                  <span class="medium bold">Fechamento Caixa (Calc):</span> ${formatCurrency(calculatedClosingCash)}
-                </div>
-                <div class="divider"></div>
-
-                <!-- ÁREA 2: Vendas por Forma -->
-                <div class="line">
-                  <span class="medium bold">VENDAS POR FORMA:</span>
-                  <br>
-                  <span class="small">Dinheiro: ${formatCurrency(register.salesByPayment?.cash || 0)}</span>
-                  <br>
-                  <span class="small">Débito: ${formatCurrency(register.salesByPayment?.debit || 0)}</span>
-                  <br>
-                  <span class="small">Crédito: ${formatCurrency(register.salesByPayment?.credit || 0)}</span>
-                  <br>
-                  <span class="small">Pix: ${formatCurrency(register.salesByPayment?.pix || 0)}</span>
-                </div>
-                <div class="divider"></div>
-
-                <!-- ÁREA 3: Sangrias -->
-                ${totalSangrias > 0 ? `
-                <div class="line">
-                  <span class="medium bold">SANGRIAS:</span> ${formatCurrency(totalSangrias)}
-                  <br>
-                  ${totalsByCategory.taxa_entrega > 0 ? `<span class="small">Deliverys: -${formatCurrency(totalsByCategory.taxa_entrega)}</span><br>` : ''}
-                  ${totalsByCategory.ifood > 0 ? `<span class="small">Ifood: -${formatCurrency(totalsByCategory.ifood)}</span><br>` : ''}
-                  ${totalsByCategory.brigadeiros > 0 ? `<span class="small">Brigadeiros: -${formatCurrency(totalsByCategory.brigadeiros)}</span><br>` : ''}
-                  ${totalsByCategory.outros > 0 ? `<span class="small">Outros: -${formatCurrency(totalsByCategory.outros)}</span><br>` : ''}
-                </div>
-                <div class="divider"></div>
-                ` : ''}
-
-                <!-- ÁREA 4: Vales -->
-                ${vouchers.length > 0 ? `
-                <div class="line">
-                  <span class="medium bold">VALES:</span>
-                  <br>
-                  ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')}
-                  <br>
-                  <span class="medium bold">Total de Vales:</span> ${formatCurrency(voucherTotal)}
-                </div>
-                <div class="divider"></div>
-                ` : ''}
-
-                <!-- ÁREA 5: Adições -->
-                ${additions.length > 0 ? `
-                <div class="line">
-                  <span class="medium bold">ADIÇÕES:</span>
-                  <br>
-                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')}
-                  <br>
-                  <span class="medium bold">Total de Adições:</span> ${formatCurrency(additionTotal)}
-                </div>
-                <div class="divider"></div>
-                ` : ''}
-
-                <!-- ÁREA 6: Conferencia -->
-                <div class="line">
-                  <span class="medium bold">CONFERÊNCIA:</span>
-                  <br>
-                  <span class="small">Valor Informado (Contado): ${formatCurrency(valorInformado)}</span>
-                  <br>
-                  <span class="small">Valor Esperado: ${formatCurrency(expectedAmount)}</span>
-                  <br>
-                  <span class="medium bold">DIFERENÇA: ${formatCurrency(difference)}</span>
-                  <br>
-                  <span class="small">${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}</span>
-                </div>
-                <div class="divider"></div>
-
-                <div class="line">
-                  <p class="medium center small">*** OBRIGADO PELA PREFERÊNCIA ***</p>
-                  <p class="medium center small">Empório das Coxinhas</p>
-                </div>
-              </div>
-            </body>
-            </html>
-          `;
-  
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
+    const calculateTotalsByCategory = (transactions: any[]) => {
+      const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
+      return withdrawals.reduce((acc: any, t: any) => {
+        const desc = t.description || '';
+        let cat = 'outros';
+        if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
+        else if (desc.startsWith('iFood')) cat = 'ifood';
+        else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
+        
+        acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
+        return acc;
+      }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
     };
 
-  // Nova função para enviar e-mail do fechamento de caixa
-  const handleSendEmail = async (register: any) => {
-    setSendingEmail(register.id);
+    const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
+    const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
     
-    try {
-      // Preparar dados para o e-mail
-      const openingAmount = parseFloat(register.opening_amount || 0);
-      const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
-      
-      const calculateTotalsByCategory = (transactions: any[]) => {
-        const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
-        return withdrawals.reduce((acc: any, t: any) => {
-          const desc = t.description || '';
-          let cat = 'outros';
-          if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
-          else if (desc.startsWith('iFood')) cat = 'ifood';
-          else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
-          
-          acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
-          return acc;
-        }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
-      };
-      
-      const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
-      const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
-      
-      const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
-      const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
-      
-      const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
-      const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
-      
-      const calculatedClosingCash = salesTotal - totalSangrias;
-      const valorInformado = parseFloat(register.closing_amount || 0);
-      const expectedAmount = register.expected_amount !== undefined 
-        ? parseFloat(register.expected_amount) 
-        : openingAmount + (register.salesByPayment?.cash || 0) + additionTotal - totalSangrias - voucherTotal;
-      const difference = valorInformado - expectedAmount;
+    const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
+    const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
+    
+    const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
+    const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
+  
+    const calculatedClosingCash = salesTotal - totalSangrias;
+    
+    const valorInformado = parseFloat(register.closing_amount || 0);
+    
+    const expectedAmount = register.expected_amount !== undefined 
+      ? parseFloat(register.expected_amount) 
+      : openingAmount + (register.salesByPayment?.cash || 0) + additionTotal - totalSangrias - voucherTotal;
+    
+    const difference = valorInformado - expectedAmount;
 
-      const emailData = {
-        openingAmount,
-        salesTotal,
-        calculatedClosingCash,
-        salesByPayment: {
-          cash: register.salesByPayment?.cash || 0,
-          debit: register.salesByPayment?.debit || 0,
-          credit: register.salesByPayment?.credit || 0,
-          pix: register.salesByPayment?.pix || 0,
-        },
-        totalsByCategory,
-        totalSangrias,
-        vouchers: vouchers.map((t: any) => ({ description: t.description, amount: parseFloat(t.amount) })),
-        voucherTotal,
-        additions: additions.map((t: any) => ({ description: t.description, amount: parseFloat(t.amount) })),
-        additionTotal,
-        valorInformado,
-        expectedAmount,
-        difference,
-        closedAt: register.closed_at,
-        notes: register.notes,
-      };
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Relatório Fechamento Caixa</title>
+        <style>
+          @media print {
+            @page { margin: 0; size: 80mm auto; }
+            body { margin: 0; padding: 2mm; }
+          }
+          body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            font-size: 10px;
+            line-height: 1.3;
+            margin: 0;
+            padding: 2mm;
+            background: white;
+            color: black;
+            width: 76mm;
+          }
+          .center { text-align: center; }
+          .right { text-align: right; }
+          .bold { font-weight: bold; }
+          .divider { border-bottom: 1px solid #000; margin: 3px 0; }
+          .dashed { border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 3px 0; }
+          .line { margin: 2px 0; }
+          .small { font-size: 9px; }
+          .medium { font-size: 10px; }
+          .large { font-size: 12px; }
+          .xlarge { font-size: 14px; }
+          table { width: 100%; border-collapse: collapse; font-size: 9px; }
+          th, td { padding: 2px 3px; text-align: left; }
+          th { background: #f0f0f0; border-bottom: 1px solid #000; font-weight: bold; }
+          td { border-bottom: 1px solid #eee; }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+          .total-row { font-size: 12px; font-weight: bold; }
+          .section-title { font-size: 11px; font-weight: bold; margin: 5px 0 3px 0; text-transform: uppercase; }
+        </style>
+      </head>
+      <body>
+        <!-- Header -->
+        <div class="center" style="margin-bottom: 5px;">
+          <div class="xlarge bold">EMPÓRIO DAS COXINHAS</div>
+          <div class="small" style="margin-top: 2px;">Relatório de Fechamento de Caixa</div>
+          <div class="small">${formatDateTime(new Date().toISOString())}</div>
+        </div>
+        <div class="divider"></div>
 
-      const response = await fetch('/api/cash-register/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(emailData),
-      });
+        <!-- Resumo Principal -->
+        <div class="line">
+          <div class="medium bold">Abertura:</div>
+          <div class="medium right">${formatCurrency(openingAmount)}</div>
+        </div>
+        <div class="line">
+          <div class="medium bold">Total Vendas:</div>
+          <div class="medium right">${formatCurrency(salesTotal)}</div>
+        </div>
+        <div class="line">
+          <div class="large bold">Fechamento Caixa (Calc):</div>
+          <div class="large right bold">${formatCurrency(calculatedClosingCash)}</div>
+        </div>
+        <div class="divider"></div>
 
-      if (response.ok) {
-        toast.success('E-mail do fechamento de caixa enviado com sucesso!');
-      } else {
-        const error = await response.json();
-        toast.error(error.statusMessage || 'Erro ao enviar e-mail');
-      }
-    } catch (error) {
-      console.error('Error sending email:', error);
-      toast.error('Erro ao enviar e-mail');
-    } finally {
-      setSendingEmail(null);
-    }
+        <!-- Vendas por Forma -->
+        <div class="section-title">Vendas por Forma</div>
+        <div class="line"><div>Dinheiro:</div><div class="right">${formatCurrency(register.salesByPayment?.cash || 0)}</div></div>
+        <div class="line"><div>Débito:</div><div class="right">${formatCurrency(register.salesByPayment?.debit || 0)}</div></div>
+        <div class="line"><div>Crédito:</div><div class="right">${formatCurrency(register.salesByPayment?.credit || 0)}</div></div>
+        <div class="line"><div>Pix:</div><div class="right">${formatCurrency(register.salesByPayment?.pix || 0)}</div></div>
+        <div class="divider"></div>
+
+        <!-- Sangrias -->
+        ${totalSangrias > 0 ? `
+        <div class="section-title">Sangrias: ${formatCurrency(totalSangrias)}</div>
+        ${totalsByCategory.taxa_entrega > 0 ? `<div class="line small"><div>Deliverys:</div><div class="right">-${formatCurrency(totalsByCategory.taxa_entrega)}</div></div>` : ''}
+        ${totalsByCategory.ifood > 0 ? `<div class="line small"><div>iFood:</div><div class="right">-${formatCurrency(totalsByCategory.ifood)}</div></div>` : ''}
+        ${totalsByCategory.brigadeiros > 0 ? `<div class="line small"><div>Brigadeiros:</div><div class="right">-${formatCurrency(totalsByCategory.brigadeiros)}</div></div>` : ''}
+        ${totalsByCategory.outros > 0 ? `<div class="line small"><div>Outros:</div><div class="right">-${formatCurrency(totalsByCategory.outros)}</div></div>` : ''}
+        <div class="divider"></div>
+        ` : ''}
+
+        <!-- Vales -->
+        ${voucherTotal > 0 ? `
+        <div class="section-title">Vales: ${formatCurrency(voucherTotal)}</div>
+        ${vouchers.map(v => `<div class="line small"><div>${v.description || 'Sem descrição'}:</div><div class="right">-${formatCurrency(parseFloat(v.amount))}</div></div>`).join('')}
+        <div class="divider"></div>
+        ` : ''}
+
+        <!-- Adições -->
+        ${additionTotal > 0 ? `
+        <div class="section-title">Adições: ${formatCurrency(additionTotal)}</div>
+        ${additions.map(a => `<div class="line small"><div>${a.description || 'Sem descrição'}:</div><div class="right">+${formatCurrency(parseFloat(a.amount))}</div></div>`).join('')}
+        <div class="divider"></div>
+        ` : ''}
+
+        <!-- Conferencia -->
+        <div class="section-title">Conferência</div>
+        <div class="line"><div>Valor Informado (Contado):</div><div class="right bold">${formatCurrency(valorInformado)}</div></div>
+        <div class="line"><div>Valor Esperado:</div><div class="right">${formatCurrency(expectedAmount)}</div></div>
+        <div class="line total-row"><div>DIFERENÇA:</div><div class="right">${formatCurrency(difference)}</div></div>
+        <div class="line small center" style="color: ${difference > 0 ? '#27ae60' : difference < 0 ? '#e74c3c' : '#3498db'};">
+          ${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}
+        </div>
+        <div class="divider"></div>
+
+        <!-- Footer -->
+        <div class="center" style="margin-top: 5px;">
+          <div class="medium bold">*** OBRIGADO PELA PREFERÊNCIA ***</div>
+          <div class="small">Empório das Coxinhas</div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
   };
 
   if (isLoading) {
@@ -625,7 +581,7 @@ const CashRegister = () => {
                         <p className="font-bold text-orange-600">{formatCurrency(totalsByCategory.taxa_entrega)}</p>
                       </div>
                       <div className="bg-red-50 p-2 rounded text-center">
-                        <p className="text-xs text-red-700 font-medium">Ifoods</p>
+                        <p className="text-xs text-red-700 font-medium">iFoods</p>
                         <p className="font-bold text-red-600">{formatCurrency(totalsByCategory.ifood)}</p>
                       </div>
                       <div className="bg-amber-50 p-2 rounded text-center">
@@ -639,19 +595,20 @@ const CashRegister = () => {
                     </div>
 
                     <div className="flex justify-between items-center border-t pt-2">
-                                              <span className="text-gray-600 font-medium">Total de Sangrias:</span>
-                                              <span className="text-xl font-bold text-red-600">
-                                                {formatCurrency(totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros)}
-                                              </span>
-                                            </div>
+                      <span className="text-gray-600 font-medium">Total de Sangrias:</span>
+                      <span className="text-xl font-bold text-red-600">
+                        {formatCurrency(withdrawals.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0))}
+                      </span>
+                    </div>
                     
                     <Dialog open={isWithdrawalDialogOpen} onOpenChange={setIsWithdrawalDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button className="w-full bg-red-600 hover:bg-red-700">
-                          <Minus className="mr-2 h-4 w-4" />
-                          Nova Sangria
-                        </Button>
-                      </DialogTrigger>
+                      <Button 
+                        className="w-full bg-red-600 hover:bg-red-700"
+                        onClick={() => setIsWithdrawalDialogOpen(true)}
+                      >
+                        <Minus className="mr-2 h-4 w-4" />
+                        Nova Sangria
+                      </Button>
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Registrar Sangria</DialogTitle>
@@ -733,21 +690,21 @@ const CashRegister = () => {
                       </DialogContent>
                     </Dialog>
 
-                    {(currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || []).length > 0 && (
-                                          <div className="space-y-2 mt-4 max-h-48 overflow-y-auto">
-                                            {(currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || []).map((trans: any) => (
-                                              <div key={trans.id} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
-                                                <div className="flex-1 min-w-0">
-                                                  <p className="font-medium truncate">{getCleanDescription(trans.description)}</p>
-                                                  <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
-                                                </div>
-                                                <span className="font-bold text-red-600 ml-2">
-                                                  -{formatCurrency(parseFloat(trans.amount))}
-                                                </span>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
+                    {withdrawals.length > 0 && (
+                      <div className="space-y-2 mt-4 max-h-48 overflow-y-auto">
+                        {withdrawals.map((trans: any) => (
+                          <div key={trans.id} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{getCleanDescription(trans.description)}</p>
+                              <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
+                            </div>
+                            <span className="font-bold text-red-600 ml-2">
+                              -{formatCurrency(parseFloat(trans.amount))}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -771,12 +728,13 @@ const CashRegister = () => {
                     </div>
                     
                     <Dialog open={isVoucherDialogOpen} onOpenChange={setIsVoucherDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button className="w-full bg-amber-600 hover:bg-amber-700">
-                          <Receipt className="mr-2 h-4 w-4" />
-                          Novo Vale
-                        </Button>
-                      </DialogTrigger>
+                      <Button 
+                        className="w-full bg-amber-600 hover:bg-amber-700"
+                        onClick={() => setIsVoucherDialogOpen(true)}
+                      >
+                        <Receipt className="mr-2 h-4 w-4" />
+                        Novo Vale
+                      </Button>
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Registrar Vale</DialogTitle>
@@ -839,94 +797,6 @@ const CashRegister = () => {
                   </div>
                 </CardContent>
               </Card>
-
-              <Card className="border-green-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-green-700">
-                    <Plus className="h-5 w-5" />
-                    Adições
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Total de Adições:</span>
-                      <span className="text-xl font-bold text-green-600">
-                        {formatCurrency(
-                          currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
-                        )}
-                      </span>
-                    </div>
-                    
-                    <Dialog open={isAdditionDialogOpen} onOpenChange={setIsAdditionDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button className="w-full bg-green-600 hover:bg-green-700">
-                          <Plus className="mr-2 h-4 w-4" />
-                          Nova Adição
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Registrar Adição</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-2">
-                              Valor
-                            </label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={transactionAmount}
-                              onChange={(e) => setTransactionAmount(e.target.value)}
-                              placeholder="Ex: 100.00"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-2">
-                              Descrição
-                            </label>
-                            <Textarea
-                              value={transactionDescription}
-                              onChange={(e) => setTransactionDescription(e.target.value)}
-                              placeholder="Ex: Troco de cliente..."
-                            />
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button variant="outline" onClick={() => setIsAdditionDialogOpen(false)}>
-                            Cancelar
-                          </Button>
-                          <Button
-                            onClick={() => handleTransaction('addition')}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            Confirmar Adição
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-
-                    {currentRegister.transactions?.filter((t: any) => t.type === 'addition').length > 0 && (
-                      <div className="space-y-2 mt-4">
-                        {currentRegister.transactions
-                          .filter((t: any) => t.type === 'addition')
-                          .map((trans: any) => (
-                            <div key={trans.id} className="flex justify-between items-center p-2 bg-green-50 rounded text-sm">
-                              <div>
-                                <p className="font-medium">{trans.description || 'Sem descrição'}</p>
-                                <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
-                              </div>
-                              <span className="font-bold text-green-600">
-                                +{formatCurrency(parseFloat(trans.amount))}
-                              </span>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
             <Card className="border-2 border-orange-200">
@@ -942,12 +812,13 @@ const CashRegister = () => {
                   O sistema calculará a diferença entre o valor contado e o valor esperado.
                 </p>
                 <Dialog open={isCloseDialogOpen} onOpenChange={setIsCloseDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-orange-600 hover:bg-orange-700">
-                      <Lock className="mr-2 h-4 w-4" />
-                      Fechar Caixa
-                    </Button>
-                  </DialogTrigger>
+                  <Button 
+                    className="bg-orange-600 hover:bg-orange-700"
+                    onClick={() => setIsCloseDialogOpen(true)}
+                  >
+                    <Lock className="mr-2 h-4 w-4" />
+                    Fechar Caixa
+                  </Button>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Confirmar Fechamento de Caixa</DialogTitle>
@@ -986,7 +857,7 @@ const CashRegister = () => {
                       <Button
                         onClick={handleCloseRegister}
                         className="flex-1 bg-orange-600 hover:bg-orange-700"
-                        disabled={!closingAmount}
+                        disabled={closingAmount.trim() === ''}
                       >
                         Confirmar Fechamento
                       </Button>
@@ -1009,12 +880,13 @@ const CashRegister = () => {
                 Para iniciar as vendas, você precisa abrir o caixa informando o valor inicial em dinheiro.
               </p>
               <Dialog open={isOpenDialogOpen} onOpenChange={setIsOpenDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-green-600 hover:bg-green-700 w-full">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Abrir Novo Caixa
-                  </Button>
-                </DialogTrigger>
+                <Button 
+                  className="bg-green-600 hover:bg-green-700 w-full"
+                  onClick={() => setIsOpenDialogOpen(true)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Abrir Novo Caixa
+                </Button>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Abrir Caixa</DialogTitle>
@@ -1065,194 +937,99 @@ const CashRegister = () => {
         )}
 
         {history.length > 0 && (
-                  <div className="mt-8">
-                    <h2 className="text-2xl font-bold mb-4">Histórico de Fechamentos</h2>
-                    <div className="space-y-4">
-                      {history.map((register: any) => (
-                        <Card key={register.id}>
-                          <CardHeader>
-                            <div className="flex items-center justify-between">
-                              <CardTitle className="text-lg">
-                                {formatDateTime(register.closed_at)}
-                              </CardTitle>
-                              <div className="flex items-center gap-2">
-                                {register.difference > 0 ? (
-                                  <div className="flex items-center gap-1 text-green-600">
-                                    <TrendingUp className="h-4 w-4" />
-                                    <span className="font-semibold">
-                                      +{formatCurrency(register.difference)}
-                                    </span>
-                                  </div>
-                                ) : register.difference < 0 ? (
-                                  <div className="flex items-center gap-1 text-red-600">
-                                    <TrendingDown className="h-4 w-4" />
-                                    <span className="font-semibold">
-                                      {formatCurrency(register.difference)}
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1 text-blue-600">
-                                    <CheckCircle className="h-4 w-4" />
-                                    <span className="font-semibold">Exato</span>
-                                  </div>
-                                )}
-                                
-                                {/* AÇÕES: Impressão e Email */}
-                                <div className="flex items-center gap-2 ml-4">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handlePrintHistorical(register)}
-                                    className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                                    title="Imprimir relatório"
-                                  >
-                                    <Printer className="h-4 w-4" />
-                                  </Button>
-                                  
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleSendEmail(register)}
-                                    disabled={sendingEmail === register.id}
-                                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                    title="Enviar relatório por e-mail"
-                                  >
-                                    {sendingEmail === register.id ? (
-                                      <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
-                                    ) : (
-                                      <Mail className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                              <div>
-                                <p className="text-gray-500">Abertura</p>
-                                <p className="font-semibold">{formatCurrency(register.opening_amount)}</p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Vendas</p>
-                                <p className="font-semibold text-green-600">{formatCurrency(register.expected_amount - register.opening_amount)}</p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Esperado</p>
-                                <p className="font-semibold text-orange-600">{formatCurrency(register.expected_amount)}</p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Contado</p>
-                                <p className="font-semibold">{formatCurrency(register.closing_amount)}</p>
-                              </div>
-                            </div>
-                            {register.notes && (
-                              <div className="mt-3 pt-3 border-t">
-                                <p className="text-xs text-gray-500">Observações: {register.notes}</p>
-                              </div>
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold mb-4">Histórico de Fechamentos</h2>
+            <div className="space-y-4">
+              {history.map((register: any) => (
+                <Card key={register.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">
+                        {formatDateTime(register.closed_at)}
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        {register.difference > 0 ? (
+                          <div className="flex items-center gap-1 text-green-600">
+                            <TrendingUp className="h-4 w-4" />
+                            <span className="font-semibold">
+                              +{formatCurrency(register.difference)}
+                            </span>
+                          </div>
+                        ) : register.difference < 0 ? (
+                          <div className="flex items-center gap-1 text-red-600">
+                            <TrendingDown className="h-4 w-4" />
+                            <span className="font-semibold">
+                              {formatCurrency(register.difference)}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-blue-600">
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="font-semibold">Exato</span>
+                          </div>
+                        )}
+                        
+                        {/* AÇÕES: Impressão e Email */}
+                        <div className="flex items-center gap-2 ml-4">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handlePrintHistorical(register)}
+                            className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                            title="Imprimir relatório"
+                          >
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleSendEmail(register)}
+                            disabled={sendingEmail === register.id}
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            title="Enviar relatório por e-mail"
+                          >
+                            {sendingEmail === register.id ? (
+                              <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                            ) : (
+                              <Mail className="h-4 w-4" />
                             )}
-                          </CardContent>
-                        </Card>
-                      ))}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-500">Abertura</p>
+                        <p className="font-semibold">{formatCurrency(register.opening_amount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Vendas</p>
+                        <p className="font-semibold text-green-600">{formatCurrency(register.expected_amount - register.opening_amount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Esperado</p>
+                        <p className="font-semibold text-orange-600">{formatCurrency(register.expected_amount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Contado</p>
+                        <p className="font-semibold">{formatCurrency(register.closing_amount)}</p>
+                      </div>
+                    </div>
+                    {register.notes && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-xs text-gray-500">Observações: {register.notes}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-
-      <style>{`
-              @media print {
-                body * {
-                  visibility: hidden;
-                }
-                .printable-receipt, .printable-receipt * {
-                  visibility: visible;
-                }
-                .printable-receipt {
-                  position: absolute;
-                  left: 0;
-                  top: 0;
-                  width: 80mm;
-                  font-family: Courier New, monospace;
-                  font-size: 12px;
-                  padding: 5mm;
-                  background: white;
-                  color: black;
-                  line-height: 1.4;
-                }
-                .printable-receipt h2 {
-                  font-size: 16px;
-                  text-align: center;
-                  margin-bottom: 5px;
-                  font-weight: bold;
-                }
-                .printable-receipt p {
-                  margin: 2px 0;
-                }
-                .printable-receipt .border-b-2,
-                .printable-receipt .border-t {
-                  border-bottom: 2px dashed black;
-                  border-top: 2px dashed black;
-                }
-                .printable-receipt .flex {
-                  display: flex;
-                  justify-content: space-between;
-                }
-                .printable-receipt .font-bold {
-                  font-weight: bold;
-                }
-                .printable-receipt .text-center {
-                  text-align: center;
-                }
-                .printable-receipt .text-sm {
-                  font-size: 10px;
-                }
-                .printable-receipt .text-xs {
-                  font-size: 9px;
-                }
-                .printable-receipt .text-gray-500,
-                .printable-receipt .text-gray-600,
-                .printable-receipt .text-red-600,
-                .printable-receipt .text-red-700,
-                .printable-receipt .text-green-600,
-                .printable-receipt .text-green-700,
-                .printable-receipt .text-amber-600,
-                .printable-receipt .text-amber-700,
-                .printable-receipt .text-blue-600,
-                .printable-receipt .text-blue-700,
-                .printable-receipt .text-orange-600,
-                .printable-receipt .text-orange-700,
-                .printable-receipt .button,
-                .printable-receipt .dialog-header,
-                .printable-receipt .dialog-footer {
-                  display: none;
-                }
-              }
-              
-              @media print {
-                .epson-t20-receipt {
-                  font-family: 'Courier New', Courier, monospace !important;
-                  font-size: 10px !important;
-                  width: 80mm !important;
-                  margin: 0 !important;
-                  padding: 2mm !important;
-                  color: black !important;
-                  background: white !important;
-                }
-                .epson-t20-receipt .center { text-align: center !important; }
-                .epson-t20-receipt .right { text-align: right !important; }
-                .epson-t20-receipt .bold { font-weight: bold !important; }
-                .epson-t20-receipt .divider { border-bottom: 1px solid #000 !important; margin: 1mm 0 !important; }
-                .epson-t20-receipt .dashed { border-top: 1px dashed #000 !important; border-bottom: 1px dashed #000 !important; margin: 1mm 0 !important; }
-                .epson-t20-receipt .line { margin: 1mm 0 !important; }
-                .epson-t20-receipt .small { font-size: 8px !important; }
-                .epson-t20-receipt .medium { font-size: 10px !important; }
-                .epson-t20-receipt .large { font-size: 12px !important; }
-                .epson-t20-receipt .flex { display: flex !important; justify-content: space-between !important; }
-                .epson-t20-receipt .gap-2 { gap: 2mm !important; }
-                .epson-t20-receipt .gap-1 { gap: 1mm !important; }
-                .epson-t20-receipt .no-print-color { display: none !important; }
-              }
-            `}</style>
     </div>
   );
 };
