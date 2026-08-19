@@ -610,12 +610,13 @@ const CashRegister = () => {
                     </div>
                     
                     <Dialog open={isWithdrawalDialogOpen} onOpenChange={setIsWithdrawalDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button className="w-full bg-red-600 hover:bg-red-700">
-                          <Minus className="mr-2 h-4 w-4" />
-                          Nova Sangria
-                        </Button>
-                      </DialogTrigger>
+                      <Button 
+                        className="w-full bg-red-600 hover:bg-red-700"
+                        onClick={() => setIsWithdrawalDialogOpen(true)}
+                      >
+                        <Minus className="mr-2 h-4 w-4" />
+                        Nova Sangria
+                      </Button>
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Registrar Sangria</DialogTitle>
@@ -735,12 +736,13 @@ const CashRegister = () => {
                     </div>
                     
                     <Dialog open={isVoucherDialogOpen} onOpenChange={setIsVoucherDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button className="w-full bg-amber-600 hover:bg-amber-700">
-                          <Receipt className="mr-2 h-4 w-4" />
-                          Novo Vale
-                        </Button>
-                      </DialogTrigger>
+                      <Button 
+                        className="w-full bg-amber-600 hover:bg-amber-700"
+                        onClick={() => setIsVoucherDialogOpen(true)}
+                      >
+                        <Receipt className="mr-2 h-4 w-4" />
+                        Novo Vale
+                      </Button>
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Registrar Vale</DialogTitle>
@@ -818,12 +820,13 @@ const CashRegister = () => {
                   O sistema calculará a diferença entre o valor contado e o valor esperado.
                 </p>
                 <Dialog open={isCloseDialogOpen} onOpenChange={setIsCloseDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-orange-600 hover:bg-orange-700">
-                      <Lock className="mr-2 h-4 w-4" />
-                      Fechar Caixa
-                    </Button>
-                  </DialogTrigger>
+                  <Button 
+                    className="bg-orange-600 hover:bg-orange-700"
+                    onClick={() => setIsCloseDialogOpen(true)}
+                  >
+                    <Lock className="mr-2 h-4 w-4" />
+                    Fechar Caixa
+                  </Button>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Confirmar Fechamento de Caixa</DialogTitle>
@@ -885,12 +888,13 @@ const CashRegister = () => {
                 Para iniciar as vendas, você precisa abrir o caixa informando o valor inicial em dinheiro.
               </p>
               <Dialog open={isOpenDialogOpen} onOpenChange={setIsOpenDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-green-600 hover:bg-green-700 w-full">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Abrir Novo Caixa
-                  </Button>
-                </DialogTrigger>
+                <Button 
+                  className="bg-green-600 hover:bg-green-700 w-full"
+                  onClick={() => setIsOpenDialogOpen(true)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Abrir Novo Caixa
+                </Button>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Abrir Caixa</DialogTitle>
