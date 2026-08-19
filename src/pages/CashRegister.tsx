@@ -263,7 +263,7 @@ const CashRegister = () => {
     window.print();
   };
 
-  // Modern thermal printer layout for historical records
+  // Modern thermal printer layout with tighter spacing and bolder fonts
   const handlePrintHistorical = (register: any) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -309,48 +309,49 @@ const CashRegister = () => {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Relatório Fechamento Caixa</title>
+        <title>Relatório Fechamento Caixa - Epson TM-T20</title>
         <style>
           @media print {
             @page { margin: 0; size: 80mm auto; }
-            body { margin: 0; padding: 2mm; }
+            body { margin: 0; padding: 1mm; font-size: 9px; line-height: 1.1; font-weight: 600; }
           }
           body {
             font-family: 'Arial', 'Helvetica', sans-serif;
-            font-size: 10px;
-            line-height: 1.3;
+            font-size: 9px;
+            font-weight: 600;
+            line-height: 1.1;
             margin: 0;
-            padding: 2mm;
+            padding: 1mm;
             background: white;
             color: black;
             width: 76mm;
           }
           .center { text-align: center; }
           .right { text-align: right; }
-          .bold { font-weight: bold; }
-          .divider { border-bottom: 1px solid #000; margin: 3px 0; }
-          .dashed { border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 3px 0; }
-          .line { margin: 2px 0; }
-          .small { font-size: 9px; }
-          .medium { font-size: 10px; }
-          .large { font-size: 12px; }
-          .xlarge { font-size: 14px; }
-          table { width: 100%; border-collapse: collapse; font-size: 9px; }
-          th, td { padding: 2px 3px; text-align: left; }
-          th { background: #f0f0f0; border-bottom: 1px solid #000; font-weight: bold; }
+          .bold { font-weight: 600; }
+          .divider { border-bottom: 1px solid #000; margin: 1px 0; }
+          .dashed { border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 1px 0; }
+          .line { margin: 1px 0; }
+          .small { font-size: 8px; }
+          .medium { font-size: 9px; }
+          .large { font-size: 10px; }
+          .xlarge { font-size: 12px; }
+          table { width: 100%; border-collapse: collapse; font-size: 8px; }
+          th, td { padding: 1px 2px; text-align: left; }
+          th { background: #f0f0f0; border-bottom: 1px solid #000; font-weight: 600; }
           td { border-bottom: 1px solid #eee; }
           .text-right { text-align: right; }
           .text-center { text-align: center; }
-          .total-row { font-size: 12px; font-weight: bold; }
-          .section-title { font-size: 11px; font-weight: bold; margin: 5px 0 3px 0; text-transform: uppercase; }
+          .total-row { font-size: 10px; font-weight: 600; }
+          .section-title { font-size: 10px; font-weight: 600; margin: 2px 0 2px 0; text-transform: uppercase; }
         </style>
       </head>
       <body>
         <!-- Header -->
-        <div class="center" style="margin-bottom: 5px;">
+        <div class="center" style="margin-bottom: 2px;">
           <div class="xlarge bold">EMPÓRIO DAS COXINHAS</div>
-          <div class="small" style="margin-top: 2px;">Relatório de Fechamento de Caixa</div>
-          <div class="small">${formatDateTime(new Date().toISOString())}</div>
+          <div class="small" style="margin-top: 1px;">Relatório de Fechamento de Caixa</div>
+          <div class="small" style="margin-top: 1px;">${formatDateTime(new Date().toISOString())}</div>
         </div>
         <div class="divider"></div>
 
@@ -412,7 +413,7 @@ const CashRegister = () => {
         <div class="divider"></div>
 
         <!-- Footer -->
-        <div class="center" style="margin-top: 5px;">
+        <div class="center" style="margin-top: 2px;">
           <div class="medium bold">*** OBRIGADO PELA PREFERÊNCIA ***</div>
           <div class="small">Empório das Coxinhas</div>
         </div>
@@ -708,49 +709,49 @@ const CashRegister = () => {
                   </div>
                 </CardContent>
               </Card>
+            </div>
 
-              <Card className="border-amber-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-amber-700">
-                    <Receipt className="h-5 w-5" />
-                    Vales
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Total de Vales:</span>
-                      <span className="text-xl font-bold text-amber-600">
-                        {formatCurrency(
-                          currentRegister.transactions?.filter((t: any) => t.type === 'voucher').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
-                        )}
-                      </span>
-                    </div>
-                    
-                    <Dialog open={isVoucherDialogOpen} onOpenChange={setIsVoucherDialogOpen}>
-                      <Button 
-                        className="w-full bg-amber-600 hover:bg-amber-700"
-                        onClick={() => setIsVoucherDialogOpen(true)}
-                      >
-                        <Receipt className="mr-2 h-4 w-4" />
-                        Novo Vale
-                      </Button>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Registrar Vale</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-2">
-                              Valor
-                            </label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={transactionAmount}
-                              onChange={(e) => setTransactionAmount(e.target.value)}
-                              placeholder="Ex: 100.00"
-                            />
+            <Card className="border-amber-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-amber-700">
+                  <Receipt className="h-5 w-5" />
+                  Vales
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Total de Vales:</span>
+                    <span className="text-xl font-bold text-amber-600">
+                      {formatCurrency(
+                        currentRegister.transactions?.filter((t: any) => t.type === 'voucher').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
+                      )}
+                    </span>
+                  </div>
+                  
+                  <Dialog open={isVoucherDialogOpen} onOpenChange={setIsVoucherDialogOpen}>
+                    <Button 
+                      className="w-full bg-amber-600 hover:bg-amber-700"
+                      onClick={() => setIsVoucherDialogOpen(true)}
+                    >
+                      <Receipt className="mr-2 h-4 w-4" />
+                      Novo Vale
+                    </Button>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Registrar Vale</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            Valor
+                          </label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={transactionAmount}
+                            onChange={(e) => setTransactionAmount(e.target.value)}
+                            placeholder="Ex: 100.00"
                           </div>
                           <div>
                             <label className="block text-sm font-medium mb-2">
@@ -916,24 +917,22 @@ const CashRegister = () => {
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Ex: Troco de ontem, notas..."
-                      />
+                      </div>
                     </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsOpenDialogOpen(false)}>
-                      Cancelar
-                    </Button>
-                    <Button
-                      onClick={handleOpenRegister}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      Abrir Caixa
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </CardContent>
-          </Card>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsOpenDialogOpen(false)}>
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={handleOpenRegister}
+                        className="bg-green-600 hover:bg-green-700"
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {history.length > 0 && (
@@ -1025,7 +1024,7 @@ const CashRegister = () => {
                     )}
                   </CardContent>
                 </Card>
-              ))}
+              </div>
             </div>
           </div>
         )}
