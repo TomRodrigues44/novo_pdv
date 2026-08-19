@@ -382,7 +382,7 @@ const CashRegister = () => {
               ` : ''}
 
               <!-- ÁREA 4: Vales -->
-              ${vouchers.length > 0 ? `
+              ${voucherTotal > 0 ? `
               <div class="line">
                 <span class="medium bold">VALES:</span>
                 <br>
@@ -394,7 +394,7 @@ const CashRegister = () => {
               ` : ''}
 
               <!-- ÁREA 5: Adições -->
-              ${additions.length > 0 ? `
+              ${additionTotal > 0 ? `
               <div class="line">
                 <span class="medium bold">ADIÇÕES:</span>
                 <br>
@@ -800,7 +800,7 @@ const CashRegister = () => {
                               </span>
                             </div>
                           ))}
-                      </div>
+                      </div
                     )}
                   </div>
                 </CardContent>
@@ -865,7 +865,7 @@ const CashRegister = () => {
                       <Button
                         onClick={handleCloseRegister}
                         className="flex-1 bg-orange-600 hover:bg-orange-700"
-                        disabled={!closingAmount}
+                        disabled={closingAmount.trim() === ''}
                       >
                         Confirmar Fechamento
                       </Button>
