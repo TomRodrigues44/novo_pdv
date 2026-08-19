@@ -1,35 +1,14 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import AdminSidebar from '@/components/AdminSidebar';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from '@/components/ui/select';
-import {
-  DollarSign, TrendingUp, TrendingDown, Clock, CheckCircle, Plus, Lock,
-  Unlock, Minus, CreditCard, QrCode, Banknote, Printer, Receipt,
-  Bike, Utensils, Smartphone, Mail
-} from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DollarSign, TrendingUp, TrendingDown, Clock, CheckCircle, Plus, Lock, Unlock, Minus, CreditCard, QrCode, Banknote, Printer, Receipt, Bike, Utensils, Smartphone, Mail } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useReactToPrint } from 'react-to-print';
-import { format } from 'date-fns';
-import { useRef } from 'react';
-import { ReceiptDialog } from '@/components/ReceiptDialog'; // Import the ReceiptDialog component
 
 const CashRegister = () => {
   const queryClient = useQueryClient();
@@ -50,8 +29,6 @@ const CashRegister = () => {
   const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
-  const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
-  const [receiptData, setReceiptData] = useState<any>(null);
 
   const { data: cashData, isLoading, refetch } = useQuery({
     queryKey: ['cash-register'],
@@ -65,30 +42,6 @@ const CashRegister = () => {
 
   const currentRegister = cashData?.current;
   const history = cashData?.history || [];
-
-  // Calcular totalsByCategory e withdrawals no escopo do componente
-  const totalsByCategory = useMemo(() => {
-    if (!currentRegister?.transactions) {
-      return { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 };
-    }
-    
-    const withdrawals = currentRegister.transactions.filter((t: any) => t.type === 'withdrawal');
-    return withdrawals.reduce((acc: any, t: any) => {
-      const desc = t.description || '';
-      let cat = 'outros';
-      if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
-      else if (desc.startsWith('iFood')) cat = 'ifood';
-      else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
-      
-      acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
-      return acc;
-    }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
-  }, [currentRegister?.transactions]);
-
-  // Calcular withdrawals separadamente para uso no JSX
-  const withdrawals = useMemo(() => {
-    return currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || [];
-  }, [currentRegister?.transactions]);
 
   useEffect(() => {
     if (!currentRegister) {
@@ -127,6 +80,17 @@ const CashRegister = () => {
     if (desc.startsWith('Brigadeiros: ')) return desc.replace('Brigadeiros: ', '');
     return desc;
   };
+
+  const calculateTotalsByCategory = (transactions: any[]) => {
+    const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
+    return withdrawals.reduce((acc: any, t: any) => {
+      const cat = getCategoryFromDescription(t.description);
+      acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
+      return acc;
+    }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
+  };
+
+  const totalsByCategory = calculateTotalsByCategory(currentRegister?.transactions || []);
 
   const handleOpenRegister = async () => {
     try {
@@ -177,22 +141,6 @@ const CashRegister = () => {
         setClosingAmount('');
         setNotes('');
         refetch();
-        
-        // Armazenar dados para o recibo
-        const receiptData = {
-          total: parseFloat(result.total || 0),
-          freight: parseFloat(result.freight || 0),
-          cartItems: currentRegister.items || [],
-          payments: currentRegister.payments || [],
-          documentType: 'fiscal',
-          saleId: currentRegister.id,
-          nfceData: currentRegister, // Passar os dados da NF-e para o dialog
-        };
-        
-        // Armazenar para uso posterior
-        setReceiptData(receiptData);
-        // Abrir o dialog de recibo
-        setIsReceiptDialogOpen(true);
       } else {
         const error = await response.json();
         toast.error(error.statusMessage || 'Erro ao fechar caixa');
@@ -202,26 +150,80 @@ const CashRegister = () => {
     }
   };
 
-  // Diálogo de Recibo
-  const handleReceiptClose = () => {
-    setIsReceiptDialogOpen(false);
-    
-    // Após fechar o recibo, enviar o e-mail com os dados
-    if (receiptData) {
-      handleSendEmail(receiptData);
+  const handleTransaction = async (type: 'withdrawal' | 'addition' | 'voucher') => {
+    try {
+      let finalDescription = transactionDescription;
+      
+      if (type === 'withdrawal') {
+        const categoryPrefix = {
+          taxa_entrega: 'Taxa Entrega',
+          ifood: 'iFood',
+          brigadeiros: 'Brigadeiros',
+          outros: 'Outros'
+        }[transactionCategory];
+        
+        finalDescription = transactionCategory === 'outros' 
+          ? transactionDescription 
+          : `${categoryPrefix}: ${transactionDescription}`;
+      }
+
+      const response = await fetch('/api/cash-transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          amount: parseFloat(transactionAmount) || 0,
+          description: finalDescription,
+        }),
+      });
+
+      if (response.ok) {
+        const typeName = type === 'withdrawal' ? 'Sangria' : type === 'addition' ? 'Adição' : 'Vale';
+        toast.success(`${typeName} registrada com sucesso!`);
+        
+        if (type === 'withdrawal') {
+          setIsWithdrawalDialogOpen(false);
+        } else if (type === 'addition') {
+          setIsAdditionDialogOpen(false);
+        } else {
+          setIsVoucherDialogOpen(false);
+        }
+        
+        setTransactionAmount('');
+        setTransactionDescription('');
+        setTransactionCategory('ifood');
+        refetch();
+      } else {
+        const error = await response.json();
+        toast.error(error.statusMessage || 'Erro ao registrar transação');
+      }
+    } catch (error) {
+      toast.error('Erro ao registrar transação');
     }
   };
 
-  // Função para enviar e-mail (já existente, mas agora chamada após o recibo)
-  const handleSendEmail = async (registerData: any) => {
-    try {
-      // Preparar dados para o e-mail
-      const openingAmount = parseFloat(registerData.openingAmount || 0);
-      const salesTotal = (registerData.salesByPayment?.cash || 0) + 
-        (registerData.salesByPayment?.debit || 0) + 
-        (registerData.salesByPayment?.credit || 0) + 
-        (registerData.salesByPayment?.pix || 0);
-      
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
+  };
+
+  const formatDateTime = (date: string) => {
+    return new Date(date).toLocaleString('pt-BR');
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handlePrintHistorical = (register: any) => {
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) return;
+  
+      const openingAmount = parseFloat(register.opening_amount || 0);
+      const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
+  
       const calculateTotalsByCategory = (transactions: any[]) => {
         const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
         return withdrawals.reduce((acc: any, t: any) => {
@@ -234,93 +236,6 @@ const CashRegister = () => {
           acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
           return acc;
         }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
-      };
-      
-      const totalsByCategory = calculateTotalsByCategory(registerData.transactions || []);
-      const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
-      
-      const vouchers = registerData.transactions?.filter((t: any) => t.type === 'voucher') || [];
-      const additions = registerData.transactions?.filter((t: any) => t.type === 'addition') || [];
-      
-      const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
-      const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
-      
-      const calculatedClosingCash = registerData.salesTotal - totalSangrias;
-      const valorInformado = parseFloat(registerData.valorInformado || 0);
-      const expectedAmount = registerData.expectedAmount !== undefined 
-        ? parseFloat(registerData.expectedAmount) 
-        : openingAmount + (registerData.salesByPayment?.cash || 0) + additionTotal - totalSangrias - voucherTotal;
-      const difference = valorInformado - expectedAmount;
-
-      const emailData = {
-        openingAmount,
-        salesTotal,
-        calculatedClosingCash,
-        salesByPayment: {
-          cash: registerData.salesByPayment?.cash || 0,
-          debit: registerData.salesByPayment?.debit || 0,
-          credit: registerData.salesByPayment?.credit || 0,
-          pix: registerData.salesByPayment?.pix || 0,
-        },
-        totalsByCategory,
-        totalSangrias,
-        vouchers: vouchers.map((t: any) => ({ description: t.description, amount: parseFloat(t.amount) })),
-        voucherTotal,
-        additions: additions.map((t: any) => ({ description: t.description, amount: parseFloat(t.amount) })),
-        additionTotal,
-        valorInformado,
-        expectedAmount,
-        difference,
-        closedAt: registerData.closedAt,
-        notes: registerData.notes,
-      };
-
-      const response = await fetch('/api/cash-register/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(emailData),
-      });
-
-      if (response.ok) {
-        toast.success('E-mail do fechamento de caixa enviado com sucesso!');
-      } else {
-        const error = await response.json();
-        toast.error(error.statusMessage || 'Erro ao enviar e-mail');
-      }
-    } catch (error) {
-      console.error('Error sending email:', error);
-      toast.error('Erro ao enviar e-mail');
-    } finally {
-      setSendingEmail(null);
-    }
-  };
-
-  // Função para imprimir o recibo
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handlePrintHistorical = (register: any) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-  
-    const openingAmount = parseFloat(register.opening_amount || 0);
-    const salesTotal = (register.salesByPayment?.cash || 0) + 
-      (register.salesByPayment?.debit || 0) + 
-      (register.salesByPayment?.credit || 0) + 
-      (register.salesByPayment?.pix || 0);
-  
-    const calculateTotalsByCategory = (transactions: any[]) => {
-      const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
-      return withdrawals.reduce((acc: any, t: any) => {
-        const desc = t.description || '';
-        let cat = 'outros';
-        if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
-        else if (desc.startsWith('iFood')) cat = 'ifood';
-        else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
-        
-        acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
-        return acc;
       };
   
       const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
@@ -437,7 +352,7 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">ADIÇÕES:</span>
                   <br>
-                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')
+                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')}
                   <br>
                   <span class="medium bold">Total de Adições:</span> ${formatCurrency(additionTotal)}
                 </div>
@@ -454,7 +369,7 @@ const CashRegister = () => {
                   <br>
                   <span class="medium bold">DIFERENÇA: ${formatCurrency(difference)}</span>
                   <br>
-                  <span className="small">${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}</span>
+                  <span class="small">${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}</span>
                 </div>
                 <div class="divider"></div>
 
@@ -474,14 +389,13 @@ const CashRegister = () => {
     };
 
   // Nova função para enviar e-mail do fechamento de caixa
-  const handleSendEmail = async (registerData: any) => {
+  const handleSendEmail = async (register: any) => {
+    setSendingEmail(register.id);
+    
     try {
       // Preparar dados para o e-mail
-      const openingAmount = parseFloat(registerData.openingAmount || 0);
-      const salesTotal = (registerData.salesByPayment?.cash || 0) + 
-        (registerData.salesByPayment?.debit || 0) + 
-        (registerData.salesByPayment?.credit || 0) + 
-        (registerData.salesByPayment?.pix || 0);
+      const openingAmount = parseFloat(register.opening_amount || 0);
+      const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
       
       const calculateTotalsByCategory = (transactions: any[]) => {
         const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
@@ -497,20 +411,20 @@ const CashRegister = () => {
         }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
       };
       
-      const totalsByCategory = calculateTotalsByCategory(registerData.transactions || []);
+      const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
       const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
       
-      const vouchers = registerData.transactions?.filter((t: any) => t.type === 'voucher') || [];
-      const additions = registerData.transactions?.filter((t: any) => t.type === 'addition') || [];
+      const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
+      const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
       
       const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
       const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
       
-      const calculatedClosingCash = registerData.salesTotal - totalSangrias;
-      const valorInformado = parseFloat(registerData.valorInformado || 0);
-      const expectedAmount = registerData.expectedAmount !== undefined 
-        ? parseFloat(registerData.expectedAmount) 
-        : openingAmount + (registerData.salesByPayment?.cash || 0) + additionTotal - totalSangrias - voucherTotal;
+      const calculatedClosingCash = salesTotal - totalSangrias;
+      const valorInformado = parseFloat(register.closing_amount || 0);
+      const expectedAmount = register.expected_amount !== undefined 
+        ? parseFloat(register.expected_amount) 
+        : openingAmount + (register.salesByPayment?.cash || 0) + additionTotal - totalSangrias - voucherTotal;
       const difference = valorInformado - expectedAmount;
 
       const emailData = {
@@ -518,10 +432,10 @@ const CashRegister = () => {
         salesTotal,
         calculatedClosingCash,
         salesByPayment: {
-          cash: registerData.salesByPayment?.cash || 0,
-          debit: registerData.salesByPayment?.debit || 0,
-          credit: registerData.salesByPayment?.credit || 0,
-          pix: registerData.salesByPayment?.pix || 0,
+          cash: register.salesByPayment?.cash || 0,
+          debit: register.salesByPayment?.debit || 0,
+          credit: register.salesByPayment?.credit || 0,
+          pix: register.salesByPayment?.pix || 0,
         },
         totalsByCategory,
         totalSangrias,
@@ -532,8 +446,8 @@ const CashRegister = () => {
         valorInformado,
         expectedAmount,
         difference,
-        closedAt: registerData.closedAt,
-        notes: registerData.notes,
+        closedAt: register.closed_at,
+        notes: register.notes,
       };
 
       const response = await fetch('/api/cash-register/send-email', {
@@ -566,7 +480,7 @@ const CashRegister = () => {
           </div>
         </div>
       </div>
-    </div>
+    );
   }
 
   return (
@@ -644,58 +558,58 @@ const CashRegister = () => {
                   </p>
                 </CardContent>
               </Card>
+            </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium text-gray-600">
-                    Vendas por Forma de Pagamento
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Banknote className="h-5 w-5 text-green-600" />
-                        <span className="font-semibold text-green-800">Dinheiro</span>
-                      </div>
-                      <p className="text-2xl font-bold text-green-700">
-                        {formatCurrency(currentRegister.salesByPayment?.cash || 0)}
-                      </p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Vendas por Forma de Pagamento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Banknote className="h-5 w-5 text-green-600" />
+                      <span className="font-semibold text-green-800">Dinheiro</span>
                     </div>
-
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CreditCard className="h-5 w-5 text-blue-600" />
-                        <span className="font-semibold text-blue-800">Débito</span>
-                      </div>
-                      <p className="text-2xl font-bold text-blue-700">
-                        {formatCurrency(currentRegister.salesByPayment?.debit || 0)}
-                      </p>
-                    </div>
-
-                    <div className="bg-purple-50 p-4 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CreditCard className="h-5 w-5 text-purple-600" />
-                        <span className="font-semibold text-purple-800">Crédito</span>
-                      </div>
-                      <p className="text-2xl font-bold text-purple-700">
-                        {formatCurrency(currentRegister.salesByPayment?.credit || 0)}
-                      </p>
-                    </div>
-
-                    <div className="bg-teal-50 p-4 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <QrCode className="h-5 w-5 text-teal-600" />
-                        <span className="font-semibold text-teal-800">Pix</span>
-                      </div>
-                      <p className="text-2xl font-bold text-teal-700">
-                        {formatCurrency(currentRegister.salesByPayment?.pix || 0)}
-                      </p>
-                    </div>
+                    <p className="text-2xl font-bold text-green-700">
+                      {formatCurrency(currentRegister.salesByPayment?.cash || 0)}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
 
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CreditCard className="h-5 w-5 text-blue-600" />
+                      <span className="font-semibold text-blue-800">Débito</span>
+                    </div>
+                    <p className="text-2xl font-bold text-blue-700">
+                      {formatCurrency(currentRegister.salesByPayment?.debit || 0)}
+                    </p>
+                  </div>
+
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CreditCard className="h-5 w-5 text-purple-600" />
+                      <span className="font-semibold text-purple-800">Crédito</span>
+                    </div>
+                    <p className="text-2xl font-bold text-purple-700">
+                      {formatCurrency(currentRegister.salesByPayment?.credit || 0)}
+                    </p>
+                  </div>
+
+                  <div className="bg-teal-50 p-4 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <QrCode className="h-5 w-5 text-teal-600" />
+                      <span className="font-semibold text-teal-800">Pix</span>
+                    </div>
+                    <p className="text-2xl font-bold text-teal-700">
+                      {formatCurrency(currentRegister.salesByPayment?.pix || 0)}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="border-red-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-red-700">
@@ -711,7 +625,7 @@ const CashRegister = () => {
                         <p className="font-bold text-orange-600">{formatCurrency(totalsByCategory.taxa_entrega)}</p>
                       </div>
                       <div className="bg-red-50 p-2 rounded text-center">
-                        <p className="text-xs text-red-700 font-medium">iFoods</p>
+                        <p className="text-xs text-red-700 font-medium">Ifoods</p>
                         <p className="font-bold text-red-600">{formatCurrency(totalsByCategory.ifood)}</p>
                       </div>
                       <div className="bg-amber-50 p-2 rounded text-center">
@@ -725,11 +639,11 @@ const CashRegister = () => {
                     </div>
 
                     <div className="flex justify-between items-center border-t pt-2">
-                      <span className="text-gray-600 font-medium">Total de Sangrias:</span>
-                      <span className="text-xl font-bold text-red-600">
-                        {formatCurrency(withdrawals.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0))}
-                      </span>
-                    </div>
+                                              <span className="text-gray-600 font-medium">Total de Sangrias:</span>
+                                              <span className="text-xl font-bold text-red-600">
+                                                {formatCurrency(totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros)}
+                                              </span>
+                                            </div>
                     
                     <Dialog open={isWithdrawalDialogOpen} onOpenChange={setIsWithdrawalDialogOpen}>
                       <DialogTrigger asChild>
@@ -819,21 +733,21 @@ const CashRegister = () => {
                       </DialogContent>
                     </Dialog>
 
-                    {withdrawals.length > 0 && (
-                      <div className="space-y-2 mt-4 max-h-48 overflow-y-auto">
-                        {withdrawals.map((trans: any) => (
-                          <div key={trans.id} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{getCleanDescription(trans.description)}</p>
-                              <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
-                            </div>
-                            <span className="font-bold text-red-600 ml-2">
-                              -{formatCurrency(parseFloat(trans.amount))}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {(currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || []).length > 0 && (
+                                          <div className="space-y-2 mt-4 max-h-48 overflow-y-auto">
+                                            {(currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || []).map((trans: any) => (
+                                              <div key={trans.id} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
+                                                <div className="flex-1 min-w-0">
+                                                  <p className="font-medium truncate">{getCleanDescription(trans.description)}</p>
+                                                  <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
+                                                </div>
+                                                <span className="font-bold text-red-600 ml-2">
+                                                  -{formatCurrency(parseFloat(trans.amount))}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
                   </div>
                 </CardContent>
               </Card>
@@ -917,6 +831,94 @@ const CashRegister = () => {
                               </div>
                               <span className="font-bold text-amber-600">
                                 -{formatCurrency(parseFloat(trans.amount))}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-green-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-green-700">
+                    <Plus className="h-5 w-5" />
+                    Adições
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Total de Adições:</span>
+                      <span className="text-xl font-bold text-green-600">
+                        {formatCurrency(
+                          currentRegister.transactions?.filter((t: any) => t.type === 'addition').reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0
+                        )}
+                      </span>
+                    </div>
+                    
+                    <Dialog open={isAdditionDialogOpen} onOpenChange={setIsAdditionDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="w-full bg-green-600 hover:bg-green-700">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Nova Adição
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Registrar Adição</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Valor
+                            </label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={transactionAmount}
+                              onChange={(e) => setTransactionAmount(e.target.value)}
+                              placeholder="Ex: 100.00"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Descrição
+                            </label>
+                            <Textarea
+                              value={transactionDescription}
+                              onChange={(e) => setTransactionDescription(e.target.value)}
+                              placeholder="Ex: Troco de cliente..."
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setIsAdditionDialogOpen(false)}>
+                            Cancelar
+                          </Button>
+                          <Button
+                            onClick={() => handleTransaction('addition')}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Confirmar Adição
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+
+                    {currentRegister.transactions?.filter((t: any) => t.type === 'addition').length > 0 && (
+                      <div className="space-y-2 mt-4">
+                        {currentRegister.transactions
+                          .filter((t: any) => t.type === 'addition')
+                          .map((trans: any) => (
+                            <div key={trans.id} className="flex justify-between items-center p-2 bg-green-50 rounded text-sm">
+                              <div>
+                                <p className="font-medium">{trans.description || 'Sem descrição'}</p>
+                                <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
+                              </div>
+                              <span className="font-bold text-green-600">
+                                +{formatCurrency(parseFloat(trans.amount))}
                               </span>
                             </div>
                           ))}
@@ -1042,101 +1044,25 @@ const CashRegister = () => {
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Ex: Troco de ontem, notas..."
-                      </div>
+                      />
                     </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsOpenDialogOpen(false)}>
-                        Cancelar
-                      </Button>
-                      <Button
-                        onClick={handleOpenRegister}
-                        className="bg-green-600 hover:bg-green-700"
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          <Card className="max-w-2xl mx-auto">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Unlock className="h-5 w-5 text-green-600" />
-                Abrir Caixa
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 mb-6">
-                Para iniciar as vendas, você precisa abrir o caixa informando o valor inicial em dinheiro.
-              </p>
-              <Dialog open={isOpenDialogOpen} onOpenChange={setIsOpenDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-green-600 hover:bg-green-700 w-full">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Abrir Novo Caixa
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Abrir Caixa</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Valor Inicial em Dinheiro
-                      </label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={openingAmount}
-                        onChange={(e) => setOpeningAmount(e.target.value)}
-                        placeholder="Ex: 100.00"
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Informe quanto dinheiro há no caixa antes de começar
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Observações
-                      </label>
-                      <Textarea
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        placeholder="Ex: Troco de ontem, notas..."
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsOpenDialogOpen(false)}>
-                        Cancelar
-                      </Button>
-                      <Button
-                        onClick={handleOpenRegister}
-                        className="bg-green-600 hover:bg-green-700"
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {isReceiptDialogOpen && (
-          <ReceiptDialog
-            open={isReceiptDialogOpen}
-            onClose={handleReceiptClose}
-            total={receiptData?.total}
-            freight={receiptData?.freight}
-            cartItems={receiptData?.cartItems}
-            payments={receiptData?.payments}
-            documentType={receiptData?.documentType}
-            saleId={receiptData?.saleId}
-            nfceData={receiptData?.nfceData}
-          />
-        </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpenDialogOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={handleOpenRegister}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      Abrir Caixa
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardContent>
+          </Card>
+        )}
 
         {history.length > 0 && (
                   <div className="mt-8">
@@ -1224,18 +1150,109 @@ const CashRegister = () => {
                               <div className="mt-3 pt-3 border-t">
                                 <p className="text-xs text-gray-500">Observações: {register.notes}</p>
                               </div>
-                            </div>
+                            )}
                           </CardContent>
                         </Card>
                       ))}
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
+
+      <style>{`
+              @media print {
+                body * {
+                  visibility: hidden;
+                }
+                .printable-receipt, .printable-receipt * {
+                  visibility: visible;
+                }
+                .printable-receipt {
+                  position: absolute;
+                  left: 0;
+                  top: 0;
+                  width: 80mm;
+                  font-family: Courier New, monospace;
+                  font-size: 12px;
+                  padding: 5mm;
+                  background: white;
+                  color: black;
+                  line-height: 1.4;
+                }
+                .printable-receipt h2 {
+                  font-size: 16px;
+                  text-align: center;
+                  margin-bottom: 5px;
+                  font-weight: bold;
+                }
+                .printable-receipt p {
+                  margin: 2px 0;
+                }
+                .printable-receipt .border-b-2,
+                .printable-receipt .border-t {
+                  border-bottom: 2px dashed black;
+                  border-top: 2px dashed black;
+                }
+                .printable-receipt .flex {
+                  display: flex;
+                  justify-content: space-between;
+                }
+                .printable-receipt .font-bold {
+                  font-weight: bold;
+                }
+                .printable-receipt .text-center {
+                  text-align: center;
+                }
+                .printable-receipt .text-sm {
+                  font-size: 10px;
+                }
+                .printable-receipt .text-xs {
+                  font-size: 9px;
+                }
+                .printable-receipt .text-gray-500,
+                .printable-receipt .text-gray-600,
+                .printable-receipt .text-red-600,
+                .printable-receipt .text-red-700,
+                .printable-receipt .text-green-600,
+                .printable-receipt .text-green-700,
+                .printable-receipt .text-amber-600,
+                .printable-receipt .text-amber-700,
+                .printable-receipt .text-blue-600,
+                .printable-receipt .text-blue-700,
+                .printable-receipt .text-orange-600,
+                .printable-receipt .text-orange-700,
+                .printable-receipt .button,
+                .printable-receipt .dialog-header,
+                .printable-receipt .dialog-footer {
+                  display: none;
+                }
+              }
+              
+              @media print {
+                .epson-t20-receipt {
+                  font-family: 'Courier New', Courier, monospace !important;
+                  font-size: 10px !important;
+                  width: 80mm !important;
+                  margin: 0 !important;
+                  padding: 2mm !important;
+                  color: black !important;
+                  background: white !important;
+                }
+                .epson-t20-receipt .center { text-align: center !important; }
+                .epson-t20-receipt .right { text-align: right !important; }
+                .epson-t20-receipt .bold { font-weight: bold !important; }
+                .epson-t20-receipt .divider { border-bottom: 1px solid #000 !important; margin: 1mm 0 !important; }
+                .epson-t20-receipt .dashed { border-top: 1px dashed #000 !important; border-bottom: 1px dashed #000 !important; margin: 1mm 0 !important; }
+                .epson-t20-receipt .line { margin: 1mm 0 !important; }
+                .epson-t20-receipt .small { font-size: 8px !important; }
+                .epson-t20-receipt .medium { font-size: 10px !important; }
+                .epson-t20-receipt .large { font-size: 12px !important; }
+                .epson-t20-receipt .flex { display: flex !important; justify-content: space-between !important; }
+                .epson-t20-receipt .gap-2 { gap: 2mm !important; }
+                .epson-t20-receipt .gap-1 { gap: 1mm !important; }
+                .epson-t20-receipt .no-print-color { display: none !important; }
+              }
+            `}</style>
     </div>
   );
 };
