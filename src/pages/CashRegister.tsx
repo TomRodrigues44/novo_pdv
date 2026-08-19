@@ -331,19 +331,14 @@ const CashRegister = () => {
           .bold { font-weight: bold; }
           .divider { border-bottom: 1px solid #000; margin: 1px 0; }
           .dashed { border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 1px 0; }
-          .line { margin: 1px 0; }
-          .small { font-size: 9px; }
-          .medium { font-size: 10px; }
-          .large { font-size: 11px; }
-          .xlarge { font-size: 12px; }
-          table { width: 100%; border-collapse: collapse; font-size: 9px; }
-          th, td { padding: 1px 2px; text-align: left; }
-          th { background: #f0f0f0; border-bottom: 1px solid #000; font-weight: bold; }
-          td { border-bottom: 1px solid #eee; }
-          .text-right { text-align: right; }
-          .text-center { text-align: center; }
-          .total-row { font-size: 11px; font-weight: bold; }
-          .section-title { font-size: 10px; font-weight: bold; margin: 1px 0; text-transform: uppercase; }
+          .line { display: flex; justify-content: space-between; align-items: center; margin: 1px 0; }
+          .label { flex: 1; }
+          .value { flex: 1; text-align: right; }
+          .section-title { font-size: 10px; font-weight: bold; margin: 2px 0; text-transform: uppercase; }
+          .total-value { font-size: 12px; font-weight: bold; }
+          .large-value { font-size: 11px; font-weight: bold; }
+          .medium-value { font-size: 10px; font-weight: bold; }
+          .small-value { font-size: 9px; }
         </style>
       </head>
       <body>
@@ -357,57 +352,57 @@ const CashRegister = () => {
 
         <!-- Resumo Principal -->
         <div class="line">
-          <div class="medium bold">Abertura:</div>
-          <div class="medium right">${formatCurrency(openingAmount)}</div>
+          <div class="label">Abertura:</div>
+          <div class="value medium-value">${formatCurrency(openingAmount)}</div>
         </div>
         <div class="line">
-          <div class="medium bold">Total Vendas:</div>
-          <div class="medium right">${formatCurrency(salesTotal)}</div>
+          <div class="label">Total Vendas:</div>
+          <div class="value medium-value">${formatCurrency(salesTotal)}</div>
         </div>
         <div class="line">
-          <div class="large bold">Fechamento Caixa (Calc):</div>
-          <div class="large right bold">${formatCurrency(calculatedClosingCash)}</div>
+          <div class="label">Fechamento Caixa (Calc):</div>
+          <div class="value large-value">${formatCurrency(calculatedClosingCash)}</div>
         </div>
         <div class="divider"></div>
 
         <!-- Vendas por Forma -->
         <div class="section-title">Vendas por Forma</div>
-        <div class="line"><div>Dinheiro:</div><div class="right">${formatCurrency(register.salesByPayment?.cash || 0)}</div></div>
-        <div class="line"><div>Débito:</div><div class="right">${formatCurrency(register.salesByPayment?.debit || 0)}</div></div>
-        <div class="line"><div>Crédito:</div><div class="right">${formatCurrency(register.salesByPayment?.credit || 0)}</div></div>
-        <div class="line"><div>Pix:</div><div class="right">${formatCurrency(register.salesByPayment?.pix || 0)}</div></div>
+        <div class="line"><div class="label">Dinheiro:</div><div class="value small-value">${formatCurrency(register.salesByPayment?.cash || 0)}</div></div>
+        <div class="line"><div class="label">Débito:</div><div class="value small-value">${formatCurrency(register.salesByPayment?.debit || 0)}</div></div>
+        <div class="line"><div class="label">Crédito:</div><div class="value small-value">${formatCurrency(register.salesByPayment?.credit || 0)}</div></div>
+        <div class="line"><div class="label">Pix:</div><div class="value small-value">${formatCurrency(register.salesByPayment?.pix || 0)}</div></div>
         <div class="divider"></div>
 
         <!-- Sangrias -->
         ${totalSangrias > 0 ? `
         <div class="section-title">Sangrias: ${formatCurrency(totalSangrias)}</div>
-        ${totalsByCategory.taxa_entrega > 0 ? `<div class="line small"><div>Deliverys:</div><div class="right">-${formatCurrency(totalsByCategory.taxa_entrega)}</div></div>` : ''}
-        ${totalsByCategory.ifood > 0 ? `<div class="line small"><div>iFood:</div><div class="right">-${formatCurrency(totalsByCategory.ifood)}</div></div>` : ''}
-        ${totalsByCategory.brigadeiros > 0 ? `<div class="line small"><div>Brigadeiros:</div><div class="right">-${formatCurrency(totalsByCategory.brigadeiros)}</div></div>` : ''}
-        ${totalsByCategory.outros > 0 ? `<div class="line small"><div>Outros:</div><div class="right">-${formatCurrency(totalsByCategory.outros)}</div></div>` : ''}
+        ${totalsByCategory.taxa_entrega > 0 ? `<div class="line"><div class="label small-value">Deliverys:</div><div class="value small-value right">-${formatCurrency(totalsByCategory.taxa_entrega)}</div></div>` : ''}
+        ${totalsByCategory.ifood > 0 ? `<div class="line"><div class="label small-value">iFood:</div><div class="value small-value right">-${formatCurrency(totalsByCategory.ifood)}</div></div>` : ''}
+        ${totalsByCategory.brigadeiros > 0 ? `<div class="line"><div class="label small-value">Brigadeiros:</div><div class="value small-value right">-${formatCurrency(totalsByCategory.brigadeiros)}</div></div>` : ''}
+        ${totalsByCategory.outros > 0 ? `<div class="line"><div class="label small-value">Outros:</div><div class="value small-value right">-${formatCurrency(totalsByCategory.outros)}</div></div>` : ''}
         <div class="divider"></div>
         ` : ''}
 
         <!-- Vales -->
         ${voucherTotal > 0 ? `
         <div class="section-title">Vales: ${formatCurrency(voucherTotal)}</div>
-        ${vouchers.map(v => `<div class="line small"><div>${v.description || 'Sem descrição'}:</div><div class="right">-${formatCurrency(parseFloat(v.amount))}</div></div>`).join('')}
+        ${vouchers.map(v => `<div class="line"><div class="label small-value">${v.description || 'Sem descrição'}:</div><div class="value small-value right">-${formatCurrency(parseFloat(v.amount))}</div></div>`).join('')}
         <div class="divider"></div>
         ` : ''}
 
         <!-- Adições -->
         ${additionTotal > 0 ? `
         <div class="section-title">Adições: ${formatCurrency(additionTotal)}</div>
-        ${additions.map(a => `<div class="line small"><div>${a.description || 'Sem descrição'}:</div><div class="right">+${formatCurrency(parseFloat(a.amount))}</div></div>`).join('')}
+        ${additions.map(a => `<div class="line"><div class="label small-value">${a.description || 'Sem descrição'}:</div><div class="value small-value right">+${formatCurrency(parseFloat(a.amount))}</div></div>`).join('')}
         <div class="divider"></div>
         ` : ''}
 
         <!-- Conferencia -->
         <div class="section-title">Conferência</div>
-        <div class="line"><div>Valor Informado (Contado):</div><div class="right bold">${formatCurrency(valorInformado)}</div></div>
-        <div class="line"><div>Valor Esperado:</div><div class="right">${formatCurrency(expectedAmount)}</div></div>
-        <div class="line total-row"><div>DIFERENÇA:</div><div class="right">${formatCurrency(difference)}</div></div>
-        <div class="line small center" style="color: ${difference > 0 ? '#27ae60' : difference < 0 ? '#e74c3c' : '#3498db'};">
+        <div class="line"><div class="label">Valor Informado (Contado):</div><div class="value bold">${formatCurrency(valorInformado)}</div></div>
+        <div class="line"><div class="label">Valor Esperado:</div><div class="value">${formatCurrency(expectedAmount)}</div></div>
+        <div class="line"><div class="label total-value">DIFERENÇA:</div><div class="value total-value">${formatCurrency(difference)}</div></div>
+        <div class="line small-value center" style="color: ${difference > 0 ? '#27ae60' : difference < 0 ? '#e74c3c' : '#3498db'};">
           ${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}
         </div>
         <div class="divider"></div>
