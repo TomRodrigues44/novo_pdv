@@ -819,14 +819,14 @@ const CashRegister = () => {
                   Ao fechar o caixa, você precisará informar o valor total em dinheiro contado.
                   O sistema calculará a diferença entre o valor contado e o valor esperado.
                 </p>
-                <Button 
-                  onClick={() => setIsCloseDialogOpen(true)}
-                  className="w-full bg-orange-600 hover:bg-orange-700"
-                >
-                  <Lock className="mr-2 h-4 w-4" />
-                  Fechar Caixa
-                </Button>
                 <Dialog open={isCloseDialogOpen} onOpenChange={setIsCloseDialogOpen}>
+                  <Button 
+                    className="bg-orange-600 hover:bg-orange-700"
+                    onClick={() => setIsCloseDialogOpen(true)}
+                  >
+                    <Lock className="mr-2 h-4 w-4" />
+                    Fechar Caixa
+                  </Button>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Confirmar Fechamento de Caixa</DialogTitle>
