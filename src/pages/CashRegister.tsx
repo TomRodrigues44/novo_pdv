@@ -373,10 +373,10 @@ const CashRegister = () => {
               <div class="line">
                 <span class="medium bold">SANGRIAS:</span> ${formatCurrency(totalSangrias)}
                 <br>
-                ${totalsByCategory.taxa_entrega > 0 ? `<span class="small">Deliverys: -${formatCurrency(totalsByCategory.taxa_entrega)}</span><br>` : ''}
-                ${totalsByCategory.ifood > 0 ? `<span class="small">Ifood: -${formatCurrency(totalsByCategory.ifood)}</span><br>` : ''}
-                ${totalsByCategory.brigadeiros > 0 ? `<span class="small">Brigadeiros: -${formatCurrency(totalsByCategory.brigadeiros)}</span><br>` : ''}
-                ${totalsByCategory.outros > 0 ? `<span class="small">Outros: -${formatCurrency(totalsByCategory.outros)}</span><br>` : ''}
+                ${totalsByCategory.taxa_entrega > 0 ? '<span class="small">Deliverys: -' + formatCurrency(totalsByCategory.taxa_entrega) + '</span><br>' : ''}
+                ${totalsByCategory.ifood > 0 ? '<span class="small">Ifood: -' + formatCurrency(totalsByCategory.ifood) + '</span><br>' : ''}
+                ${totalsByCategory.brigadeiros > 0 ? '<span class="small">Brigadeiros: -' + formatCurrency(totalsByCategory.brigadeiros) + '</span><br>' : ''}
+                ${totalsByCategory.outros > 0 ? '<span class="small">Outros: -' + formatCurrency(totalsByCategory.outros) + '</span><br>' : ''}
               </div>
               <div class="divider"></div>
               ` : ''}
@@ -386,7 +386,7 @@ const CashRegister = () => {
               <div class="line">
                 <span class="medium bold">VALES:</span>
                 <br>
-                ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')}
+                ${vouchers.map(v => '<span class="small">-' + formatCurrency(parseFloat(v.amount)) + ' - ' + (v.description || 'Sem descrição') + '</span>').join('<br>')}
                 <br>
                 <span class="medium bold">Total de Vales:</span> ${formatCurrency(voucherTotal)}
               </div>
@@ -398,7 +398,7 @@ const CashRegister = () => {
               <div class="line">
                 <span class="medium bold">ADIÇÕES:</span>
                 <br>
-                ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')}
+                ${additions.map(a => '<span class="small">+' + formatCurrency(parseFloat(a.amount)) + ' - ' + (a.description || 'Sem descrição') + '</span>').join('<br>')}
                 <br>
                 <span class="medium bold">Total de Adições:</span> ${formatCurrency(additionTotal)}
               </div>
@@ -590,11 +590,11 @@ const CashRegister = () => {
                       </div>
                       <div className="bg-red-50 p-2 rounded text-center">
                         <p className="text-xs text-red-700 font-medium">iFoods</p>
-                        <p className="font-bold text-red-600">{formatCurrency(totalsByCategory.ifood)}</p>
+                        <p className="font-bold text-red-600>{formatCurrency(totalsByCategory.ifood)}</p>
                       </div>
                       <div className="bg-amber-50 p-2 rounded text-center">
                         <p className="text-xs text-amber-700 font-medium">Brigadeiros</p>
-                        <p className="font-bold text-amber-600">{formatCurrency(totalsByCategory.brigadeiros)}</p>
+                        <p className="font-bold text-amber-600>{formatCurrency(totalsByCategory.brigadeiros)}</p>
                       </div>
                       <div className="bg-gray-50 p-2 rounded text-center">
                         <p className="text-xs text-gray-700 font-medium">Outros</p>
@@ -1023,7 +1023,7 @@ const CashRegister = () => {
                       </div>
                       <div>
                         <p className="text-gray-500">Contado</p>
-                        <p className="font-semibold>{formatCurrency(register.closing_amount)}</p>
+                        {p className="font-semibold">{formatCurrency(register.closing_amount)}</p>
                       </div>
                     </div>
                     {register.notes && (
