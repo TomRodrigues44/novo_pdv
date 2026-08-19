@@ -172,50 +172,102 @@ const CashRegister = () => {
   };
 
   const handleCloseRegister = async () => {
-    try {
-      const amount = parseFloat(closingAmount) || 0;
-      setFinalClosingAmount(amount);
-      setClosedRegisterData(currentRegister);
-
-      // Store data for email sending after receipt dialog closes
-      const paymentMethods = currentRegister.payments || [];
-      const items = currentRegister.items || [];
-      const fiscalData = currentRegister.fiscal ?? {};
-      const nfceData = currentRegister.xml_envio ? { ...currentRegister } : null;
-
-      receiptDataRef.current = {
-        total: parseFloat(currentRegister.total_amount || 0),
-        freight: parseFloat(currentRegister.freight || 0),
-        cartItems: items.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          price: Number(item.price),
-          quantity: Number(item.quantity),
-          flavors: item.flavors,
-        })),
-        payments: paymentMethods.map((p: any) => ({
-          type: p.type,
-          amount: Number(p.amount),
-        })),
-        documentType: currentRegister.xml_status === 'cancelled' ? 'quote' : 'fiscal',
-        saleId: String(currentRegister.daily_sale_number || ''),
-        nfceData,
-      };
-
-      // Open receipt dialog
-      setIsReceiptDialogOpen(true);
-    } catch (error) {
-      toast.error('Erro ao fechar caixa');
-    }
-  };
-
-  // Handle receipt dialog close - send email after dialog closes
-  useEffect(() => {
-    if (!isReceiptDialogOpen && receiptDataRef.current) {
-      handleSendEmail(receiptDataRef.current);
-      receiptDataRef.current = null; // Reset after sending
-    }
-  }, [isReceiptDialogOpen, receiptDataRef.current]);
+      try {
+        const amount = parseFloat(closingAmount) || 0;
+        setFinalClosingAmount(amount);
+        setClosedRegisterData(currentRegister);
+  
+        // Store data for email sending after receipt dialog closes
+        const paymentMethods = currentRegister.payments || [];
+        const items = currentRegister.items || [];
+        const fiscalData = currentRegister.fiscal ?? {};
+        const nfceData = currentRegister.xml_envio ? { ...currentRegister } : null;
+  
+        receiptDataRef.current = {
+          total: parseFloat(currentRegister.total_amount || 0),
+          freight: parseFloat(currentRegister.freight || 0),
+          cartItems: items.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            price: Number(item.price),
+            quantity: Number(item.quantity),
+            flavors: item.flavors,
+          })),
+          payments: paymentMethods.map((p: any) => ({
+            type: p.type,
+            amount: Number(p.amount),
+          })),
+          documentType: currentRegister.xml_status === 'cancelled' ? 'quote' : 'fiscal',
+          saleId: String(currentRegister.daily_sale_number || ''),
+          nfceData,
+        };
+  
+        // Open receipt dialog
+        setIsReceiptDialogOpen(true);
+      } catch (error) {
+        toast.error('Erro ao fechar caixa');
+      }
+    };
+  
+    const handleTransaction = async (type: 'withdrawal' | 'addition' | 'voucher') => {
+      try {
+        let finalDescription = transactionDescription;
+        
+        if (type === 'withdrawal') {
+          const categoryPrefix = {
+            taxa_entrega: 'Taxa Entrega',
+            ifood: 'iFood',
+            brigadeiros: 'Brigadeiros',
+            outros: 'Outros'
+          }[transactionCategory];
+          
+          finalDescription = transactionCategory === 'outros'
+            ? transactionDescription
+            : `${categoryPrefix}: ${transactionDescription}`;
+        }
+  
+        const response = await fetch('/api/cash-transactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type,
+            amount: parseFloat(transactionAmount) || 0,
+            description: finalDescription,
+          }),
+        });
+  
+        if (response.ok) {
+          const typeName = type === 'withdrawal' ? 'Sangria' : type === 'addition' ? 'Adição' : 'Vale';
+          toast.success(`${typeName} registrada com sucesso!`);
+          
+          if (type === 'withdrawal') {
+            setIsWithdrawalDialogOpen(false);
+          } else if (type === 'addition') {
+            setIsAdditionDialogOpen(false);
+          } else {
+            setIsVoucherDialogOpen(false);
+          }
+          
+          setTransactionAmount('');
+          setTransactionDescription('');
+          setTransactionCategory('ifood');
+          refetch();
+        } else {
+          const error = await response.json();
+          toast.error(error.statusMessage || 'Erro ao registrar transação');
+        }
+      } catch (error) {
+        toast.error('Erro ao registrar transação');
+      }
+    };
+  
+    // Handle receipt dialog close - send email after dialog closes
+    useEffect(() => {
+      if (!isReceiptDialogOpen && receiptDataRef.current) {
+        handleSendEmail(receiptDataRef.current);
+        receiptDataRef.current = null; // Reset after sending
+      }
+    }, [isReceiptDialogOpen, receiptDataRef.current]);
 
   const handleGenerateDocument = async (type: 'quote' | 'fiscal') => {
     setCurrentDocumentType(type);
@@ -263,7 +315,7 @@ const CashRegister = () => {
     window.print();
   };
 
-  // Modern thermal printer layout with larger bold fonts and proper alignment
+  // Modern thermal printer layout for historical records
   const handlePrintHistorical = (register: any) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -293,7 +345,7 @@ const CashRegister = () => {
     
     const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
     const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
-  
+
     const calculatedClosingCash = salesTotal - totalSangrias;
     
     const valorInformado = parseFloat(register.closing_amount || 0);
@@ -309,19 +361,18 @@ const CashRegister = () => {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Relatório Fechamento Caixa - Epson TM-T20</title>
+        <title>Relatório Fechamento Caixa</title>
         <style>
           @media print {
             @page { margin: 0; size: 80mm auto; }
-            body { margin: 0; padding: 1mm; font-size: 11px; line-height: 1.1; }
+            body { margin: 0; padding: 2mm; }
           }
           body {
             font-family: 'Arial', 'Helvetica', sans-serif;
-            font-size: 11px;
-            font-weight: bold;
-            line-height: 1.1;
+            font-size: 10px;
+            line-height: 1.3;
             margin: 0;
-            padding: 1mm;
+            padding: 2mm;
             background: white;
             color: black;
             width: 76mm;
@@ -329,86 +380,91 @@ const CashRegister = () => {
           .center { text-align: center; }
           .right { text-align: right; }
           .bold { font-weight: bold; }
-          .divider { border-bottom: 1px solid #000; margin: 1px 0; }
-          .dashed { border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 1px 0; }
-          .line { display: flex; justify-content: space-between; align-items: center; margin: 1px 0; }
-          .label { flex: 1; }
-          .value { flex: 1; text-align: right; }
-          .section-title { font-size: 11px; font-weight: bold; margin: 1px 0; text-transform: uppercase; }
-          .total-value { font-size: 13px; font-weight: bold; }
-          .large-value { font-size: 12px; font-weight: bold; }
-          .medium-value { font-size: 11px; font-weight: bold; }
-          .small-value { font-size: 10px; font-weight: bold; }
+          .divider { border-bottom: 1px solid #000; margin: 3px 0; }
+          .dashed { border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 3px 0; }
+          .line { margin: 2px 0; }
+          .small { font-size: 9px; }
+          .medium { font-size: 10px; }
+          .large { font-size: 12px; }
+          .xlarge { font-size: 14px; }
+          table { width: 100%; border-collapse: collapse; font-size: 9px; }
+          th, td { padding: 2px 3px; text-align: left; }
+          th { background: #f0f0f0; border-bottom: 1px solid #000; font-weight: bold; }
+          td { border-bottom: 1px solid #eee; }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+          .total-row { font-size: 12px; font-weight: bold; }
+          .section-title { font-size: 11px; font-weight: bold; margin: 5px 0 3px 0; text-transform: uppercase; }
         </style>
       </head>
       <body>
         <!-- Header -->
-        <div class="center" style="margin-bottom: 2px;">
+        <div class="center" style="margin-bottom: 5px;">
           <div class="xlarge bold">EMPÓRIO DAS COXINHAS</div>
-          <div class="small" style="margin-top: 1px;">Relatório de Fechamento de Caixa</div>
+          <div class="small" style="margin-top: 2px;">Relatório de Fechamento de Caixa</div>
           <div class="small">${formatDateTime(new Date().toISOString())}</div>
         </div>
         <div class="divider"></div>
 
         <!-- Resumo Principal -->
         <div class="line">
-          <div class="label">Abertura:</div>
-          <div class="value medium-value">${formatCurrency(openingAmount)}</div>
+          <div class="medium bold">Abertura:</div>
+          <div class="medium right">${formatCurrency(openingAmount)}</div>
         </div>
         <div class="line">
-          <div class="label">Total Vendas:</div>
-          <div class="value medium-value">${formatCurrency(salesTotal)}</div>
+          <div class="medium bold">Total Vendas:</div>
+          <div class="medium right">${formatCurrency(salesTotal)}</div>
         </div>
         <div class="line">
-          <div class="label">Fechamento Caixa:</div>
-          <div class="value large-value">${formatCurrency(calculatedClosingCash)}</div>
+          <div class="large bold">Fechamento Caixa (Calc):</div>
+          <div class="large right bold">${formatCurrency(calculatedClosingCash)}</div>
         </div>
         <div class="divider"></div>
 
         <!-- Vendas por Forma -->
         <div class="section-title">Vendas por Forma</div>
-        <div class="line"><div class="label">Dinheiro:</div><div class="value small-value">${formatCurrency(register.salesByPayment?.cash || 0)}</div></div>
-        <div class="line"><div class="label">Débito:</div><div class="value small-value">${formatCurrency(register.salesByPayment?.debit || 0)}</div></div>
-        <div class="line"><div class="label">Crédito:</div><div class="value small-value">${formatCurrency(register.salesByPayment?.credit || 0)}</div></div>
-        <div class="line"><div class="label">Pix:</div><div class="value small-value">${formatCurrency(register.salesByPayment?.pix || 0)}</div></div>
+        <div class="line"><div>Dinheiro:</div><div class="right">${formatCurrency(register.salesByPayment?.cash || 0)}</div></div>
+        <div class="line"><div>Débito:</div><div class="right">${formatCurrency(register.salesByPayment?.debit || 0)}</div></div>
+        <div class="line"><div>Crédito:</div><div class="right">${formatCurrency(register.salesByPayment?.credit || 0)}</div></div>
+        <div class="line"><div>Pix:</div><div class="right">${formatCurrency(register.salesByPayment?.pix || 0)}</div></div>
         <div class="divider"></div>
 
         <!-- Sangrias -->
         ${totalSangrias > 0 ? `
         <div class="section-title">Sangrias: ${formatCurrency(totalSangrias)}</div>
-        ${totalsByCategory.taxa_entrega > 0 ? `<div class="line"><div class="label small-value">Deliverys:</div><div class="value small-value right">-${formatCurrency(totalsByCategory.taxa_entrega)}</div></div>` : ''}
-        ${totalsByCategory.ifood > 0 ? `<div class="line"><div class="label small-value">iFood:</div><div class="value small-value right">-${formatCurrency(totalsByCategory.ifood)}</div></div>` : ''}
-        ${totalsByCategory.brigadeiros > 0 ? `<div class="line"><div class="label small-value">Brigadeiros:</div><div class="value small-value right">-${formatCurrency(totalsByCategory.brigadeiros)}</div></div>` : ''}
-        ${totalsByCategory.outros > 0 ? `<div class="line"><div class="label small-value">Outros:</div><div class="value small-value right">-${formatCurrency(totalsByCategory.outros)}</div></div>` : ''}
+        ${totalsByCategory.taxa_entrega > 0 ? `<div class="line small"><div>Deliverys:</div><div class="right">-${formatCurrency(totalsByCategory.taxa_entrega)}</div></div>` : ''}
+        ${totalsByCategory.ifood > 0 ? `<div class="line small"><div>iFood:</div><div class="right">-${formatCurrency(totalsByCategory.ifood)}</div></div>` : ''}
+        ${totalsByCategory.brigadeiros > 0 ? `<div class="line small"><div>Brigadeiros:</div><div class="right">-${formatCurrency(totalsByCategory.brigadeiros)}</div></div>` : ''}
+        ${totalsByCategory.outros > 0 ? `<div class="line small"><div>Outros:</div><div class="right">-${formatCurrency(totalsByCategory.outros)}</div></div>` : ''}
         <div class="divider"></div>
         ` : ''}
 
         <!-- Vales -->
         ${voucherTotal > 0 ? `
         <div class="section-title">Vales: ${formatCurrency(voucherTotal)}</div>
-        ${vouchers.map(v => `<div class="line"><div class="label small-value">${v.description || 'Sem descrição'}:</div><div class="value small-value right">-${formatCurrency(parseFloat(v.amount))}</div></div>`).join('')}
+        ${vouchers.map(v => `<div class="line small"><div>${v.description || 'Sem descrição'}:</div><div class="right">-${formatCurrency(parseFloat(v.amount))}</div></div>`).join('')}
         <div class="divider"></div>
         ` : ''}
 
         <!-- Adições -->
         ${additionTotal > 0 ? `
         <div class="section-title">Adições: ${formatCurrency(additionTotal)}</div>
-        ${additions.map(a => `<div class="line"><div class="label small-value">${a.description || 'Sem descrição'}:</div><div class="value small-value right">+${formatCurrency(parseFloat(a.amount))}</div></div>`).join('')}
+        ${additions.map(a => `<div class="line small"><div>${a.description || 'Sem descrição'}:</div><div class="right">+${formatCurrency(parseFloat(a.amount))}</div></div>`).join('')}
         <div class="divider"></div>
         ` : ''}
 
         <!-- Conferencia -->
         <div class="section-title">Conferência</div>
-        <div class="line"><div class="label">Valor Informado (Contado):</div><div class="value bold">${formatCurrency(valorInformado)}</div></div>
-        <div class="line"><div class="label">Valor Esperado:</div><div class="value">${formatCurrency(expectedAmount)}</div></div>
-        <div class="line"><div class="label total-value">DIFERENÇA:</div><div class="value total-value">${formatCurrency(difference)}</div></div>
-        <div class="line small-value center" style="color: ${difference > 0 ? '#27ae60' : difference < 0 ? '#e74c3c' : '#3498db'};">
+        <div class="line"><div>Valor Informado (Contado):</div><div class="right bold">${formatCurrency(valorInformado)}</div></div>
+        <div class="line"><div>Valor Esperado:</div><div class="right">${formatCurrency(expectedAmount)}</div></div>
+        <div class="line total-row"><div>DIFERENÇA:</div><div class="right">${formatCurrency(difference)}</div></div>
+        <div class="line small center" style="color: ${difference > 0 ? '#27ae60' : difference < 0 ? '#e74c3c' : '#3498db'};">
           ${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}
         </div>
         <div class="divider"></div>
 
         <!-- Footer -->
-        <div class="center" style="margin-top: 2px;">
+        <div class="center" style="margin-top: 5px;">
           <div class="medium bold">*** OBRIGADO PELA PREFERÊNCIA ***</div>
           <div class="small">Empório das Coxinhas</div>
         </div>
@@ -577,7 +633,7 @@ const CashRegister = () => {
                         <p className="font-bold text-orange-600">{formatCurrency(totalsByCategory.taxa_entrega)}</p>
                       </div>
                       <div className="bg-red-50 p-2 rounded text-center">
-                        <p className="text-xs text-red-700 font-medium">iFoods</p>
+                        <p className="text-xs text-red-700 font-medium">Ifoods</p>
                         <p className="font-bold text-red-600">{formatCurrency(totalsByCategory.ifood)}</p>
                       </div>
                       <div className="bg-amber-50 p-2 rounded text-center">
@@ -1024,6 +1080,28 @@ const CashRegister = () => {
               ))}
             </div>
           </div>
+        )}
+
+        {isCloseSuccessDialogOpen && (
+          <Dialog open={isCloseSuccessDialogOpen} onOpenChange={setIsCloseSuccessDialogOpen}>
+            <DialogHeader>
+              <DialogTitle>Caixa Fechado com Sucesso!</DialogTitle>
+            </DialogHeader>
+            <DialogContent className="p-4 space-y-4">
+              <p className="text-green-600">Caixa fechado com sucesso!</p>
+              <p className="font-medium text-green-800">
+                Valor final contado: {formatCurrency(finalClosingAmount)}
+              </p>
+              <p className="text-sm text-gray-600">
+                {closeResult?.message || 'Operação concluída com sucesso.'}
+              </p>
+            </DialogContent>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCloseSuccessDialogOpen(false)}>
+                OK
+              </Button>
+            </DialogFooter>
+          </Dialog>
         )}
       </div>
     </div>
