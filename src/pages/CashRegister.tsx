@@ -263,7 +263,7 @@ const CashRegister = () => {
     window.print();
   };
 
-  // Modern thermal printer layout for historical records
+  // Modern thermal printer layout with 10px bold font, tight spacing, aligned values
   const handlePrintHistorical = (register: any) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -309,18 +309,19 @@ const CashRegister = () => {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Relatório Fechamento Caixa</title>
+        <title>Relatório Fechamento Caixa - Epson TM-T20</title>
         <style>
           @media print {
             @page { margin: 0; size: 80mm auto; }
-            body { margin: 0; padding: 2mm; }
+            body { margin: 0; padding: 1mm; font-size: 10px; line-height: 1.1; }
           }
           body {
             font-family: 'Arial', 'Helvetica', sans-serif;
             font-size: 10px;
-            line-height: 1.3;
+            font-weight: bold;
+            line-height: 1.1;
             margin: 0;
-            padding: 2mm;
+            padding: 1mm;
             background: white;
             color: black;
             width: 76mm;
@@ -328,28 +329,28 @@ const CashRegister = () => {
           .center { text-align: center; }
           .right { text-align: right; }
           .bold { font-weight: bold; }
-          .divider { border-bottom: 1px solid #000; margin: 3px 0; }
-          .dashed { border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 3px 0; }
-          .line { margin: 2px 0; }
+          .divider { border-bottom: 1px solid #000; margin: 1px 0; }
+          .dashed { border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 1px 0; }
+          .line { margin: 1px 0; }
           .small { font-size: 9px; }
           .medium { font-size: 10px; }
-          .large { font-size: 12px; }
-          .xlarge { font-size: 14px; }
+          .large { font-size: 11px; }
+          .xlarge { font-size: 12px; }
           table { width: 100%; border-collapse: collapse; font-size: 9px; }
-          th, td { padding: 2px 3px; text-align: left; }
+          th, td { padding: 1px 2px; text-align: left; }
           th { background: #f0f0f0; border-bottom: 1px solid #000; font-weight: bold; }
           td { border-bottom: 1px solid #eee; }
           .text-right { text-align: right; }
           .text-center { text-align: center; }
-          .total-row { font-size: 12px; font-weight: bold; }
-          .section-title { font-size: 11px; font-weight: bold; margin: 5px 0 3px 0; text-transform: uppercase; }
+          .total-row { font-size: 11px; font-weight: bold; }
+          .section-title { font-size: 10px; font-weight: bold; margin: 1px 0; text-transform: uppercase; }
         </style>
       </head>
       <body>
         <!-- Header -->
-        <div class="center" style="margin-bottom: 5px;">
+        <div class="center" style="margin-bottom: 2px;">
           <div class="xlarge bold">EMPÓRIO DAS COXINHAS</div>
-          <div class="small" style="margin-top: 2px;">Relatório de Fechamento de Caixa</div>
+          <div class="small" style="margin-top: 1px;">Relatório de Fechamento de Caixa</div>
           <div class="small">${formatDateTime(new Date().toISOString())}</div>
         </div>
         <div class="divider"></div>
@@ -412,7 +413,7 @@ const CashRegister = () => {
         <div class="divider"></div>
 
         <!-- Footer -->
-        <div class="center" style="margin-top: 5px;">
+        <div class="center" style="margin-top: 2px;">
           <div class="medium bold">*** OBRIGADO PELA PREFERÊNCIA ***</div>
           <div class="small">Empório das Coxinhas</div>
         </div>
