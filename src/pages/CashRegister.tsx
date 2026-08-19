@@ -385,7 +385,7 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">VALES:</span>
                   <br>
-                  ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')
+                  ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')}
                   <br>
                   <span class="medium bold">Total de Vales:</span> ${formatCurrency(voucherTotal)}
                 </div>
@@ -397,14 +397,14 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">ADIÇÕES:</span>
                   <br>
-                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')
+                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')}
                   <br>
                   <span class="medium bold">Total de Adições:</span> ${formatCurrency(additionTotal)}
                 </div>
                 <div class="divider"></div>
                 ` : ''}
 
-                <!-- ÁREA 6: Confirmação -->
+                <!-- ÁREA 6: Conferencia -->
                 <div class="line">
                   <span class="medium bold">CONFERÊNCIA:</span>
                   <br>
