@@ -433,29 +433,6 @@ const CashRegister = () => {
       printWindow.print();
     };
 
-  // Nova função para enviar e-mail do fechamento de caixa
-  const handleSendEmail = async (data: any) => {
-    try {
-      const response = await fetch('/api/cash-register/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-
-      if (response.ok) {
-        toast.success('E-mail do fechamento de caixa enviado com sucesso!');
-      } else {
-        const error = await response.json();
-        toast.error(error.statusMessage || 'Erro ao enviar e-mail');
-      }
-    } catch (error) {
-      console.error('Error sending email:', error);
-      toast.error('Erro ao enviar e-mail');
-    } finally {
-      setSendingEmail(null);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex">
