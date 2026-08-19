@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import AdminSidebar from '@/components/AdminSidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useReactToPrint } from 'react-to-print';
 import { format } from 'date-fns';
-import { useEffect } from 'react';
 
 const CashRegister = () => {
   const queryClient = useQueryClient();
@@ -32,7 +31,7 @@ const CashRegister = () => {
   const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
-  const receiptDataRef = useRef<any>(null); // Store data for email sending after receipt dialog closes
+  const receiptDataRef = useRef<any>(null);
 
   const { data: cashData, isLoading, refetch } = useQuery({
     queryKey: ['cash-register'],
@@ -350,7 +349,7 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">VALES:</span>
                   <br>
-                  ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')
+                  ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')}
                   <br>
                   <span class="medium bold">Total de Vales:</span> ${formatCurrency(voucherTotal)}
                 </div>
@@ -362,14 +361,14 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">ADIÇÕES:</span>
                   <br>
-                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')
+                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')}
                   <br>
                   <span class="medium bold">Total de Adições:</span> ${formatCurrency(additionTotal)}
                 </div>
                 <div class="divider"></div>
                 ` : ''}
 
-                <!-- ÁREA 6: Confirmação -->
+                <!-- ÁREA 6: Conferencia -->
                 <div class="line">
                   <span class="medium bold">CONFERÊNCIA:</span>
                   <br>
@@ -431,7 +430,7 @@ const CashRegister = () => {
           </div>
         </div>
       </div>
-    </div>
+    );
   }
 
   return (
@@ -1016,7 +1015,7 @@ const CashRegister = () => {
                             )}
                           </CardContent>
                         </Card>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </div>
