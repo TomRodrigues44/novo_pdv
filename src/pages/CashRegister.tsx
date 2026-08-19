@@ -819,14 +819,14 @@ const CashRegister = () => {
                   Ao fechar o caixa, você precisará informar o valor total em dinheiro contado.
                   O sistema calculará a diferença entre o valor contado e o valor esperado.
                 </p>
-                <Button 
-                  className="bg-orange-600 hover:bg-orange-700 w-full"
-                  onClick={() => setIsCloseDialogOpen(true)}
-                >
-                  <Lock className="mr-2 h-4 w-4" />
-                  Fechar Caixa
-                </Button>
                 <Dialog open={isCloseDialogOpen} onOpenChange={setIsCloseDialogOpen}>
+                  <Button 
+                    className="bg-orange-600 hover:bg-orange-700"
+                    onClick={() => setIsCloseDialogOpen(true)}
+                  >
+                    <Lock className="mr-2 h-4 w-4" />
+                    Fechar Caixa
+                  </Button>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Confirmar Fechamento de Caixa</DialogTitle>
@@ -887,14 +887,14 @@ const CashRegister = () => {
               <p className="text-gray-600 mb-6">
                 Para iniciar as vendas, você precisa abrir o caixa informando o valor inicial em dinheiro.
               </p>
-              <Button 
-                className="bg-green-600 hover:bg-green-700 w-full"
-                onClick={() => setIsOpenDialogOpen(true)}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Abrir Novo Caixa
-              </Button>
               <Dialog open={isOpenDialogOpen} onOpenChange={setIsOpenDialogOpen}>
+                <Button 
+                  className="bg-green-600 hover:bg-green-700 w-full"
+                  onClick={() => setIsOpenDialogOpen(true)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Abrir Novo Caixa
+                </Button>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Abrir Caixa</DialogTitle>
