@@ -1,12 +1,48 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import AdminSidebar from '@/components/AdminSidebar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, TrendingUp, TrendingDown, Clock, CheckCircle, Plus, Lock, Unlock, Minus, CreditCard, QrCode, Banknote, Printer, Receipt, Bike, Utensils, Smartphone, Mail } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  CheckCircle,
+  Plus,
+  Lock,
+  Unlock,
+  Minus,
+  CreditCard,
+  QrCode,
+  Banknote,
+  Printer,
+  Receipt,
+  Bike,
+  Utensils,
+  Smartphone,
+  Mail,
+} from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useReactToPrint } from 'react-to-print';
@@ -349,7 +385,7 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">VALES:</span>
                   <br>
-                  ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')}
+                  ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')
                   <br>
                   <span class="medium bold">Total de Vales:</span> ${formatCurrency(voucherTotal)}
                 </div>
@@ -361,14 +397,14 @@ const CashRegister = () => {
                 <div class="line">
                   <span class="medium bold">ADIÇÕES:</span>
                   <br>
-                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')}
+                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')
                   <br>
                   <span class="medium bold">Total de Adições:</span> ${formatCurrency(additionTotal)}
                 </div>
                 <div class="divider"></div>
                 ` : ''}
 
-                <!-- ÁREA 6: Conferencia -->
+                <!-- ÁREA 6: Confirmação -->
                 <div class="line">
                   <span class="medium bold">CONFERÊNCIA:</span>
                   <br>
@@ -430,7 +466,7 @@ const CashRegister = () => {
           </div>
         </div>
       </div>
-    );
+    </div>
   }
 
   return (
@@ -1015,10 +1051,10 @@ const CashRegister = () => {
                     )}
                   </CardContent>
                 </Card>
-              ))}
+              </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
