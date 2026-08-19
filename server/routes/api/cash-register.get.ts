@@ -18,26 +18,61 @@ async function getRegisterDetails(register: any) {
   `;
 
   let salesTotal = 0;
-  const salesByPayment: Record<string, number> = {
-    cash: 0,
-    debit: 0,
-    credit: 0,
-    pix: 0,
-  };
-  const processedSales = new Set();
-
-  salesAndPayments.forEach(row => {
-    if (!processedSales.has(row.id)) {
-      salesTotal += parseFloat(row.total_amount);
-      processedSales.add(row.id);
-    }
-    if (row.payment_type && row.amount) {
-      const type = row.payment_type.toLowerCase();
-      if (salesByPayment[type] !== undefined) {
-        salesByPayment[type] += parseFloat(row.amount);
+    const salesByPayment: Record<string, number> = {
+      cash: 0,
+      debit: 0,
+      credit: 0,
+      pix: 0,
+    };
+  
+    // Agregar por venda: total, cash pago e pagamentos não-cash por tipo
+    const saleAggregates = new Map<string, {
+      total: number;
+      cash: number;
+      paymentsByType: Record<string, number>;
+    }>();
+  
+    salesAndPayments.forEach(row => {
+      const total = parseFloat(row.total_amount);
+      if (!saleAggregates.has(row.id)) {
+        saleAggregates.set(row.id, {
+          total,
+          cash: 0,
+          paymentsByType: { cash: 0, debit: 0, credit: 0, pix: 0 },
+        });
       }
-    }
-  });
+  
+      const agg = saleAggregates.get(row.id)!;
+      if (row.payment_type && row.amount) {
+        const type = row.payment_type.toLowerCase();
+        const amount = parseFloat(row.amount);
+        if (type === 'cash') {
+          agg.cash += amount;
+          agg.paymentsByType.cash += amount;
+        } else if (agg.paymentsByType[type] !== undefined) {
+          agg.paymentsByType[type] += amount;
+        }
+      }
+    });
+  
+    // Calcular totais e vendas líquidas por forma de pagamento
+    saleAggregates.forEach(agg => {
+      salesTotal += agg.total;
+  
+      // Venda líquida em dinheiro: mínimo do cash recebido ou (total - pagamentos não-cash)
+      // Isso garante que apenas o valor do produto seja contado, não o troco
+      const nonCashTotal = Object.values(agg.paymentsByType)
+        .filter((_type: string, i: number) => i > 0) // exclui 'cash' (índice 0)
+        .reduce((sum: number, amount: number) => sum + amount, 0);
+  
+      const netCash = Math.min(agg.cash, Math.max(agg.total - nonCashTotal, 0));
+      salesByPayment.cash += netCash;
+  
+      // Outras formas de pagamento: somar o valor total (não envolvem troco)
+      salesByPayment.debit += agg.paymentsByType.debit || 0;
+      salesByPayment.credit += agg.paymentsByType.credit || 0;
+      salesByPayment.pix += agg.paymentsByType.pix || 0;
+    });
 
   // Buscar transações para este caixa
   const transactionsResult = await sql`
