@@ -598,7 +598,7 @@ const CashRegister = () => {
                       </div>
                       <div className="bg-gray-50 p-2 rounded text-center">
                         <p className="text-xs text-gray-700 font-medium">Outros</p>
-                        <p className="font-bold text-gray-600">{formatCurrency(totalsByCategory.outros)}</p>
+                        <p className="font-bold text-gray-600>{formatCurrency(totalsByCategory.outros)}</p>
                       </div>
                     </div>
 
@@ -704,7 +704,7 @@ const CashRegister = () => {
                           <div key={trans.id} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
                             <div className="flex-1 min-w-0">
                               <p className="font-medium truncate">{getCleanDescription(trans.description)}</p>
-                              <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
+                              <p className="text-xs text-gray-500>{formatDateTime(trans.created_at)}</p>
                             </div>
                             <span className="font-bold text-red-600 ml-2">
                               -{formatCurrency(parseFloat(trans.amount))}
@@ -793,14 +793,14 @@ const CashRegister = () => {
                             <div key={trans.id} className="flex justify-between items-center p-2 bg-amber-50 rounded text-sm">
                               <div>
                                 <p className="font-medium">{trans.description || 'Sem descrição'}</p>
-                                <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
+                                <p className="text-xs text-gray-500>{formatDateTime(trans.created_at)}</p>
                               </div>
                               <span className="font-bold text-amber-600">
                                 -{formatCurrency(parseFloat(trans.amount))}
                               </span>
                             </div>
                           ))}
-                      </div
+                      </div>
                     )}
                   </div>
                 </CardContent>
@@ -1015,20 +1015,20 @@ const CashRegister = () => {
                       </div>
                       <div>
                         <p className="text-gray-500">Vendas</p>
-                        <p className="font-semibold text-green-600">{formatCurrency(register.expected_amount - register.opening_amount)}</p>
+                        <p className="font-semibold text-green-600>{formatCurrency(register.expected_amount - register.opening_amount)}</p>
                       </div>
                       <div>
                         <p className="text-gray-500">Esperado</p>
-                        <p className="font-semibold text-orange-600">{formatCurrency(register.expected_amount)}</p>
+                        <p className="font-semibold text-orange-600>{formatCurrency(register.expected_amount)}</p>
                       </div>
                       <div>
                         <p className="text-gray-500">Contado</p>
-                        <p className="font-semibold">{formatCurrency(register.closing_amount)}</p>
+                        <p className="font-semibold>{formatCurrency(register.closing_amount)}</p>
                       </div>
                     </div>
                     {register.notes && (
                       <div className="mt-3 pt-3 border-t">
-                        <p className="text-xs text-gray-500">Observações: {register.notes}</p>
+                        <p className="text-xs text-gray-500>Observações: {register.notes}</p>
                       </div>
                     )}
                   </CardContent>
