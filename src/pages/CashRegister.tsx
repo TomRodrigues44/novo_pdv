@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import AdminSidebar from '@/components/AdminSidebar';
 import {
   Card,
@@ -215,7 +215,7 @@ const CashRegister = () => {
       handleSendEmail(receiptDataRef.current);
       receiptDataRef.current = null; // Reset after sending
     }
-  }, [isReceiptDialogOpen, receiptDataRef.current, handleSendEmail]);
+  }, [isReceiptDialogOpen, receiptDataRef.current]);
 
   const handleGenerateDocument = async (type: 'quote' | 'fiscal') => {
     setCurrentDocumentType(type);
@@ -226,7 +226,7 @@ const CashRegister = () => {
     setIsReceiptDialogOpen(false);
   };
 
-  const handleSendEmail = async (data: any) => {
+  const handleSendEmail = useCallback(async (data: any) => {
     try {
       const response = await fetch('/api/cash-register/send-email', {
         method: 'POST',
@@ -246,7 +246,7 @@ const CashRegister = () => {
     } finally {
       setSendingEmail(null);
     }
-  };
+  }, []);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
