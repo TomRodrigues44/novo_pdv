@@ -222,6 +222,7 @@ const CashRegister = () => {
       if (!printWindow) return;
   
       const openingAmount = parseFloat(register.opening_amount || 0);
+      const cashSales = register.salesByPayment?.cash || 0;
       const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
   
       const calculateTotalsByCategory = (transactions: any[]) => {
@@ -251,10 +252,10 @@ const CashRegister = () => {
       
       const valorInformado = parseFloat(register.closing_amount || 0);
       
-      // CORREÇÃO: Valor Esperado = (Abertura + Total Vendas + Total Adições) - (Total Sangrias + Total Vales)
+      // CORREÇÃO: Valor Esperado = (Abertura + Dinheiro + Adições) - (Total Sangrias + Total Vales)
       const expectedAmount = register.expected_amount !== undefined 
         ? parseFloat(register.expected_amount) 
-        : openingAmount + salesTotal + additionTotal - totalSangrias - voucherTotal;
+        : openingAmount + cashSales + additionTotal - totalSangrias - voucherTotal;
       
       const difference = valorInformado - expectedAmount;
 
@@ -396,6 +397,7 @@ const CashRegister = () => {
     try {
       // Preparar dados para o e-mail
       const openingAmount = parseFloat(register.opening_amount || 0);
+      const cashSales = register.salesByPayment?.cash || 0;
       const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
       
       const calculateTotalsByCategory = (transactions: any[]) => {
@@ -424,10 +426,10 @@ const CashRegister = () => {
       const calculatedClosingCash = salesTotal - totalSangrias;
       const valorInformado = parseFloat(register.closing_amount || 0);
       
-      // CORREÇÃO: Valor Esperado = (Abertura + Total Vendas + Total Adições) - (Total Sangrias + Total Vales)
+      // CORREÇÃO: Valor Esperado = (Abertura + Dinheiro + Adições) - (Total Sangrias + Total Vales)
       const expectedAmount = register.expected_amount !== undefined 
         ? parseFloat(register.expected_amount) 
-        : openingAmount + salesTotal + additionTotal - totalSangrias - voucherTotal;
+        : openingAmount + cashSales + additionTotal - totalSangrias - voucherTotal;
       
       const difference = valorInformado - expectedAmount;
 
