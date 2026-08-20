@@ -87,8 +87,8 @@
                 </CardContent>
               </Card>
             </div>
-          ) : (
-            <Card className="max-w-2xl mx-auto">
+                    ) : (
+                        <Card className="max-w-2xl mx-auto">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Unlock className="h-5 w-5 text-green-600" />
