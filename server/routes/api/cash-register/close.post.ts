@@ -108,8 +108,8 @@ export default defineEventHandler(async (event) => {
     // VALOR INFORMADO = Valor Contado (o que o operador digitou)
     const valorInformado = parseFloat(closingAmount) || 0;
     
-    // VALOR ESPERADO = Abertura + Vendas em Dinheiro + Adições - Sangrias - Vales
-    const expectedAmount = openingAmount + cashSales + additions - totalSangrias - vouchers;
+    // VALOR ESPERADO = (Abertura + Total Vendas + Total Adições) - (Total Sangrias + Total Vales)
+    const expectedAmount = openingAmount + salesTotal + additions - totalSangrias - vouchers;
     
     // Diferença = Valor Informado - Valor Esperado
     const difference = valorInformado - expectedAmount;

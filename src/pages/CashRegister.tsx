@@ -251,9 +251,10 @@ const CashRegister = () => {
       
       const valorInformado = parseFloat(register.closing_amount || 0);
       
+      // CORREÇÃO: Valor Esperado = (Abertura + Total Vendas + Total Adições) - (Total Sangrias + Total Vales)
       const expectedAmount = register.expected_amount !== undefined 
         ? parseFloat(register.expected_amount) 
-        : openingAmount + (register.salesByPayment?.cash || 0) + additionTotal - totalSangrias - voucherTotal;
+        : openingAmount + salesTotal + additionTotal - totalSangrias - voucherTotal;
       
       const difference = valorInformado - expectedAmount;
 
@@ -422,9 +423,12 @@ const CashRegister = () => {
       
       const calculatedClosingCash = salesTotal - totalSangrias;
       const valorInformado = parseFloat(register.closing_amount || 0);
+      
+      // CORREÇÃO: Valor Esperado = (Abertura + Total Vendas + Total Adições) - (Total Sangrias + Total Vales)
       const expectedAmount = register.expected_amount !== undefined 
         ? parseFloat(register.expected_amount) 
-        : openingAmount + (register.salesByPayment?.cash || 0) + additionTotal - totalSangrias - voucherTotal;
+        : openingAmount + salesTotal + additionTotal - totalSangrias - voucherTotal;
+      
       const difference = valorInformado - expectedAmount;
 
       const emailData = {
