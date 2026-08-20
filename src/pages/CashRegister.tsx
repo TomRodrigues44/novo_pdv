@@ -1,9 +1,4 @@
-` which is clearly corrupted.
-
-I need to rewrite the entire file properly. Let me write the complete corrected file.</think>O arquivo ficou corrompido com a tag `<dyad-write>` no meio do código. Vou reescrever o arquivo completo corretamente.
-
-<dyad-write path="src/pages/CashRegister.tsx" description="Corrigir arquivo CashRegister.tsx completo">
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import AdminSidebar from '@/components/AdminSidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,30 +43,6 @@ const CashRegister = () => {
   const currentRegister = cashData?.current;
   const history = cashData?.history || [];
 
-  // Calcular totalsByCategory e withdrawals no escopo do componente
-  const totalsByCategory = useMemo(() => {
-    if (!currentRegister?.transactions) {
-      return { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 };
-    }
-    
-    const withdrawals = currentRegister.transactions.filter((t: any) => t.type === 'withdrawal');
-    return withdrawals.reduce((acc: any, t: any) => {
-      const desc = t.description || '';
-      let cat = 'outros';
-      if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
-      else if (desc.startsWith('iFood')) cat = 'ifood';
-      else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
-      
-      acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
-      return acc;
-    }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
-  }, [currentRegister?.transactions]);
-
-  // Calcular withdrawals separadamente para uso no JSX
-  const withdrawals = useMemo(() => {
-    return currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || [];
-  }, [currentRegister?.transactions]);
-
   useEffect(() => {
     if (!currentRegister) {
       setTimeElapsed(0);
@@ -109,6 +80,17 @@ const CashRegister = () => {
     if (desc.startsWith('Brigadeiros: ')) return desc.replace('Brigadeiros: ', '');
     return desc;
   };
+
+  const calculateTotalsByCategory = (transactions: any[]) => {
+    const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
+    return withdrawals.reduce((acc: any, t: any) => {
+      const cat = getCategoryFromDescription(t.description);
+      acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
+      return acc;
+    }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
+  };
+
+  const totalsByCategory = calculateTotalsByCategory(currentRegister?.transactions || []);
 
   const handleOpenRegister = async () => {
     try {
@@ -657,11 +639,11 @@ const CashRegister = () => {
                     </div>
 
                     <div className="flex justify-between items-center border-t pt-2">
-                      <span className="text-gray-600 font-medium">Total de Sangrias:</span>
-                      <span className="text-xl font-bold text-red-600">
-                        {formatCurrency(withdrawals.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0))}
-                      </span>
-                    </div>
+                                              <span className="text-gray-600 font-medium">Total de Sangrias:</span>
+                                              <span className="text-xl font-bold text-red-600">
+                                                {formatCurrency(totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros)}
+                                              </span>
+                                            </div>
                     
                     <Dialog open={isWithdrawalDialogOpen} onOpenChange={setIsWithdrawalDialogOpen}>
                       <DialogTrigger asChild>
@@ -751,21 +733,21 @@ const CashRegister = () => {
                       </DialogContent>
                     </Dialog>
 
-                    {withdrawals.length > 0 && (
-                      <div className="space-y-2 mt-4 max-h-48 overflow-y-auto">
-                        {withdrawals.map((trans: any) => (
-                          <div key={trans.id} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{getCleanDescription(trans.description)}</p>
-                              <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
-                            </div>
-                            <span className="font-bold text-red-600 ml-2">
-                              -{formatCurrency(parseFloat(trans.amount))}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {(currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || []).length > 0 && (
+                                          <div className="space-y-2 mt-4 max-h-48 overflow-y-auto">
+                                            {(currentRegister?.transactions?.filter((t: any) => t.type === 'withdrawal') || []).map((trans: any) => (
+                                              <div key={trans.id} className="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
+                                                <div className="flex-1 min-w-0">
+                                                  <p className="font-medium truncate">{getCleanDescription(trans.description)}</p>
+                                                  <p className="text-xs text-gray-500">{formatDateTime(trans.created_at)}</p>
+                                                </div>
+                                                <span className="font-bold text-red-600 ml-2">
+                                                  -{formatCurrency(parseFloat(trans.amount))}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
                   </div>
                 </CardContent>
               </Card>
