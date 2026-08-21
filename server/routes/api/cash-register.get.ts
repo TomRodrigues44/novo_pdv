@@ -13,6 +13,7 @@ async function getRegisterDetails(register: any) {
     FROM sales s
     LEFT JOIN sale_payments sp ON s.id = sp.sale_id
     WHERE s.created_at >= ${register.opened_at}
+      AND s.created_at <= ${register.closed_at || new Date().toISOString()}
       AND s.status != 'cancelled'
       AND s.xml_status != 'cancelled'
   `;
