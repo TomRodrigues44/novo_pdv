@@ -37,6 +37,15 @@ interface Payment {
   amount: number;
 }
 
+interface DeliveryData {
+  name: string;
+  phone: string;
+  address: string;
+  number: string;
+  neighborhood: string;
+  notes?: string;
+}
+
 interface CompanyConfig {
   razao_social: string;
   nome_fantasia: string;
@@ -118,9 +127,10 @@ interface ReceiptDialogProps {
   documentType: 'quote' | 'fiscal';
   saleId?: string;
   nfceData: NfceData | null;
+  delivery?: DeliveryData | null;
 }
 
-export function ReceiptDialog({ open, onClose, total, freight, cartItems, payments, documentType, saleId, nfceData }: ReceiptDialogProps) {
+export function ReceiptDialog({ open, onClose, total, freight, cartItems, payments, documentType, saleId, nfceData, delivery }: ReceiptDialogProps) {
   const [companyConfig, setCompanyConfig] = useState<CompanyConfig | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -246,6 +256,26 @@ export function ReceiptDialog({ open, onClose, total, freight, cartItems, paymen
           </p>
 
           <hr className="border-dashed border-black my-2" />
+
+          {delivery && (
+            <>
+              <div className="mb-2">
+                <p className="text-center font-bold text-sm">*** ENTREGA ***</p>
+                <p><span className="font-bold">NOME:</span> {delivery.name}</p>
+                <p><span className="font-bold">TEL:</span> {delivery.phone}</p>
+                <p className="mt-1"><span className="font-bold">ENDEREÇO:</span></p>
+                <p>{delivery.address}, {delivery.number}</p>
+                <p>Bairro: {delivery.neighborhood}</p>
+                {delivery.notes && (
+                  <>
+                    <p className="mt-1 font-bold">OBSERVAÇÃO:</p>
+                    <p className="whitespace-pre-wrap">{delivery.notes}</p>
+                  </>
+                )}
+              </div>
+              <hr className="border-dashed border-black my-2" />
+            </>
+          )}
 
           <div className="text-center mb-2">
             <p className="font-bold">*** OBRIGADO PELA PREFERÊNCIA ***</p>

@@ -3,7 +3,7 @@ import { sql } from '../../utils/db';
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
-    const { items, total, payments, customerId, freight, type } = body;
+    const { items, total, payments, customerId, freight, type, delivery } = body;
 
     if (!items || !total) {
       throw createError({
@@ -24,8 +24,20 @@ export default defineEventHandler(async (event) => {
 
     // 2. Create the sale and get the ID
     const saleResult = await sql`
-      INSERT INTO sales (total_amount, customer_id, freight, status, daily_sale_number)
-      VALUES (${total}, ${customerId}, ${freight}, ${type}, ${nextDailyNumber})
+      INSERT INTO sales (
+        total_amount, customer_id, freight, status, daily_sale_number,
+        delivery_name, delivery_phone, delivery_address, delivery_number,
+        delivery_neighborhood, delivery_notes
+      )
+      VALUES (
+        ${total}, ${customerId}, ${freight}, ${type}, ${nextDailyNumber},
+        ${delivery?.name || null},
+        ${delivery?.phone || null},
+        ${delivery?.address || null},
+        ${delivery?.number || null},
+        ${delivery?.neighborhood || null},
+        ${delivery?.notes || null}
+      )
       RETURNING id, daily_sale_number;
     `;
     const saleId = saleResult[0].id;

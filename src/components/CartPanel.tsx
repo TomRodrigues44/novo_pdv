@@ -26,6 +26,8 @@ import {
   User,
   Lock,
   Bike,
+  MapPin,
+  Pencil,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -51,6 +53,15 @@ interface Motoboy {
   id: string;
   name: string;
   phone: string;
+}
+
+interface DeliveryData {
+  name: string;
+  phone: string;
+  address: string;
+  number: string;
+  neighborhood: string;
+  notes: string;
 }
 
 interface CartPanelProps {
@@ -88,6 +99,16 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
   const [freightValue, setFreightValue] = useState("");
   const [isCustomerSelectorOpen, setIsCustomerSelectorOpen] = useState(false);
   const [motoboys, setMotoboys] = useState<Motoboy[]>([]);
+  const [isDeliveryDialogOpen, setIsDeliveryDialogOpen] = useState(false);
+  const [deliveryData, setDeliveryData] = useState<DeliveryData | null>(null);
+  const [deliveryForm, setDeliveryForm] = useState<DeliveryData>({
+    name: "",
+    phone: "",
+    address: "",
+    number: "",
+    neighborhood: "",
+    notes: "",
+  });
 
   const totalWithFreight = cartTotal + freight;
 
@@ -155,6 +176,59 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
     setSelectedMotoboy(null);
   };
 
+  const handleOpenDeliveryDialog = () => {
+    if (deliveryData) {
+      setDeliveryForm(deliveryData);
+    } else {
+      setDeliveryForm({
+        name: selectedCustomer?.name || "",
+        phone: selectedCustomer?.phone || "",
+        address: selectedCustomer?.address || "",
+        number: "",
+        neighborhood: "",
+        notes: "",
+      });
+    }
+    setIsDeliveryDialogOpen(true);
+  };
+
+  const handleSaveDelivery = () => {
+    const name = deliveryForm.name.trim();
+    const phone = deliveryForm.phone.trim();
+    const address = deliveryForm.address.trim();
+    const number = deliveryForm.number.trim();
+    const neighborhood = deliveryForm.neighborhood.trim();
+
+    if (!name || !phone || !address || !number || !neighborhood) {
+      toast.error("Preencha Nome, Telefone, Endereço, Número e Bairro");
+      return;
+    }
+
+    setDeliveryData({
+      name,
+      phone,
+      address,
+      number,
+      neighborhood,
+      notes: deliveryForm.notes.trim(),
+    });
+    setIsDeliveryDialogOpen(false);
+    toast.success("Dados de entrega adicionados");
+  };
+
+  const handleRemoveDelivery = () => {
+    setDeliveryData(null);
+    setDeliveryForm({
+      name: "",
+      phone: "",
+      address: "",
+      number: "",
+      neighborhood: "",
+      notes: "",
+    });
+    toast.success("Dados de entrega removidos");
+  };
+
   const handleCheckout = () => {
     if (cartItems.length === 0) return;
     if (!isCashRegisterOpen) {
@@ -180,6 +254,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
         type: "pending",
         freight: freight,
         customerId: selectedCustomer?.id || null,
+        delivery: deliveryData,
       });
 
       // Usar o ID real do banco de dados
@@ -332,6 +407,8 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
     setCurrentSaleId(null);
     setCurrentDailySaleNumber(null);
     setNfceData(null);
+    setDeliveryData(null);
+    setDeliveryForm({ name: "", phone: "", address: "", number: "", neighborhood: "", notes: "" });
     onCustomerChange(null);
   };
 
@@ -491,6 +568,48 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
                 </div>
               )}
 
+              {/* Dados da Entrega */}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                onClick={handleOpenDeliveryDialog}
+              >
+                <MapPin className="mr-2 h-4 w-4" />
+                {deliveryData ? "Editar Entrega" : "Adicionar Entrega"}
+              </Button>
+
+              {deliveryData && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-bold text-emerald-800 flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        ENTREGA
+                      </p>
+                      <p className="font-semibold text-emerald-900">{deliveryData.name}</p>
+                      <p className="text-emerald-800">{deliveryData.phone}</p>
+                      <p className="text-emerald-800">
+                        {deliveryData.address}, {deliveryData.number} - {deliveryData.neighborhood}
+                      </p>
+                      {deliveryData.notes && (
+                        <p className="mt-1 text-emerald-700">
+                          Obs.: {deliveryData.notes}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button type="button" variant="ghost" size="icon" onClick={handleOpenDeliveryDialog}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon" onClick={handleRemoveDelivery} className="text-red-600">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between items-center text-lg">
                 <span className="text-gray-600">Subtotal:</span>
                 <span className="font-semibold">R$ {cartTotal.toFixed(2)}</span>
@@ -529,7 +648,11 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
               </Button>
               
               <Button
-                onClick={clearCart}
+                onClick={() => {
+                  clearCart();
+                  setDeliveryData(null);
+                  setDeliveryForm({ name: "", phone: "", address: "", number: "", neighborhood: "", notes: "" });
+                }}
                 variant="outline"
                 className="w-full border-red-300 text-red-600 hover:bg-red-50"
               >
@@ -540,6 +663,86 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
           </>
         )}
       </Card>
+
+      <Dialog open={isDeliveryDialogOpen} onOpenChange={setIsDeliveryDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-emerald-600" />
+              Dados para Entrega
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Nome *</label>
+              <Input
+                value={deliveryForm.name}
+                onChange={(e) => setDeliveryForm({ ...deliveryForm, name: e.target.value })}
+                placeholder="Nome de quem receberá"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Telefone *</label>
+              <Input
+                value={deliveryForm.phone}
+                onChange={(e) => setDeliveryForm({ ...deliveryForm, phone: e.target.value })}
+                placeholder="(95) 99999-9999"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Endereço *</label>
+              <Input
+                value={deliveryForm.address}
+                onChange={(e) => setDeliveryForm({ ...deliveryForm, address: e.target.value })}
+                placeholder="Rua / Avenida"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Nº *</label>
+                <Input
+                  value={deliveryForm.number}
+                  onChange={(e) => setDeliveryForm({ ...deliveryForm, number: e.target.value })}
+                  placeholder="123"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium mb-1">Bairro *</label>
+                <Input
+                  value={deliveryForm.neighborhood}
+                  onChange={(e) => setDeliveryForm({ ...deliveryForm, neighborhood: e.target.value })}
+                  placeholder="Bairro"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Observação</label>
+              <textarea
+                value={deliveryForm.notes}
+                onChange={(e) => setDeliveryForm({ ...deliveryForm, notes: e.target.value })}
+                placeholder="Referência, instruções de entrega, portão, apartamento..."
+                rows={3}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" onClick={() => setIsDeliveryDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleSaveDelivery} className="bg-emerald-600 hover:bg-emerald-700">
+              <MapPin className="mr-2 h-4 w-4" />
+              Salvar Entrega
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <CustomerSelector
         open={isCustomerSelectorOpen}
@@ -575,6 +778,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
         documentType={currentDocumentType}
         saleId={currentDailySaleNumber || undefined}
         nfceData={nfceData}
+        delivery={deliveryData}
       />
     </>
   );
