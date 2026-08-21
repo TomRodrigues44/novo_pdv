@@ -120,7 +120,11 @@ const CashRegister = () => {
 
   const handleCloseRegister = async () => {
       // Abre a janela no clique do usuário para evitar bloqueio de pop-up após o await.
-      const printWindow = window.open('', '_blank', 'width=420,height=700');
+      const printWindow = window.open(
+      '',
+      '_blank',
+      `popup=yes,width=${window.screen.availWidth},height=${window.screen.availHeight},left=0,top=0`
+    );
 
       try {
         const amount = parseFloat(closingAmount) || 0;
@@ -253,7 +257,11 @@ const CashRegister = () => {
   };
 
   const handlePrintHistorical = (register: any, existingPrintWindow?: Window | null) => {
-    const printWindow = existingPrintWindow || window.open('', '_blank', 'width=420,height=700');
+    const printWindow = existingPrintWindow || window.open(
+      '',
+      '_blank',
+      `popup=yes,width=${window.screen.availWidth},height=${window.screen.availHeight},left=0,top=0`
+    );
     if (!printWindow) {
       toast.error('Não foi possível abrir a janela de impressão. Verifique se o navegador está bloqueando pop-ups.');
       return '';
