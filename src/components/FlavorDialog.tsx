@@ -87,10 +87,12 @@ export const FlavorDialog = ({ open, onClose, onConfirm, productName }: FlavorDi
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl">Escolha os Sabores</DialogTitle>
-          <p className="text-sm text-gray-600 mt-1">
+      <DialogContent className="max-w-[620px] p-6 sm:rounded-2xl">
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="text-2xl font-bold text-gray-900">
+            Escolha os Sabores
+          </DialogTitle>
+          <p className="text-sm text-gray-500">
             {productName} • Máximo {MAX_FLAVORS} sabores
           </p>
         </DialogHeader>
@@ -98,48 +100,62 @@ export const FlavorDialog = ({ open, onClose, onConfirm, productName }: FlavorDi
         <div className="space-y-3 py-4">
           {FLAVORS.map((flavor) => {
             const count = getFlavorCount(flavor);
+            const selected = count > 0;
 
             return (
               <Card
                 key={flavor}
-                className={`transition-all ${
-                  count > 0
-                    ? "border-orange-500 bg-orange-50"
-                    : "hover:border-orange-300"
+                className={`overflow-hidden transition-all duration-200 ${
+                  selected
+                    ? "border-orange-400 bg-orange-50 shadow-sm"
+                    : "border-gray-200 bg-white hover:border-orange-200"
                 }`}
               >
-                <CardContent className="p-3">
-                  <div className="flex items-center justify-between gap-3">
+                <CardContent className="p-0">
+                  <div className="flex min-h-[72px] items-center justify-between gap-4 px-5 py-3">
                     <div className="min-w-0 flex-1">
-                      <span className="font-medium">{flavor}</span>
-                      {count > 0 && (
-                        <div className="text-xs text-orange-600 font-semibold mt-1">
+                      <span
+                        className={`font-semibold ${
+                          selected ? "text-orange-800" : "text-gray-900"
+                        }`}
+                      >
+                        {flavor}
+                      </span>
+
+                      {selected && (
+                        <p className="mt-1 text-xs font-semibold text-orange-600">
                           {count}x selecionado{count > 1 ? "s" : ""}
-                        </div>
+                        </p>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex shrink-0 items-center gap-2">
                       <Button
                         type="button"
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-9 w-9 rounded-lg border-gray-200 bg-white"
                         onClick={() => removeFlavor(flavor)}
                         disabled={count === 0}
                       >
                         <Minus className="h-4 w-4" />
                       </Button>
 
-                      <span className="w-6 text-center font-bold text-lg">
+                      <div
+                        className={`flex h-9 min-w-10 items-center justify-center rounded-lg border px-2 text-base font-bold ${
+                          selected
+                            ? "border-orange-300 bg-white text-orange-700"
+                            : "border-gray-200 bg-white text-gray-900"
+                        }`}
+                      >
                         {count}
-                      </span>
+                      </div>
 
                       <Button
                         type="button"
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8 border-orange-300 text-orange-600 hover:bg-orange-50"
+                        className="h-9 w-9 rounded-lg border-orange-400 bg-white text-orange-600 hover:bg-orange-500 hover:text-white"
                         onClick={() => addFlavor(flavor)}
                         disabled={
                           selectedFlavors.length >= MAX_FLAVORS ||
@@ -155,56 +171,65 @@ export const FlavorDialog = ({ open, onClose, onConfirm, productName }: FlavorDi
             );
           })}
 
-          <div className="pt-2 border-t">
-            <p className="text-xs text-gray-500 mb-2">Opções rápidas</p>
+          <div className="pt-3">
+            <div className="mb-3 flex items-center gap-3">
+              <div className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Opções rápidas
+              </span>
+              <div className="h-px flex-1 bg-gray-200" />
+            </div>
 
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               {SPECIAL_OPTIONS.map((option) => {
                 const selected =
                   selectedFlavors.length === 1 &&
                   selectedFlavors[0] === option;
 
                 return (
-                  <Card
+                  <button
                     key={option}
-                    className={`cursor-pointer transition-all ${
-                      selected
-                        ? "border-orange-500 bg-orange-50"
-                        : "hover:border-orange-300"
-                    }`}
+                    type="button"
                     onClick={() => selectSpecialOption(option)}
+                    className={`flex min-h-[64px] items-center justify-center gap-2 rounded-xl border-2 px-4 font-semibold transition-all ${
+                      selected
+                        ? "border-orange-400 bg-orange-50 text-orange-700 shadow-sm"
+                        : "border-gray-200 bg-white text-gray-900 hover:border-orange-300 hover:bg-orange-50/50"
+                    }`}
                   >
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{option}</span>
-                        {selected && (
-                          <div className="bg-orange-500 text-white rounded-full p-1">
-                            <Check className="h-4 w-4" />
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                    <span>{option}</span>
+                    {selected && <Check className="h-5 w-5" />}
+                  </button>
                 );
               })}
             </div>
           </div>
         </div>
 
-        <div className="flex justify-between items-center text-sm text-gray-600">
-          <span>Sabores selecionados:</span>
-          <span className="font-semibold">
+        <div className="flex items-center justify-between border-t border-gray-100 pt-4 text-sm">
+          <span className="text-gray-600">Sabores selecionados:</span>
+          <span
+            className={`text-lg font-bold ${
+              selectedFlavors.length === MAX_FLAVORS
+                ? "text-orange-600"
+                : "text-gray-700"
+            }`}
+          >
             {selectedFlavors.length}/{MAX_FLAVORS}
           </span>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
+        <DialogFooter className="mt-2 gap-2 sm:gap-2">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            className="min-w-[110px]"
+          >
             Cancelar
           </Button>
           <Button
             onClick={handleConfirm}
-            className="bg-orange-600 hover:bg-orange-700"
+            className="min-w-[190px] bg-orange-500 text-white hover:bg-orange-600"
             disabled={selectedFlavors.length === 0}
           >
             Confirmar ({selectedFlavors.length} sabor{selectedFlavors.length !== 1 ? "es" : ""})
