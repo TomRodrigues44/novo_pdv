@@ -224,177 +224,390 @@ const CashRegister = () => {
   };
 
   const handlePrintHistorical = (register: any) => {
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) return;
-  
-      const openingAmount = parseFloat(register.opening_amount || 0);
-      const cashSales = register.salesByPayment?.cash || 0;
-      const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
-  
-      const calculateTotalsByCategory = (transactions: any[]) => {
-        const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
-        return withdrawals.reduce((acc: any, t: any) => {
-          const desc = t.description || '';
-          let cat = 'outros';
-          if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
-          else if (desc.startsWith('iFood')) cat = 'ifood';
-          else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
-          
-          acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
-          return acc;
-        }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
-      };
-  
-      const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
-      const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
-      
-      const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
-      const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
-      
-      const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
-      const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
-  
-      const calculatedClosingCash = salesTotal - totalSangrias;
-      
-      const valorInformado = parseFloat(register.closing_amount || 0);
-      
-      // CORREÇÃO: Valor Esperado = (Abertura + Dinheiro + Adições) - (Total Sangrias + Total Vales)
-      const expectedAmount = register.expected_amount !== undefined 
-        ? parseFloat(register.expected_amount) 
-        : openingAmount + cashSales + additionTotal - totalSangrias - voucherTotal;
-      
-      const difference = valorInformado - expectedAmount;
+    const printWindow = window.open('', '_blank', 'width=420,height=700');
+    if (!printWindow) {
+      toast.error('Não foi possível abrir a janela de impressão. Verifique se o navegador está bloqueando pop-ups.');
+      return;
+    }
 
-      const html = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <meta charset="utf-8">
-              <title>Relatório Fechamento Caixa - Epson T20</title>
-              <style>
-                body {
-                  font-family: 'Courier New', Courier, monospace;
-                  font-size: 10px;
-                  margin: 0;
-                  padding: 2mm;
-                  background: white;
-                  color: black;
-                }
-                .center { text-align: center; }
-                .right { text-align: right; }
-                .bold { font-weight: bold; }
-                .underline { text-decoration: underline; }
-                .divider { border-bottom: 1px solid #000; margin: 1mm 0; }
-                .dashed { border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 1mm 0; }
-                .line { margin: 1mm 0; }
-                .small { font-size: 8px; }
-                .medium { font-size: 10px; }
-                .large { font-size: 12px; }
-                .flex { display: flex; justify-content: space-between; }
-                .gap-2 { gap: 2mm; }
-                .gap-1 { gap: 1mm; }
-              </style>
-            </head>
-            <body>
-              <div class="epson-t20-receipt">
-                <div class="line">
-                  <h2 class="large center bold">EMPÓRIO DAS COXINHAS</h2>
-                  <p class="medium center">Relatório de Fechamento de Caixa</p>
-                  <p class="small center">
-                    ${formatDateTime(new Date().toISOString())}
-                  </p>
-                  <div class="divider"></div>
-                </div>
+    const openingAmount = parseFloat(register.opening_amount || 0);
+    const cashSales = Number(register.salesByPayment?.cash || 0);
+    const debitSales = Number(register.salesByPayment?.debit || 0);
+    const creditSales = Number(register.salesByPayment?.credit || 0);
+    const pixSales = Number(register.salesByPayment?.pix || 0);
+    const salesTotal = cashSales + debitSales + creditSales + pixSales;
 
-                <!-- ÁREA 1: Abertura, Total Vendas e Fechamento Caixa (Calc) -->
-                <div class="line">
-                  <span class="medium bold">Abertura:</span> ${formatCurrency(openingAmount)}
-                  <br>
-                  <span class="medium bold">Total Vendas:</span> ${formatCurrency(salesTotal)}
-                  <br>
-                  <span class="medium bold">Fechamento Caixa (Calc):</span> ${formatCurrency(calculatedClosingCash)}
-                </div>
-                <div class="divider"></div>
+    const calculateHistoricalTotalsByCategory = (transactions: any[]) => {
+      const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
+      return withdrawals.reduce((acc: any, t: any) => {
+        const desc = t.description || '';
+        let cat = 'outros';
+        if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
+        else if (desc.startsWith('iFood')) cat = 'ifood';
+        else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
 
-                <!-- ÁREA 2: Vendas por Forma -->
-                <div class="line">
-                  <span class="medium bold">VENDAS POR FORMA:</span>
-                  <br>
-                  <span class="small">Dinheiro: ${formatCurrency(register.salesByPayment?.cash || 0)}</span>
-                  <br>
-                  <span class="small">Débito: ${formatCurrency(register.salesByPayment?.debit || 0)}</span>
-                  <br>
-                  <span class="small">Crédito: ${formatCurrency(register.salesByPayment?.credit || 0)}</span>
-                  <br>
-                  <span class="small">Pix: ${formatCurrency(register.salesByPayment?.pix || 0)}</span>
-                </div>
-                <div class="divider"></div>
-
-                <!-- ÁREA 3: Sangrias -->
-                ${totalSangrias > 0 ? `
-                <div class="line">
-                  <span class="medium bold">SANGRIAS:</span> ${formatCurrency(totalSangrias)}
-                  <br>
-                  ${totalsByCategory.taxa_entrega > 0 ? `<span class="small">Deliverys: -${formatCurrency(totalsByCategory.taxa_entrega)}</span><br>` : ''}
-                  ${totalsByCategory.ifood > 0 ? `<span class="small">Ifood: -${formatCurrency(totalsByCategory.ifood)}</span><br>` : ''}
-                  ${totalsByCategory.brigadeiros > 0 ? `<span class="small">Brigadeiros: -${formatCurrency(totalsByCategory.brigadeiros)}</span><br>` : ''}
-                  ${totalsByCategory.outros > 0 ? `<span class="small">Outros: -${formatCurrency(totalsByCategory.outros)}</span><br>` : ''}
-                </div>
-                <div class="divider"></div>
-                ` : ''}
-
-                <!-- ÁREA 4: Vales -->
-                ${vouchers.length > 0 ? `
-                <div class="line">
-                  <span class="medium bold">VALES:</span>
-                  <br>
-                  ${vouchers.map(v => `<span class="small">-${formatCurrency(parseFloat(v.amount))} - ${v.description || 'Sem descrição'}</span>`).join('<br>')}
-                  <br>
-                  <span class="medium bold">Total de Vales:</span> ${formatCurrency(voucherTotal)}
-                </div>
-                <div class="divider"></div>
-                ` : ''}
-
-                <!-- ÁREA 5: Adições -->
-                ${additions.length > 0 ? `
-                <div class="line">
-                  <span class="medium bold">ADIÇÕES:</span>
-                  <br>
-                  ${additions.map(a => `<span class="small">+${formatCurrency(parseFloat(a.amount))} - ${a.description || 'Sem descrição'}</span>`).join('<br>')}
-                  <br>
-                  <span class="medium bold">Total de Adições:</span> ${formatCurrency(additionTotal)}
-                </div>
-                <div class="divider"></div>
-                ` : ''}
-
-                <!-- ÁREA 6: Conferencia -->
-                <div class="line">
-                  <span class="medium bold">CONFERÊNCIA:</span>
-                  <br>
-                  <span class="small">Valor Informado (Contado): ${formatCurrency(valorInformado)}</span>
-                  <br>
-                  <span class="small">Valor Esperado: ${formatCurrency(expectedAmount)}</span>
-                  <br>
-                  <span class="medium bold">DIFERENÇA: ${formatCurrency(difference)}</span>
-                  <br>
-                  <span class="small">${difference > 0 ? 'Sobrou dinheiro' : difference < 0 ? 'Faltou dinheiro' : 'Caixa fechou exato'}</span>
-                </div>
-                <div class="divider"></div>
-
-                <div class="line">
-                  <p class="medium center small">*** OBRIGADO PELA PREFERÊNCIA ***</p>
-                  <p class="medium center small">Empório das Coxinhas</p>
-                </div>
-              </div>
-            </body>
-            </html>
-          `;
-  
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
+        acc[cat] = (acc[cat] || 0) + parseFloat(t.amount || 0);
+        return acc;
+      }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
     };
+
+    const historicalTotals = calculateHistoricalTotalsByCategory(register.transactions || []);
+    const totalSangrias = historicalTotals.taxa_entrega + historicalTotals.ifood + historicalTotals.brigadeiros + historicalTotals.outros;
+
+    const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
+    const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
+    const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount || 0), 0);
+    const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount || 0), 0);
+
+    // Mantém a mesma regra já utilizada pelo sistema para este campo.
+    const calculatedClosingCash = salesTotal - totalSangrias;
+    const valorInformado = parseFloat(register.closing_amount || 0);
+
+    // Valor Esperado = (Abertura + Dinheiro + Adições) - (Total Sangrias + Total Vales)
+    const expectedAmount = register.expected_amount !== undefined && register.expected_amount !== null
+      ? parseFloat(register.expected_amount)
+      : openingAmount + cashSales + additionTotal - totalSangrias - voucherTotal;
+
+    const difference = valorInformado - expectedAmount;
+    const differenceStatus = difference > 0
+      ? 'SOBROU DINHEIRO'
+      : difference < 0
+        ? 'FALTOU DINHEIRO'
+        : 'CAIXA FECHOU EXATO';
+
+    const formatReceiptCurrency = (value: number, showSign = false) => {
+      const numericValue = Number(value || 0);
+      const formatted = new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(Math.abs(numericValue));
+
+      if (!showSign || numericValue === 0) return `R$ ${formatted}`;
+      return `${numericValue > 0 ? '+' : '-'} R$ ${formatted}`;
+    };
+
+    const escapeHtml = (value: unknown) => String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
+    // Usa a data/hora REAL do fechamento, e não a data da reimpressão.
+    const closedAt = register.closed_at ? new Date(register.closed_at) : new Date();
+    const closedDate = closedAt.toLocaleDateString('pt-BR');
+    const closedTime = closedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Fechamento de Caixa - ${escapeHtml(closedDate)}</title>
+        <style>
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+
+          html, body {
+            margin: 0;
+            padding: 0;
+            width: 80mm;
+            background: #fff !important;
+            color: #000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1.28;
+          }
+
+          .receipt {
+            width: 72mm;
+            margin: 0 auto;
+            padding: 3mm 0 5mm;
+            color: #000;
+          }
+
+          .header {
+            text-align: center;
+          }
+
+          .company {
+            margin: 0;
+            font-size: 17px;
+            line-height: 1.1;
+            font-weight: 900;
+            letter-spacing: .2px;
+          }
+
+          .document-title {
+            margin: 2px 0 5px;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+          }
+
+          .date-row,
+          .row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+          }
+
+          .date-row {
+            font-size: 11px;
+            font-weight: 700;
+          }
+
+          .separator {
+            border: 0;
+            border-top: 1.5px dashed #000;
+            margin: 7px 0;
+          }
+
+          .separator.strong {
+            border-top: 2px solid #000;
+          }
+
+          .section {
+            margin: 0;
+          }
+
+          .section-title {
+            margin: 0 0 4px;
+            font-size: 12px;
+            line-height: 1.2;
+            font-weight: 900;
+            text-transform: uppercase;
+          }
+
+          .row {
+            margin: 2px 0;
+          }
+
+          .label {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow-wrap: anywhere;
+          }
+
+          .value {
+            flex: 0 0 auto;
+            min-width: 24mm;
+            text-align: right;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+          }
+
+          .detail {
+            font-size: 11px;
+            font-weight: 600;
+          }
+
+          .total-row {
+            margin-top: 5px;
+            padding-top: 4px;
+            border-top: 1px dashed #000;
+            font-weight: 900;
+          }
+
+          .total-row .label,
+          .total-row .value {
+            font-weight: 900;
+          }
+
+          .conference-title {
+            text-align: center;
+            font-size: 13px;
+            font-weight: 900;
+            margin-bottom: 5px;
+          }
+
+          .difference-box {
+            margin: 8px 0 0;
+            padding: 7px 2px;
+            border-top: 2px solid #000;
+            border-bottom: 2px solid #000;
+            text-align: center;
+          }
+
+          .difference-label {
+            font-size: 12px;
+            font-weight: 900;
+          }
+
+          .difference-value {
+            margin: 2px 0;
+            font-size: 20px;
+            line-height: 1.15;
+            font-weight: 900;
+            letter-spacing: .3px;
+          }
+
+          .difference-status {
+            font-size: 13px;
+            font-weight: 900;
+          }
+
+          .notes {
+            margin-top: 7px;
+            padding-top: 5px;
+            border-top: 1px dashed #000;
+            font-size: 10.5px;
+            font-weight: 600;
+          }
+
+          .footer {
+            margin-top: 12px;
+            text-align: center;
+          }
+
+          .thanks {
+            font-size: 11px;
+            font-weight: 800;
+          }
+
+          .footer-company {
+            margin-top: 3px;
+            font-size: 12px;
+            font-weight: 900;
+          }
+
+          @media print {
+            html, body {
+              width: 80mm !important;
+              min-width: 80mm !important;
+              max-width: 80mm !important;
+            }
+
+            .receipt {
+              width: 72mm !important;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <main class="receipt">
+          <header class="header">
+            <h1 class="company">EMPÓRIO DAS COXINHAS</h1>
+            <div class="document-title">Relatório de Fechamento de Caixa</div>
+          </header>
+
+          <div class="date-row">
+            <span>${escapeHtml(closedDate)}</span>
+            <span>${escapeHtml(closedTime)}</span>
+          </div>
+
+          <hr class="separator strong" />
+
+          <section class="section">
+            <h2 class="section-title">Resumo do Caixa</h2>
+            <div class="row"><span class="label">Abertura</span><span class="value">${formatReceiptCurrency(openingAmount)}</span></div>
+            <div class="row"><span class="label">Total de Vendas</span><span class="value">${formatReceiptCurrency(salesTotal)}</span></div>
+            <div class="row"><span class="label">Fechamento Calculado</span><span class="value">${formatReceiptCurrency(calculatedClosingCash)}</span></div>
+          </section>
+
+          <hr class="separator" />
+
+          <section class="section">
+            <h2 class="section-title">Formas de Pagamento</h2>
+            <div class="row detail"><span class="label">Dinheiro</span><span class="value">${formatReceiptCurrency(cashSales)}</span></div>
+            <div class="row detail"><span class="label">Débito</span><span class="value">${formatReceiptCurrency(debitSales)}</span></div>
+            <div class="row detail"><span class="label">Crédito</span><span class="value">${formatReceiptCurrency(creditSales)}</span></div>
+            <div class="row detail"><span class="label">PIX</span><span class="value">${formatReceiptCurrency(pixSales)}</span></div>
+            <div class="row total-row"><span class="label">TOTAL VENDAS</span><span class="value">${formatReceiptCurrency(salesTotal)}</span></div>
+          </section>
+
+          ${totalSangrias > 0 ? `
+          <hr class="separator" />
+          <section class="section">
+            <h2 class="section-title">Sangrias</h2>
+            ${historicalTotals.taxa_entrega > 0 ? `<div class="row detail"><span class="label">Deliverys</span><span class="value">${formatReceiptCurrency(-historicalTotals.taxa_entrega, true)}</span></div>` : ''}
+            ${historicalTotals.ifood > 0 ? `<div class="row detail"><span class="label">iFood</span><span class="value">${formatReceiptCurrency(-historicalTotals.ifood, true)}</span></div>` : ''}
+            ${historicalTotals.brigadeiros > 0 ? `<div class="row detail"><span class="label">Brigadeiros</span><span class="value">${formatReceiptCurrency(-historicalTotals.brigadeiros, true)}</span></div>` : ''}
+            ${historicalTotals.outros > 0 ? `<div class="row detail"><span class="label">Outros</span><span class="value">${formatReceiptCurrency(-historicalTotals.outros, true)}</span></div>` : ''}
+            <div class="row total-row"><span class="label">TOTAL SANGRIAS</span><span class="value">${formatReceiptCurrency(-totalSangrias, true)}</span></div>
+          </section>` : ''}
+
+          ${vouchers.length > 0 ? `
+          <hr class="separator" />
+          <section class="section">
+            <h2 class="section-title">Vales</h2>
+            ${vouchers.map((v: any) => `
+              <div class="row detail">
+                <span class="label">${escapeHtml(v.description || 'Sem descrição')}</span>
+                <span class="value">${formatReceiptCurrency(-parseFloat(v.amount || 0), true)}</span>
+              </div>
+            `).join('')}
+            <div class="row total-row"><span class="label">TOTAL VALES</span><span class="value">${formatReceiptCurrency(-voucherTotal, true)}</span></div>
+          </section>` : ''}
+
+          ${additions.length > 0 ? `
+          <hr class="separator" />
+          <section class="section">
+            <h2 class="section-title">Adições</h2>
+            ${additions.map((a: any) => `
+              <div class="row detail">
+                <span class="label">${escapeHtml(a.description || 'Sem descrição')}</span>
+                <span class="value">${formatReceiptCurrency(parseFloat(a.amount || 0), true)}</span>
+              </div>
+            `).join('')}
+            <div class="row total-row"><span class="label">TOTAL ADIÇÕES</span><span class="value">${formatReceiptCurrency(additionTotal, true)}</span></div>
+          </section>` : ''}
+
+          <hr class="separator strong" />
+
+          <section class="section">
+            <div class="conference-title">CONFERÊNCIA DO CAIXA</div>
+            <div class="row"><span class="label">Valor contado</span><span class="value">${formatReceiptCurrency(valorInformado)}</span></div>
+            <div class="row"><span class="label">Valor esperado</span><span class="value">${formatReceiptCurrency(expectedAmount)}</span></div>
+
+            <div class="difference-box">
+              <div class="difference-label">DIFERENÇA</div>
+              <div class="difference-value">${formatReceiptCurrency(difference, true)}</div>
+              <div class="difference-status">${differenceStatus}</div>
+            </div>
+          </section>
+
+          ${register.notes ? `
+            <div class="notes"><strong>OBSERVAÇÕES:</strong> ${escapeHtml(register.notes)}</div>
+          ` : ''}
+
+          <footer class="footer">
+            <div class="thanks">*** OBRIGADO PELA PREFERÊNCIA ***</div>
+            <div class="footer-company">EMPÓRIO DAS COXINHAS</div>
+          </footer>
+        </main>
+
+        <script>
+          window.addEventListener('load', function () {
+            setTimeout(function () {
+              window.focus();
+              window.print();
+            }, 250);
+          });
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
 
   // Nova função para enviar e-mail do fechamento de caixa
   const handleSendEmail = async (register: any) => {
