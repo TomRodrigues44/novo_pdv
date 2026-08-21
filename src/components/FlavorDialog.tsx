@@ -25,6 +25,14 @@ const FLAVORS = [
   "Churros",
 ];
 
+const FLAVOR_IMAGES: Record<string, string> = {
+  "Coxinha de Frango": "/products/flavor-coxinha.png",
+  "Croquete de Queijo/Presunto": "/products/flavor-croquete.png",
+  "Bolinha de Pizza": "/products/flavor-bolinha.png",
+  "Travesseiriinho de Carne": "/products/flavor-travesseirinho.png",
+  "Churros": "/products/flavor-churros.png",
+};
+
 const SPECIAL_OPTIONS = [
   "Todos",
   "Só Salgados",
@@ -113,20 +121,30 @@ export const FlavorDialog = ({ open, onClose, onConfirm, productName }: FlavorDi
               >
                 <CardContent className="p-0">
                   <div className="flex min-h-[72px] items-center justify-between gap-4 px-5 py-3">
-                    <div className="min-w-0 flex-1">
-                      <span
-                        className={`font-semibold ${
-                          selected ? "text-orange-800" : "text-gray-900"
-                        }`}
-                      >
-                        {flavor}
-                      </span>
+                    <div className="flex min-w-0 flex-1 items-center gap-4">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white">
+                        <img
+                          src={FLAVOR_IMAGES[flavor]}
+                          alt={flavor}
+                          className="h-12 w-12 object-contain"
+                        />
+                      </div>
 
-                      {selected && (
-                        <p className="mt-1 text-xs font-semibold text-orange-600">
-                          {count}x selecionado{count > 1 ? "s" : ""}
-                        </p>
-                      )}
+                      <div className="min-w-0">
+                        <span
+                          className={`font-semibold ${
+                            selected ? "text-orange-800" : "text-gray-900"
+                          }`}
+                        >
+                          {flavor}
+                        </span>
+
+                        {selected && (
+                          <p className="mt-1 text-xs font-semibold text-orange-600">
+                            {count}x selecionado{count > 1 ? "s" : ""}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">
@@ -155,7 +173,7 @@ export const FlavorDialog = ({ open, onClose, onConfirm, productName }: FlavorDi
                         type="button"
                         variant="outline"
                         size="icon"
-                        className="h-9 w-9 rounded-lg border-orange-400 bg-white text-orange-600 hover:bg-orange-500 hover:text-white"
+                        className="h-9 w-9 rounded-lg border-orange-500 bg-orange-500 text-white shadow-sm hover:border-orange-700 hover:bg-orange-700 hover:text-white hover:shadow-md disabled:border-orange-200 disabled:bg-orange-200 disabled:text-white"
                         onClick={() => addFlavor(flavor)}
                         disabled={
                           selectedFlavors.length >= MAX_FLAVORS ||
