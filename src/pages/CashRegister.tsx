@@ -119,8 +119,12 @@ const CashRegister = () => {
   };
 
   const handleCloseRegister = async () => {
+      // Abre a janela no clique do usuário para evitar bloqueio de pop-up após o await.
+      const printWindow = window.open('', '_blank', 'width=420,height=700');
+
       try {
         const amount = parseFloat(closingAmount) || 0;
+        const closingNotes = notes;
         setFinalClosingAmount(amount);
         setClosedRegisterData(currentRegister);
   
@@ -141,17 +145,45 @@ const CashRegister = () => {
   
         if (response.ok) {
           const result = await response.json();
+
+          // Monta o registro fechado preservando os dados que já estavam carregados
+          // e priorizando os valores devolvidos pela API de fechamento.
+          const apiRegister = result?.register || result?.cashRegister || result || {};
+          const closedRegister = {
+            ...currentRegister,
+            ...apiRegister,
+            opening_amount: apiRegister.opening_amount ?? currentRegister?.opening_amount,
+            closing_amount: apiRegister.closing_amount ?? amount,
+            expected_amount: apiRegister.expected_amount ?? result?.expectedAmount ?? currentRegister?.expected_amount,
+            difference: apiRegister.difference ?? result?.difference,
+            closed_at: apiRegister.closed_at ?? result?.closedAt ?? new Date().toISOString(),
+            salesByPayment: apiRegister.salesByPayment ?? currentRegister?.salesByPayment,
+            transactions: apiRegister.transactions ?? currentRegister?.transactions ?? [],
+            notes: apiRegister.notes ?? closingNotes,
+          };
+
           setCloseResult(result);
+          setClosedRegisterData(closedRegister);
           setIsCloseSuccessDialogOpen(true);
           setIsCloseDialogOpen(false);
+
+          // Gera imediatamente o MESMO relatório usado no Histórico de Fechamentos.
+          const reportHtml = handlePrintHistorical(closedRegister, printWindow);
+
+          // Mantém o envio já existente, acrescentando o HTML padronizado do relatório.
+          // O endpoint pode usar reportHtml/html como corpo do e-mail.
+          await handleSendEmail(closedRegister, reportHtml);
+
           setClosingAmount('');
           setNotes('');
           refetch();
         } else {
+          if (printWindow && !printWindow.closed) printWindow.close();
           const error = await response.json();
           toast.error(error.statusMessage || 'Erro ao fechar caixa');
         }
       } catch (error) {
+        if (printWindow && !printWindow.closed) printWindow.close();
         toast.error('Erro ao fechar caixa');
       }
     };
@@ -223,11 +255,11 @@ const CashRegister = () => {
     window.print();
   };
 
-  const handlePrintHistorical = (register: any) => {
-    const printWindow = window.open('', '_blank', 'width=420,height=700');
+  const handlePrintHistorical = (register: any, existingPrintWindow?: Window | null) => {
+    const printWindow = existingPrintWindow || window.open('', '_blank', 'width=420,height=700');
     if (!printWindow) {
       toast.error('Não foi possível abrir a janela de impressão. Verifique se o navegador está bloqueando pop-ups.');
-      return;
+      return '';
     }
 
     const openingAmount = parseFloat(register.opening_amount || 0);
@@ -607,10 +639,11 @@ const CashRegister = () => {
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
+    return html;
   };
 
   // Nova função para enviar e-mail do fechamento de caixa
-  const handleSendEmail = async (register: any) => {
+  const handleSendEmail = async (register: any, reportHtml?: string) => {
     setSendingEmail(register.id);
     
     try {
@@ -673,6 +706,9 @@ const CashRegister = () => {
         difference,
         closedAt: register.closed_at,
         notes: register.notes,
+        // Mesmo HTML visual usado pela impressão do fechamento.
+        reportHtml: reportHtml || undefined,
+        html: reportHtml || undefined,
       };
 
       const response = await fetch('/api/cash-register/send-email', {
