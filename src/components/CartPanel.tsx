@@ -108,42 +108,23 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
   }, []);
 
   const handleAddFreight = async () => {
-    const value = parseFloat(freightValue);
-    if (!value || value <= 0) {
-      toast.error('Informe um valor válido para o frete');
-      return;
-    }
-    
-    if (!selectedMotoboy) {
-      toast.error('Selecione um motoboy para a entrega');
-      return;
-    }
-
-    // Criar sangria automática
-    try {
-      const response = await fetch('/api/cash-transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'withdrawal',
-          amount: value,
-          description: `Taxa Entrega - ${selectedMotoboy.name}`,
-        }),
-      });
-
-      if (response.ok) {
-        toast.success(`Frete de R$ ${value.toFixed(2)} adicionado para ${selectedMotoboy.name}`);
-        setFreight(value);
-        setFreightValue("");
-        setIsFreightDialogOpen(false);
-      } else {
-        toast.error('Erro ao registrar frete');
+      const value = parseFloat(freightValue);
+      if (!value || value <= 0) {
+        toast.error('Informe um valor válido para o frete');
+        return;
       }
-    } catch (error) {
-      console.error('Error adding freight:', error);
-      toast.error('Erro ao registrar frete');
-    }
-  };
+      
+      if (!selectedMotoboy) {
+        toast.error('Selecione um motoboy para a entrega');
+        return;
+      }
+  
+      // Apenas definir o frete no carrinho - a sangria será criada após confirmação do pagamento
+      setFreight(value);
+      setFreightValue("");
+      setIsFreightDialogOpen(false);
+      toast.success(`Frete de R$ ${value.toFixed(2)} adicionado para ${selectedMotoboy.name}`);
+    };
 
   const handleRemoveFreight = async () => {
     // Remover a sangria correspondente
@@ -203,11 +184,32 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
 
       // Usar o ID real do banco de dados
       setCurrentSaleId(String(result.id));
-      setCurrentDailySaleNumber(String(result.daily_sale_number));
-
-      setCurrentPayments(payments);
-      setIsPaymentDialogOpen(false);
-      setIsDocumentDialogOpen(true);
+            setCurrentDailySaleNumber(String(result.daily_sale_number));
+      
+            // Criar sangria para o frete após confirmação do pagamento
+            try {
+              const response = await fetch('/api/cash-transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  type: 'withdrawal',
+                  amount: freight,
+                  description: `Taxa Entrega - ${selectedMotoboy?.name || 'Desconhecido'}`
+                })
+              });
+      
+              if (!response.ok) {
+                console.error('Erro ao criar sangria para frete:', response.statusText);
+                toast.error('Erro ao registrar Taxa de Delivery');
+              }
+            } catch (error) {
+              console.error('Erro ao criar sangria para frete:', error);
+              toast.error('Erro ao registrar Taxa de Delivery');
+            }
+      
+            setCurrentPayments(payments);
+            setIsPaymentDialogOpen(false);
+            setIsDocumentDialogOpen(true);
     } catch (error: any) {
       console.error("Falha ao registrar a venda:", error);
       toast.error(error.message || "Ocorreu um erro inesperado ao registrar a venda.");
