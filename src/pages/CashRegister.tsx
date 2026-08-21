@@ -154,7 +154,7 @@ const CashRegister = () => {
             ...apiRegister,
             opening_amount: apiRegister.opening_amount ?? currentRegister?.opening_amount,
             closing_amount: apiRegister.closing_amount ?? amount,
-            expected_amount: apiRegister.expected_amount ?? result?.expectedAmount ?? currentRegister?.expected_amount,
+            expected_amount: apiRegister.expected_amount ?? result?.expectedCashAmount ?? result?.expectedTotalAmount ?? currentRegister?.expected_amount,
             difference: apiRegister.difference ?? result?.difference,
             closed_at: apiRegister.closed_at ?? result?.closedAt ?? new Date().toISOString(),
             salesByPayment: apiRegister.salesByPayment ?? currentRegister?.salesByPayment,
@@ -168,11 +168,8 @@ const CashRegister = () => {
           setIsCloseDialogOpen(false);
 
           // Gera imediatamente o MESMO relatório usado no Histórico de Fechamentos.
-          const reportHtml = handlePrintHistorical(closedRegister, printWindow);
-
-          // Mantém o envio já existente, acrescentando o HTML padronizado do relatório.
-          // O endpoint pode usar reportHtml/html como corpo do e-mail.
-          await handleSendEmail(closedRegister, reportHtml);
+          // O e-mail NÃO é disparado aqui: /api/cash-register/close já faz o envio no backend.
+          handlePrintHistorical(closedRegister, printWindow);
 
           setClosingAmount('');
           setNotes('');
