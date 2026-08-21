@@ -3,7 +3,7 @@ import { sendCashRegisterCloseEmail } from '../../../lib/email';
 
 export default defineEventHandler(async (event) => {
   try {
-    const { closingAmount, notes } = await readBody(event);
+    const { closingAmount, notes, salesByPayment } = await readBody(event);
     
     // Buscar caixa aberto
     const openRegister = await sql`
@@ -23,31 +23,42 @@ export default defineEventHandler(async (event) => {
     const register = openRegister[0];
 
     const sales = await sql`
-      SELECT
-        s.id,
-        s.total_amount,
-        COALESCE(SUM(sp.amount) FILTER (WHERE sp.payment_type = 'cash'), 0) AS cash_paid,
-        COALESCE(SUM(sp.amount) FILTER (WHERE sp.payment_type <> 'cash'), 0) AS non_cash_paid
-      FROM sales s
-      LEFT JOIN sale_payments sp ON sp.sale_id = s.id
-      WHERE s.created_at >= ${register.opened_at}
-        AND s.status != 'cancelled'
-        AND s.xml_status != 'cancelled'
-      GROUP BY s.id, s.total_amount
-    `;
+          SELECT
+            s.id,
+            s.total_amount,
+            COALESCE(SUM(sp.amount) FILTER (WHERE sp.payment_type = 'cash'), 0) AS cash_paid,
+            COALESCE(SUM(sp.amount) FILTER (WHERE sp.payment_type = 'debit'), 0) AS debit_paid,
+            COALESCE(SUM(sp.amount) FILTER (WHERE sp.payment_type = 'credit'), 0) AS credit_paid,
+            COALESCE(SUM(sp.amount) FILTER (WHERE sp.payment_type = 'pix'), 0) AS pix_paid
+          FROM sales s
+          LEFT JOIN sale_payments sp ON sp.sale_id = s.id
+          WHERE s.created_at >= ${register.opened_at}
+            AND s.status != 'cancelled'
+            AND s.xml_status != 'cancelled'
+          GROUP BY s.id, s.total_amount
+        `;
 
     let salesTotal = 0;
-    let cashSales = 0;
-
-    sales.forEach((sale) => {
-      const total = parseFloat(sale.total_amount);
-      const cashPaid = parseFloat(sale.cash_paid);
-      const nonCashPaid = parseFloat(sale.non_cash_paid);
-      const netCash = Math.min(cashPaid, Math.max(total - nonCashPaid, 0));
-
-      salesTotal += total;
-      cashSales += netCash;
-    });
+        let cashSales = 0;
+        let debitSales = 0;
+        let creditSales = 0;
+        let pixSales = 0;
+    
+        sales.forEach((sale) => {
+          const total = parseFloat(sale.total_amount);
+          const cashPaid = parseFloat(sale.cash_paid);
+          const debitPaid = parseFloat(sale.debit_paid);
+          const creditPaid = parseFloat(sale.credit_paid);
+          const pixPaid = parseFloat(sale.pix_paid);
+          const nonCashPaid = debitPaid + creditPaid + pixPaid;
+          const netCash = Math.min(cashPaid, Math.max(total - nonCashPaid, 0));
+    
+          salesTotal += total;
+          cashSales += netCash;
+          debitSales += debitPaid;
+          creditSales += creditPaid;
+          pixSales += pixPaid;
+        });
     
     // Calcular transações para este caixa
     const transactionsResult = await sql`
@@ -141,28 +152,28 @@ export default defineEventHandler(async (event) => {
     };
 
     // Enviar e-mail de forma assíncrona (não bloquear a resposta)
-    const emailData = {
-      openingAmount,
-      salesTotal,
-      calculatedClosingCash,
-      salesByPayment: {
-        cash: register.salesByPayment?.cash || 0,
-        debit: register.salesByPayment?.debit || 0,
-        credit: register.salesByPayment?.credit || 0,
-        pix: register.salesByPayment?.pix || 0,
-      },
-      totalsByCategory,
-      totalSangrias,
-      vouchers: vouchersList,
-      voucherTotal: vouchers,
-      additions: additionsList,
-      additionTotal: additions,
-      valorInformado,
-      expectedAmount,
-      difference,
-      closedAt: new Date().toISOString(),
-      notes,
-    };
+        const emailData = {
+          openingAmount,
+          salesTotal,
+          calculatedClosingCash,
+          salesByPayment: {
+            cash: cashSales,
+            debit: debitSales,
+            credit: creditSales,
+            pix: pixSales,
+          },
+          totalsByCategory,
+          totalSangrias,
+          vouchers: vouchersList,
+          voucherTotal: vouchers,
+          additions: additionsList,
+          additionTotal: additions,
+          valorInformado,
+          expectedAmount,
+          difference,
+          closedAt: new Date().toISOString(),
+          notes,
+        };
 
     // Disparar e-mail em background
     sendCashRegisterCloseEmail(emailData).catch((err) => {

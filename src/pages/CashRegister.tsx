@@ -119,36 +119,42 @@ const CashRegister = () => {
   };
 
   const handleCloseRegister = async () => {
-    try {
-      const amount = parseFloat(closingAmount) || 0;
-      setFinalClosingAmount(amount);
-      setClosedRegisterData(currentRegister);
-
-      const response = await fetch('/api/cash-register/close', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          closingAmount: amount,
-          notes,
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setCloseResult(result);
-        setIsCloseSuccessDialogOpen(true);
-        setIsCloseDialogOpen(false);
-        setClosingAmount('');
-        setNotes('');
-        refetch();
-      } else {
-        const error = await response.json();
-        toast.error(error.statusMessage || 'Erro ao fechar caixa');
+      try {
+        const amount = parseFloat(closingAmount) || 0;
+        setFinalClosingAmount(amount);
+        setClosedRegisterData(currentRegister);
+  
+        const response = await fetch('/api/cash-register/close', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            closingAmount: amount,
+            notes,
+            salesByPayment: currentRegister?.salesByPayment || {
+              cash: 0,
+              debit: 0,
+              credit: 0,
+              pix: 0
+            }
+          }),
+        });
+  
+        if (response.ok) {
+          const result = await response.json();
+          setCloseResult(result);
+          setIsCloseSuccessDialogOpen(true);
+          setIsCloseDialogOpen(false);
+          setClosingAmount('');
+          setNotes('');
+          refetch();
+        } else {
+          const error = await response.json();
+          toast.error(error.statusMessage || 'Erro ao fechar caixa');
+        }
+      } catch (error) {
+        toast.error('Erro ao fechar caixa');
       }
-    } catch (error) {
-      toast.error('Erro ao fechar caixa');
-    }
-  };
+    };
 
   const handleTransaction = async (type: 'withdrawal' | 'addition' | 'voucher') => {
     try {
