@@ -31,7 +31,6 @@ const AdminFiscal = () => {
     cnpj: "",
     razao_social: "",
     nome_fantasia: "",
-    identificacao_loja: "",
     inscricao_estadual: "",
     inscricao_municipal: "",
     cnae: "",
@@ -136,7 +135,6 @@ const AdminFiscal = () => {
             cnpj: config.cnpj || "",
             razao_social: config.razao_social || "",
             nome_fantasia: config.nome_fantasia || "",
-            identificacao_loja: config.identificacao_loja || "",
             inscricao_estadual: config.inscricao_estadual || "",
             inscricao_municipal: config.inscricao_municipal || "",
             cnae: config.cnae || "",
@@ -387,18 +385,6 @@ const AdminFiscal = () => {
                         onChange={(e) => setCompanyConfig({ ...companyConfig, nome_fantasia: e.target.value })}
                         placeholder="Nome comercial"
                       />
-                    </div>
-                    <div>
-                      <Label>Identificação da Loja nos Relatórios</Label>
-                      <Input
-                        value={companyConfig.identificacao_loja}
-                        onChange={(e) => setCompanyConfig({ ...companyConfig, identificacao_loja: e.target.value })}
-                        placeholder="Ex: Loja 1 - Aparecida"
-                        maxLength={100}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Usada para identificar esta unidade nos relatórios e e-mails de fechamento de caixa.
-                      </p>
                     </div>
                     <div>
                       <Label>Inscrição Estadual</Label>

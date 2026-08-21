@@ -35,7 +35,6 @@ export default defineEventHandler(async (event) => {
       cnpj,
       razaoSocial,
       nomeFantasia: optionalText(config.nome_fantasia),
-      identificacaoLoja: optionalText(config.identificacao_loja),
       inscricaoEstadual: optionalText(config.inscricao_estadual),
       inscricaoMunicipal: optionalText(config.inscricao_municipal),
       cnae: optionalText(config.cnae),
@@ -65,7 +64,6 @@ export default defineEventHandler(async (event) => {
           cnpj = ${values.cnpj},
           razao_social = ${values.razaoSocial},
           nome_fantasia = ${values.nomeFantasia},
-          identificacao_loja = ${values.identificacaoLoja},
           inscricao_estadual = ${values.inscricaoEstadual},
           inscricao_municipal = ${values.inscricaoMunicipal},
           cnae = ${values.cnae},
@@ -95,13 +93,13 @@ export default defineEventHandler(async (event) => {
 
     const result = await sql`
       INSERT INTO company_fiscal_config (
-        cnpj, razao_social, nome_fantasia, identificacao_loja, inscricao_estadual,
+        cnpj, razao_social, nome_fantasia, inscricao_estadual,
         inscricao_municipal, cnae, cnpj_matriz, regime_tributario,
         crt, cep, logradouro, numero, complemento, bairro,
         municipio, uf, telefone, email, ambiente,
         serie_nfe, serie_nfce, ultima_nfe, ultima_nfce
       ) VALUES (
-        ${values.cnpj}, ${values.razaoSocial}, ${values.nomeFantasia}, ${values.identificacaoLoja}, ${values.inscricaoEstadual},
+        ${values.cnpj}, ${values.razaoSocial}, ${values.nomeFantasia}, ${values.inscricaoEstadual},
         ${values.inscricaoMunicipal}, ${values.cnae}, ${values.cnpjMatriz}, ${values.regimeTributario},
         ${values.crt}, ${values.cep}, ${values.logradouro}, ${values.numero}, ${values.complemento},
         ${values.bairro}, ${values.municipio}, ${values.uf}, ${values.telefone}, ${values.email},

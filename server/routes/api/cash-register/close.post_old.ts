@@ -22,16 +22,6 @@ export default defineEventHandler(async (event) => {
     
     const register = openRegister[0];
 
-    // Identificação desta unidade para relatórios/e-mails.
-    // É opcional para não impedir o fechamento caso ainda não esteja configurada.
-    const companyConfigResult = await sql`
-      SELECT identificacao_loja
-      FROM company_fiscal_config
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
-    const identificacaoLoja = companyConfigResult[0]?.identificacao_loja || null;
-
     const sales = await sql`
           SELECT
             s.id,
@@ -183,7 +173,6 @@ export default defineEventHandler(async (event) => {
           difference,
           closedAt: new Date().toISOString(),
           notes,
-          identificacaoLoja,
         };
 
     // Disparar e-mail em background

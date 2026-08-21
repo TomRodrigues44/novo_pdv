@@ -34,6 +34,7 @@ interface CashRegisterReportData {
   difference: number;
   closedAt: string;
   notes?: string;
+  identificacaoLoja?: string;
 }
 
 function getEmailConfig(): EmailConfig {
@@ -80,7 +81,7 @@ function generateReportHtml(data: CashRegisterReportData): string {
     openingAmount, salesTotal, calculatedClosingCash, salesByPayment,
     totalsByCategory, totalSangrias, vouchers, voucherTotal,
     additions, additionTotal, valorInformado, expectedAmount, difference,
-    closedAt, notes
+    closedAt, notes, identificacaoLoja
   } = data;
 
   const safeNotes = notes?.trim();
@@ -117,6 +118,10 @@ function generateReportHtml(data: CashRegisterReportData): string {
                   <div style="font-size:14px;line-height:20px;font-weight:700;margin-top:6px;">
                     RELATÓRIO DE FECHAMENTO DE CAIXA
                   </div>
+                  ${identificacaoLoja ? `
+                  <div style="font-size:13px;line-height:19px;font-weight:800;margin-top:4px;">
+                    ${identificacaoLoja}
+                  </div>` : ''}
                   <div style="font-size:12px;line-height:18px;color:#4b5563;margin-top:6px;">
                     ${formatDateTime(closedAt)}
                   </div>
@@ -267,7 +272,7 @@ export async function sendCashRegisterCloseEmail(data: CashRegisterReportData): 
 
     const html = generateReportHtml(data);
     
-    const subject = `📊 Fechamento de Caixa - Loja 1 - Aparecida - ${formatDateTime(data.closedAt)}`;
+    const subject = `📊 Fechamento de Caixa${data.identificacaoLoja ? ` - ${data.identificacaoLoja}` : ''} - ${formatDateTime(data.closedAt)}`;
 
     await transporter.sendMail({
       from: `"Empório das Coxinhas" <${fromEmail}>`,
