@@ -16,10 +16,17 @@ interface Customer {
   id: string;
   name: string;
   phone: string;
-  address: string;
+  address?: string;
   email: string;
   points: number;
   total_spent: number;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cep?: string;
+  municipio?: string;
+  uf?: string;
 }
 
 interface CustomerSelectorProps {

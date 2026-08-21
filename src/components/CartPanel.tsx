@@ -43,10 +43,17 @@ interface Customer {
   id: string;
   name: string;
   phone: string;
-  address: string;
+  address?: string;
   email: string;
   points: number;
   total_spent: number;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cep?: string;
+  municipio?: string;
+  uf?: string;
 }
 
 interface Motoboy {
@@ -183,10 +190,12 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
       setDeliveryForm({
         name: selectedCustomer?.name || "",
         phone: selectedCustomer?.phone || "",
-        address: selectedCustomer?.address || "",
-        number: "",
-        neighborhood: "",
-        notes: "",
+        address: selectedCustomer?.logradouro || selectedCustomer?.address || "",
+        number: selectedCustomer?.numero || "",
+        neighborhood: selectedCustomer?.bairro || "",
+        notes: selectedCustomer?.complemento
+          ? `Complemento: ${selectedCustomer.complemento}`
+          : "",
       });
     }
     setIsDeliveryDialogOpen(true);
