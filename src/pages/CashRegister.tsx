@@ -24,6 +24,8 @@ const CashRegister = () => {
   const [transactionAmount, setTransactionAmount] = useState('');
   const [transactionDescription, setTransactionDescription] = useState('');
   const [transactionCategory, setTransactionCategory] = useState('ifood');
+  const [transactionMotoboy, setTransactionMotoboy] = useState('');
+  const [motoboys, setMotoboys] = useState<any[]>([]);
   const [notes, setNotes] = useState('');
   const [closeResult, setCloseResult] = useState<any>(null);
   const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
@@ -53,6 +55,22 @@ const CashRegister = () => {
 
   const currentRegister = cashData?.current;
   const history = cashData?.history || [];
+
+  useEffect(() => {
+    const fetchMotoboys = async () => {
+      try {
+        const response = await fetch('/api/motoboys');
+        if (response.ok) {
+          const data = await response.json();
+          setMotoboys(Array.isArray(data) ? data : []);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar motoboys:', error);
+      }
+    };
+
+    fetchMotoboys();
+  }, []);
 
   useEffect(() => {
     if (!currentRegister) {
@@ -243,16 +261,26 @@ const CashRegister = () => {
       let finalDescription = transactionDescription;
       
       if (type === 'withdrawal') {
-        const categoryPrefix = {
-          taxa_entrega: 'Taxa Entrega',
-          ifood: 'iFood',
-          brigadeiros: 'Brigadeiros',
-          outros: 'Outros'
-        }[transactionCategory];
-        
-        finalDescription = transactionCategory === 'outros' 
-          ? transactionDescription 
-          : `${categoryPrefix}: ${transactionDescription}`;
+        const amount = parseFloat(transactionAmount) || 0;
+        if (amount <= 0) {
+          toast.error('Informe um valor válido para a sangria');
+          return;
+        }
+
+        if (transactionCategory === 'ifood' || transactionCategory === 'taxa_entrega') {
+          if (!transactionMotoboy) {
+            toast.error('Selecione o motoboy responsável');
+            return;
+          }
+
+          const prefix = transactionCategory === 'ifood' ? 'iFood' : 'Taxa Entrega';
+          finalDescription = `${prefix}: ${transactionMotoboy}`;
+        } else if (transactionCategory === 'brigadeiros') {
+          // Todos os lançamentos de brigadeiros pertencem à Renata.
+          finalDescription = 'Brigadeiros: Renata';
+        } else {
+          finalDescription = transactionDescription.trim() || 'Outros';
+        }
       }
 
       const response = await fetch('/api/cash-transactions', {
@@ -280,6 +308,7 @@ const CashRegister = () => {
         setTransactionAmount('');
         setTransactionDescription('');
         setTransactionCategory('ifood');
+        setTransactionMotoboy('');
         refetch();
       } else {
         const error = await response.json();
@@ -339,6 +368,49 @@ const CashRegister = () => {
 
     const historicalTotals = calculateHistoricalTotalsByCategory(register.transactions || []);
     const totalSangrias = historicalTotals.taxa_entrega + historicalTotals.ifood + historicalTotals.brigadeiros + historicalTotals.outros;
+
+    const withdrawalTransactions = register.transactions?.filter((t: any) => t.type === 'withdrawal') || [];
+
+    const extractPersonFromDescription = (description: string, prefix: string) => {
+      const desc = String(description || '').trim();
+      const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return desc
+        .replace(new RegExp(`^${escapedPrefix}\\s*(?:-|:)?\\s*`, 'i'), '')
+        .trim();
+    };
+
+    const motoboyTotals = withdrawalTransactions.reduce((acc: Record<string, { delivery: number; ifood: number; total: number }>, t: any) => {
+      const desc = String(t.description || '');
+      const amount = Number(t.amount || 0);
+      let name = '';
+
+      if (desc.startsWith('Taxa Entrega')) {
+        name = extractPersonFromDescription(desc, 'Taxa Entrega');
+        if (name && name.toLowerCase() !== 'desconhecido') {
+          if (!acc[name]) acc[name] = { delivery: 0, ifood: 0, total: 0 };
+          acc[name].delivery += amount;
+          acc[name].total += amount;
+        }
+      } else if (desc.startsWith('iFood')) {
+        name = extractPersonFromDescription(desc, 'iFood');
+        if (name && name.toLowerCase() !== 'desconhecido') {
+          if (!acc[name]) acc[name] = { delivery: 0, ifood: 0, total: 0 };
+          acc[name].ifood += amount;
+          acc[name].total += amount;
+        }
+      }
+
+      return acc;
+    }, {});
+
+    const motoboyEntries = Object.entries(motoboyTotals)
+      .filter(([, values]) => values.total > 0)
+      .sort(([nameA], [nameB]) => nameA.localeCompare(nameB, 'pt-BR'));
+
+    const brigadeiroRenataTotal = withdrawalTransactions
+      .filter((t: any) => String(t.description || '').startsWith('Brigadeiros'))
+      .reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+
 
     const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
     const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
@@ -646,9 +718,12 @@ const CashRegister = () => {
           <hr class="separator" />
           <section class="section">
             <h2 class="section-title">Sangrias</h2>
-            ${historicalTotals.taxa_entrega > 0 ? `<div class="row detail"><span class="label">Deliverys</span><span class="value">${formatReceiptCurrency(-historicalTotals.taxa_entrega, true)}</span></div>` : ''}
-            ${historicalTotals.ifood > 0 ? `<div class="row detail"><span class="label">iFood</span><span class="value">${formatReceiptCurrency(-historicalTotals.ifood, true)}</span></div>` : ''}
-            ${historicalTotals.brigadeiros > 0 ? `<div class="row detail"><span class="label">Brigadeiros</span><span class="value">${formatReceiptCurrency(-historicalTotals.brigadeiros, true)}</span></div>` : ''}
+            ${motoboyEntries.map(([name, values]) => `
+              ${values.delivery > 0 ? `<div class="row detail"><span class="label">Taxas ${escapeHtml(name)}</span><span class="value">${formatReceiptCurrency(-values.delivery, true)}</span></div>` : ''}
+              ${values.ifood > 0 ? `<div class="row detail"><span class="label">iFood ${escapeHtml(name)}</span><span class="value">${formatReceiptCurrency(-values.ifood, true)}</span></div>` : ''}
+              <div class="row detail" style="font-weight:900;"><span class="label">Total Tx ${escapeHtml(name)}</span><span class="value">${formatReceiptCurrency(-values.total, true)}</span></div>
+            `).join('')}
+            ${brigadeiroRenataTotal > 0 ? `<div class="row detail"><span class="label">Brigadeiros Renata</span><span class="value">${formatReceiptCurrency(-brigadeiroRenataTotal, true)}</span></div>` : ''}
             ${historicalTotals.outros > 0 ? `<div class="row detail"><span class="label">Outros</span><span class="value">${formatReceiptCurrency(-historicalTotals.outros, true)}</span></div>` : ''}
             <div class="row total-row"><span class="label">TOTAL SANGRIAS</span><span class="value">${formatReceiptCurrency(-totalSangrias, true)}</span></div>
           </section>` : ''}
@@ -701,6 +776,17 @@ const CashRegister = () => {
               <span>${escapeHtml(closedDate)}</span>
               <span>${escapeHtml(closedTime)}</span>
             </div>
+
+            ${motoboyEntries.length > 0 ? `
+              <div style="margin-top:7px;" class="section-title">Taxas Motoboys</div>
+              ${motoboyEntries.map(([name, values]) => `
+                <div class="row detail">
+                  <span class="label">Total Tx ${escapeHtml(name)}</span>
+                  <span class="value">${formatReceiptCurrency(values.total)}</span>
+                </div>
+              `).join('')}
+              <hr class="separator" />
+            ` : ''}
 
             <div class="row" style="margin-top:5px;">
               <span class="label">Dinheiro Trocado</span>
@@ -1042,7 +1128,11 @@ const CashRegister = () => {
                             </label>
                             <Select
                               value={transactionCategory}
-                              onValueChange={(value: any) => setTransactionCategory(value)}
+                              onValueChange={(value: any) => {
+                                setTransactionCategory(value);
+                                setTransactionMotoboy('');
+                                setTransactionDescription('');
+                              }}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Selecione a categoria" />
@@ -1087,16 +1177,48 @@ const CashRegister = () => {
                               placeholder="Ex: 50.00"
                             />
                           </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-2">
-                              Descrição
-                            </label>
-                            <Textarea
-                              value={transactionDescription}
-                              onChange={(e) => setTransactionDescription(e.target.value)}
-                              placeholder={transactionCategory === 'taxa_entrega' ? 'Ex: Pedro' : 'Ex: Taxa, Comissão...'}
-                            />
-                          </div>
+                          {(transactionCategory === 'ifood' || transactionCategory === 'taxa_entrega') && (
+                            <div>
+                              <label className="block text-sm font-medium mb-2">
+                                Motoboy Responsável
+                              </label>
+                              <Select value={transactionMotoboy} onValueChange={setTransactionMotoboy}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione o motoboy" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {motoboys.map((motoboy: any) => (
+                                    <SelectItem key={motoboy.id} value={motoboy.name}>
+                                      <div className="flex items-center gap-2">
+                                        <Bike className="h-4 w-4" />
+                                        {motoboy.name}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+
+                          {transactionCategory === 'brigadeiros' && (
+                            <div className="rounded-lg border border-orange-200 bg-orange-50 p-3">
+                              <p className="text-sm text-gray-600">Responsável</p>
+                              <p className="font-bold text-orange-700">Renata</p>
+                            </div>
+                          )}
+
+                          {transactionCategory === 'outros' && (
+                            <div>
+                              <label className="block text-sm font-medium mb-2">
+                                Descrição
+                              </label>
+                              <Textarea
+                                value={transactionDescription}
+                                onChange={(e) => setTransactionDescription(e.target.value)}
+                                placeholder="Ex: Taxa, Comissão..."
+                              />
+                            </div>
+                          )}
                         </div>
                         <DialogFooter>
                           <Button variant="outline" onClick={() => setIsWithdrawalDialogOpen(false)}>
