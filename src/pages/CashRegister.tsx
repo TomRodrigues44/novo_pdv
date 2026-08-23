@@ -29,6 +29,17 @@ const CashRegister = () => {
   const [closedRegisterData, setClosedRegisterData] = useState<any>(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+  const [isChangeDialogOpen, setIsChangeDialogOpen] = useState(false);
+  const [pendingCloseData, setPendingCloseData] = useState<{ amount: number; notes: string } | null>(null);
+  const [changeNeeded, setChangeNeeded] = useState(true);
+  const [changeCounts, setChangeCounts] = useState<Record<number, number>>({
+    1: 0,
+    2: 0,
+    5: 0,
+    10: 0,
+    20: 0,
+    50: 0,
+  });
 
   const { data: cashData, isLoading, refetch } = useQuery({
     queryKey: ['cash-register'],
@@ -118,76 +129,114 @@ const CashRegister = () => {
     }
   };
 
-  const handleCloseRegister = async () => {
-      // Abre a janela no clique do usuário para evitar bloqueio de pop-up após o await.
-      const printWindow = window.open(
+  const CHANGE_DENOMINATIONS = [1, 2, 5, 10, 20, 50];
+
+  const changeTotal = CHANGE_DENOMINATIONS.reduce(
+    (sum, denomination) => sum + denomination * (changeCounts[denomination] || 0),
+    0
+  );
+
+  const updateChangeCount = (denomination: number, delta: number) => {
+    setChangeCounts((prev) => ({
+      ...prev,
+      [denomination]: Math.max(0, (prev[denomination] || 0) + delta),
+    }));
+  };
+
+  // Primeiro passo: preserva os dados informados no fechamento e abre a tela de trocado.
+  const handleCloseRegister = () => {
+    const amount = parseFloat(closingAmount) || 0;
+    setPendingCloseData({ amount, notes });
+    setChangeNeeded(true);
+    setChangeCounts({ 1: 0, 2: 0, 5: 0, 10: 0, 20: 0, 50: 0 });
+    setIsCloseDialogOpen(false);
+    setIsChangeDialogOpen(true);
+  };
+
+  // Segundo passo: somente aqui o caixa é efetivamente fechado.
+  const handleConfirmCloseWithChange = async () => {
+    if (!pendingCloseData) return;
+
+    // Abre no clique do usuário para evitar bloqueio do pop-up após o await.
+    const printWindow = window.open(
       '',
       '_blank',
       `popup=yes,width=${window.screen.availWidth},height=${window.screen.availHeight},left=0,top=0`
     );
 
-      try {
-        const amount = parseFloat(closingAmount) || 0;
-        const closingNotes = notes;
-        setFinalClosingAmount(amount);
-        setClosedRegisterData(currentRegister);
-  
-        const response = await fetch('/api/cash-register/close', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            closingAmount: amount,
-            notes,
-            salesByPayment: currentRegister?.salesByPayment || {
-              cash: 0,
-              debit: 0,
-              credit: 0,
-              pix: 0
-            }
-          }),
-        });
-  
-        if (response.ok) {
-          const result = await response.json();
+    try {
+      const { amount, notes: closingNotes } = pendingCloseData;
+      const finalChangeCounts = changeNeeded
+        ? changeCounts
+        : { 1: 0, 2: 0, 5: 0, 10: 0, 20: 0, 50: 0 };
+      const finalChangeTotal = changeNeeded ? changeTotal : 0;
 
-          // Monta o registro fechado preservando os dados que já estavam carregados
-          // e priorizando os valores devolvidos pela API de fechamento.
-          const apiRegister = result?.register || result?.cashRegister || result || {};
-          const closedRegister = {
-            ...currentRegister,
-            ...apiRegister,
-            opening_amount: apiRegister.opening_amount ?? currentRegister?.opening_amount,
-            closing_amount: apiRegister.closing_amount ?? amount,
-            expected_amount: apiRegister.expected_amount ?? result?.expectedCashAmount ?? result?.expectedTotalAmount ?? currentRegister?.expected_amount,
-            difference: apiRegister.difference ?? result?.difference,
-            closed_at: apiRegister.closed_at ?? result?.closedAt ?? new Date().toISOString(),
-            salesByPayment: apiRegister.salesByPayment ?? currentRegister?.salesByPayment,
-            transactions: apiRegister.transactions ?? currentRegister?.transactions ?? [],
-            notes: apiRegister.notes ?? closingNotes,
-          };
+      setFinalClosingAmount(amount);
+      setClosedRegisterData(currentRegister);
 
-          setCloseResult(result);
-          setClosedRegisterData(closedRegister);
-          setIsCloseSuccessDialogOpen(true);
-          setIsCloseDialogOpen(false);
+      const response = await fetch('/api/cash-register/close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          closingAmount: amount,
+          notes: closingNotes,
+          salesByPayment: currentRegister?.salesByPayment || {
+            cash: 0,
+            debit: 0,
+            credit: 0,
+            pix: 0
+          },
+          changeNeeded,
+          changeCounts: finalChangeCounts,
+          changeTotal: finalChangeTotal,
+        }),
+      });
 
-          // Gera imediatamente o MESMO relatório usado no Histórico de Fechamentos.
-          // O e-mail NÃO é disparado aqui: /api/cash-register/close já faz o envio no backend.
-          handlePrintHistorical(closedRegister, printWindow);
+      if (response.ok) {
+        const result = await response.json();
+        const apiRegister = result?.register || result?.cashRegister || result || {};
 
-          setClosingAmount('');
-          setNotes('');
-          refetch();
-        } else {
-          if (printWindow && !printWindow.closed) printWindow.close();
-          const error = await response.json();
-          toast.error(error.statusMessage || 'Erro ao fechar caixa');
-        }
-      } catch (error) {
+        const closedRegister = {
+          ...currentRegister,
+          ...apiRegister,
+          opening_amount: apiRegister.opening_amount ?? currentRegister?.opening_amount,
+          closing_amount: apiRegister.closing_amount ?? amount,
+          expected_amount: apiRegister.expected_amount ?? result?.expectedCashAmount ?? result?.expectedTotalAmount ?? currentRegister?.expected_amount,
+          difference: apiRegister.difference ?? result?.difference,
+          closed_at: apiRegister.closed_at ?? result?.closedAt ?? new Date().toISOString(),
+          salesByPayment: apiRegister.salesByPayment ?? result?.salesByPayment ?? currentRegister?.salesByPayment,
+          transactions: apiRegister.transactions ?? currentRegister?.transactions ?? [],
+          notes: apiRegister.notes ?? closingNotes,
+          change_needed: apiRegister.change_needed ?? result?.changeNeeded ?? changeNeeded,
+          change_counts: apiRegister.change_counts ?? result?.changeCounts ?? finalChangeCounts,
+          change_total: apiRegister.change_total ?? result?.changeTotal ?? finalChangeTotal,
+          envelope_total: apiRegister.envelope_total ?? result?.envelopeTotal,
+        };
+
+        setCloseResult(result);
+        setClosedRegisterData(closedRegister);
+        setIsCloseSuccessDialogOpen(true);
+        setIsChangeDialogOpen(false);
+
+        // Mesmo relatório do histórico, agora já com a Conferência do Envelope.
+        handlePrintHistorical(closedRegister, printWindow);
+
+        setClosingAmount('');
+        setNotes('');
+        setPendingCloseData(null);
+        setChangeNeeded(true);
+        setChangeCounts({ 1: 0, 2: 0, 5: 0, 10: 0, 20: 0, 50: 0 });
+        refetch();
+      } else {
         if (printWindow && !printWindow.closed) printWindow.close();
-        toast.error('Erro ao fechar caixa');
+        const error = await response.json();
+        toast.error(error.statusMessage || 'Erro ao fechar caixa');
       }
-    };
+    } catch (error) {
+      if (printWindow && !printWindow.closed) printWindow.close();
+      toast.error('Erro ao fechar caixa');
+    }
+  };
 
   const handleTransaction = async (type: 'withdrawal' | 'addition' | 'voucher') => {
     try {
@@ -311,6 +360,31 @@ const CashRegister = () => {
       : difference < 0
         ? 'FALTOU DINHEIRO'
         : 'CAIXA FECHOU EXATO';
+
+    // Conferência do Envelope (valores congelados no fechamento).
+    const rawChangeCounts = register.change_counts || register.changeCounts || {};
+    const parsedChangeCounts = typeof rawChangeCounts === 'string'
+      ? (() => { try { return JSON.parse(rawChangeCounts); } catch { return {}; } })()
+      : rawChangeCounts;
+
+    const changeNeeded = register.change_needed ?? register.changeNeeded ?? false;
+    const denominations = [1, 2, 5, 10, 20, 50];
+    const changeItems = denominations
+      .map((denomination) => ({
+        denomination,
+        quantity: Number(parsedChangeCounts?.[denomination] ?? parsedChangeCounts?.[String(denomination)] ?? 0),
+      }))
+      .filter((item) => item.quantity > 0);
+
+    const changeTotal = register.change_total !== undefined && register.change_total !== null
+      ? Number(register.change_total)
+      : changeItems.reduce((sum, item) => sum + item.denomination * item.quantity, 0);
+
+    // Regra definida para o envelope:
+    // Dinheiro das vendas + Trocado + Adições - Brigadeiros - Vales + Resultado da Conferência.
+    const envelopeTotal = register.envelope_total !== undefined && register.envelope_total !== null
+      ? Number(register.envelope_total)
+      : cashSales + changeTotal + additionTotal - historicalTotals.brigadeiros - voucherTotal + difference;
 
     const formatReceiptCurrency = (value: number, showSign = false) => {
       const numericValue = Number(value || 0);
@@ -616,6 +690,45 @@ const CashRegister = () => {
               <div class="difference-label">DIFERENÇA</div>
               <div class="difference-value">${formatReceiptCurrency(difference, true)}</div>
               <div class="difference-status">${differenceStatus}</div>
+            </div>
+          </section>
+
+          <hr class="separator strong" />
+
+          <section class="section">
+            <div class="conference-title">CONFERÊNCIA DO ENVELOPE</div>
+            <div class="date-row">
+              <span>${escapeHtml(closedDate)}</span>
+              <span>${escapeHtml(closedTime)}</span>
+            </div>
+
+            <div class="row" style="margin-top:5px;">
+              <span class="label">Dinheiro Trocado</span>
+              <span class="value">${changeNeeded ? 'NECESSÁRIO' : 'NÃO NECESSÁRIO'}</span>
+            </div>
+
+            ${changeNeeded && changeItems.length > 0 ? changeItems.map((item) => `
+              <div class="row detail">
+                <span class="label">${String(item.quantity).padStart(2, '0')} ${item.denomination === 1 ? 'moeda' : 'nota'}${item.quantity > 1 ? 's' : ''} de R$ ${item.denomination.toFixed(2).replace('.', ',')}</span>
+                <span class="value">${formatReceiptCurrency(item.quantity * item.denomination)}</span>
+              </div>
+            `).join('') : ''}
+
+            <div class="row total-row">
+              <span class="label">TOTAL TROCADO</span>
+              <span class="value">${formatReceiptCurrency(changeTotal)}</span>
+            </div>
+
+            <div style="margin-top:7px;" class="section-title">Dinheiro do Envelope</div>
+            <div class="row detail"><span class="label">Dinheiro das vendas</span><span class="value">${formatReceiptCurrency(cashSales)}</span></div>
+            <div class="row detail"><span class="label">+ Trocado solicitado</span><span class="value">${formatReceiptCurrency(changeTotal)}</span></div>
+            <div class="row detail"><span class="label">+ Adições</span><span class="value">${formatReceiptCurrency(additionTotal)}</span></div>
+            <div class="row detail"><span class="label">- Brigadeiros</span><span class="value">${formatReceiptCurrency(historicalTotals.brigadeiros)}</span></div>
+            <div class="row detail"><span class="label">- Vales</span><span class="value">${formatReceiptCurrency(voucherTotal)}</span></div>
+            <div class="row detail"><span class="label">${difference >= 0 ? '+' : '-'} Resultado conferência</span><span class="value">${formatReceiptCurrency(Math.abs(difference))}</span></div>
+            <div class="row total-row">
+              <span class="label">TOTAL DO ENVELOPE</span>
+              <span class="value">${formatReceiptCurrency(envelopeTotal)}</span>
             </div>
           </section>
 
@@ -1255,6 +1368,109 @@ const CashRegister = () => {
                         disabled={!closingAmount}
                       >
                         Confirmar Fechamento
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog
+                  open={isChangeDialogOpen}
+                  onOpenChange={(open) => {
+                    // Não permite perder acidentalmente a etapa depois de já preparar o fechamento.
+                    if (!open) return;
+                    setIsChangeDialogOpen(open);
+                  }}
+                >
+                  <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>Você precisa de Trocado?</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="space-y-3">
+                      {CHANGE_DENOMINATIONS.map((denomination) => (
+                        <div
+                          key={denomination}
+                          className={`flex items-center justify-between rounded-xl border p-3 ${
+                            !changeNeeded ? 'opacity-50' : ''
+                          }`}
+                        >
+                          <div>
+                            <p className="font-semibold">
+                              {denomination === 1 ? 'Moedas' : 'Notas'} de {formatCurrency(denomination)}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Quantidade necessária para o próximo dia
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              disabled={!changeNeeded || (changeCounts[denomination] || 0) === 0}
+                              onClick={() => updateChangeCount(denomination, -1)}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+
+                            <div className="w-10 text-center text-lg font-bold">
+                              {changeNeeded ? (changeCounts[denomination] || 0) : 0}
+                            </div>
+
+                            <Button
+                              type="button"
+                              size="icon"
+                              disabled={!changeNeeded}
+                              onClick={() => updateChangeCount(denomination, 1)}
+                              className="bg-orange-500 text-white hover:bg-orange-700"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !changeNeeded;
+                          setChangeNeeded(next);
+                          if (!next) setChangeCounts({ 1: 0, 2: 0, 5: 0, 10: 0, 20: 0, 50: 0 });
+                        }}
+                        className={`w-full rounded-xl border-2 p-3 text-left font-semibold transition ${
+                          !changeNeeded
+                            ? 'border-orange-500 bg-orange-50 text-orange-700'
+                            : 'border-gray-200 hover:border-orange-300'
+                        }`}
+                      >
+                        <span className="mr-2">{!changeNeeded ? '☑' : '☐'}</span>
+                        Não Preciso de Trocado!
+                      </button>
+
+                      <div className="flex items-center justify-between rounded-xl bg-orange-50 p-4">
+                        <span className="font-semibold text-orange-900">Total do trocado</span>
+                        <span className="text-xl font-bold text-orange-700">
+                          {formatCurrency(changeNeeded ? changeTotal : 0)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsChangeDialogOpen(false);
+                          setIsCloseDialogOpen(true);
+                        }}
+                      >
+                        Voltar
+                      </Button>
+                      <Button
+                        onClick={handleConfirmCloseWithChange}
+                        className="flex-1 bg-orange-600 hover:bg-orange-700"
+                      >
+                        Confirmar e Imprimir
                       </Button>
                     </DialogFooter>
                   </DialogContent>

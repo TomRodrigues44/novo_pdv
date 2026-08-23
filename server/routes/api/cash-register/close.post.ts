@@ -3,7 +3,7 @@ import { sendCashRegisterCloseEmail } from '../../../lib/email';
 
 export default defineEventHandler(async (event) => {
   try {
-    const { closingAmount, notes, salesByPayment } = await readBody(event);
+    const { closingAmount, notes, salesByPayment, changeNeeded, changeCounts, changeTotal } = await readBody(event);
     
     // Buscar caixa aberto
     const openRegister = await sql`
@@ -134,6 +134,31 @@ export default defineEventHandler(async (event) => {
     
     // Diferença = Valor Informado - Valor Esperado
     const difference = valorInformado - expectedAmount;
+
+    const normalizedChangeCounts = {
+      1: Math.max(0, Number(changeCounts?.[1] ?? changeCounts?.['1'] ?? 0) || 0),
+      2: Math.max(0, Number(changeCounts?.[2] ?? changeCounts?.['2'] ?? 0) || 0),
+      5: Math.max(0, Number(changeCounts?.[5] ?? changeCounts?.['5'] ?? 0) || 0),
+      10: Math.max(0, Number(changeCounts?.[10] ?? changeCounts?.['10'] ?? 0) || 0),
+      20: Math.max(0, Number(changeCounts?.[20] ?? changeCounts?.['20'] ?? 0) || 0),
+      50: Math.max(0, Number(changeCounts?.[50] ?? changeCounts?.['50'] ?? 0) || 0),
+    };
+
+    const calculatedChangeTotal = Object.entries(normalizedChangeCounts)
+      .reduce((sum, [denomination, quantity]) => sum + Number(denomination) * Number(quantity), 0);
+
+    const finalChangeNeeded = Boolean(changeNeeded);
+    const finalChangeTotal = finalChangeNeeded
+      ? (Number.isFinite(Number(changeTotal)) ? Number(changeTotal) : calculatedChangeTotal)
+      : 0;
+
+    // Envelope = Dinheiro das vendas + Trocado + Adições - Brigadeiros - Vales + Diferença.
+    const envelopeTotal = cashSales
+      + finalChangeTotal
+      + additions
+      - totalsByCategory.brigadeiros
+      - vouchers
+      + difference;
     
     // Atualizar caixa
     await sql`
@@ -144,7 +169,11 @@ export default defineEventHandler(async (event) => {
         expected_amount = ${expectedAmount},
         difference = ${difference},
         status = 'closed',
-        notes = ${notes || null}
+        notes = ${notes || null},
+        change_needed = ${finalChangeNeeded},
+        change_counts = ${JSON.stringify(normalizedChangeCounts)}::jsonb,
+        change_total = ${finalChangeTotal},
+        envelope_total = ${envelopeTotal}
       WHERE id = ${register.id}
     `;
     
@@ -158,7 +187,18 @@ export default defineEventHandler(async (event) => {
       withdrawals: totalSangrias,
       additions,
       vouchers,
-      difference
+      difference,
+      closedAt: new Date().toISOString(),
+      salesByPayment: {
+        cash: cashSales,
+        debit: debitSales,
+        credit: creditSales,
+        pix: pixSales,
+      },
+      changeNeeded: finalChangeNeeded,
+      changeCounts: normalizedChangeCounts,
+      changeTotal: finalChangeTotal,
+      envelopeTotal
     };
 
     // Enviar e-mail de forma assíncrona (não bloquear a resposta)
@@ -181,6 +221,10 @@ export default defineEventHandler(async (event) => {
           valorInformado,
           expectedAmount,
           difference,
+          changeNeeded: finalChangeNeeded,
+          changeCounts: normalizedChangeCounts,
+          changeTotal: finalChangeTotal,
+          envelopeTotal,
           closedAt: new Date().toISOString(),
           notes,
           identificacaoLoja,
