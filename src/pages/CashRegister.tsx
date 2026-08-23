@@ -379,7 +379,7 @@ const CashRegister = () => {
         .trim();
     };
 
-    const motoboyTotals = withdrawalTransactions.reduce((acc: Record<string, { delivery: number; ifood: number; total: number }>, t: any) => {
+    const motoboyTotals = withdrawalTransactions.reduce((acc: Record<string, { delivery: number; ifood: number; total: number; deliveryCount: number; ifoodCount: number; totalCount: number }>, t: any) => {
       const desc = String(t.description || '');
       const amount = Number(t.amount || 0);
       let name = '';
@@ -387,16 +387,20 @@ const CashRegister = () => {
       if (desc.startsWith('Taxa Entrega')) {
         name = extractPersonFromDescription(desc, 'Taxa Entrega');
         if (name && name.toLowerCase() !== 'desconhecido') {
-          if (!acc[name]) acc[name] = { delivery: 0, ifood: 0, total: 0 };
+          if (!acc[name]) acc[name] = { delivery: 0, ifood: 0, total: 0, deliveryCount: 0, ifoodCount: 0, totalCount: 0 };
           acc[name].delivery += amount;
           acc[name].total += amount;
+          acc[name].deliveryCount += 1;
+          acc[name].totalCount += 1;
         }
       } else if (desc.startsWith('iFood')) {
         name = extractPersonFromDescription(desc, 'iFood');
         if (name && name.toLowerCase() !== 'desconhecido') {
-          if (!acc[name]) acc[name] = { delivery: 0, ifood: 0, total: 0 };
+          if (!acc[name]) acc[name] = { delivery: 0, ifood: 0, total: 0, deliveryCount: 0, ifoodCount: 0, totalCount: 0 };
           acc[name].ifood += amount;
           acc[name].total += amount;
+          acc[name].ifoodCount += 1;
+          acc[name].totalCount += 1;
         }
       }
 
@@ -719,9 +723,9 @@ const CashRegister = () => {
           <section class="section">
             <h2 class="section-title">Sangrias</h2>
             ${motoboyEntries.map(([name, values]) => `
-              ${values.delivery > 0 ? `<div class="row detail"><span class="label">Taxas ${escapeHtml(name)}</span><span class="value">${formatReceiptCurrency(-values.delivery, true)}</span></div>` : ''}
-              ${values.ifood > 0 ? `<div class="row detail"><span class="label">iFood ${escapeHtml(name)}</span><span class="value">${formatReceiptCurrency(-values.ifood, true)}</span></div>` : ''}
-              <div class="row detail" style="font-weight:900;"><span class="label">Total Tx ${escapeHtml(name)}</span><span class="value">${formatReceiptCurrency(-values.total, true)}</span></div>
+              ${values.delivery > 0 ? `<div class="row detail"><span class="label">(${values.deliveryCount}) Taxas ${escapeHtml(name)}</span><span class="value">${formatReceiptCurrency(-values.delivery, true)}</span></div>` : ''}
+              ${values.ifood > 0 ? `<div class="row detail"><span class="label">(${values.ifoodCount}) iFood ${escapeHtml(name)}</span><span class="value">${formatReceiptCurrency(-values.ifood, true)}</span></div>` : ''}
+              <div class="row detail" style="font-weight:900;"><span class="label">(${values.totalCount}) Total Tx ${escapeHtml(name)}</span><span class="value">${formatReceiptCurrency(-values.total, true)}</span></div>
             `).join('')}
             ${brigadeiroRenataTotal > 0 ? `<div class="row detail"><span class="label">Brigadeiros Renata</span><span class="value">${formatReceiptCurrency(-brigadeiroRenataTotal, true)}</span></div>` : ''}
             ${historicalTotals.outros > 0 ? `<div class="row detail"><span class="label">Outros</span><span class="value">${formatReceiptCurrency(-historicalTotals.outros, true)}</span></div>` : ''}
@@ -781,7 +785,7 @@ const CashRegister = () => {
               <div style="margin-top:7px;" class="section-title">Taxas Motoboys</div>
               ${motoboyEntries.map(([name, values]) => `
                 <div class="row detail">
-                  <span class="label">Total Tx ${escapeHtml(name)}</span>
+                  <span class="label">(${values.totalCount}) Total Tx ${escapeHtml(name)}</span>
                   <span class="value">${formatReceiptCurrency(values.total)}</span>
                 </div>
               `).join('')}
