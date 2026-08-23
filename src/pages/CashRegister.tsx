@@ -236,8 +236,12 @@ const CashRegister = () => {
         setIsCloseSuccessDialogOpen(true);
         setIsChangeDialogOpen(false);
 
-        // Mesmo relatório do histórico, agora já com a Conferência do Envelope.
-        handlePrintHistorical(closedRegister, printWindow);
+        // UMA ÚNICA FONTE DO RELATÓRIO:
+        // o mesmo HTML usado na impressão é enviado automaticamente por e-mail.
+        const reportHtml = handlePrintHistorical(closedRegister, printWindow);
+        if (reportHtml) {
+          await handleSendEmail(closedRegister, reportHtml);
+        }
 
         setClosingAmount('');
         setNotes('');
@@ -334,13 +338,18 @@ const CashRegister = () => {
     window.print();
   };
 
-  const handlePrintHistorical = (register: any, existingPrintWindow?: Window | null) => {
-    const printWindow = existingPrintWindow || window.open(
+  const handlePrintHistorical = (
+    register: any,
+    existingPrintWindow?: Window | null,
+    options: { print?: boolean } = {}
+  ) => {
+    const shouldPrint = options.print !== false;
+    const printWindow = shouldPrint ? (existingPrintWindow || window.open(
       '',
       '_blank',
       `popup=yes,width=${window.screen.availWidth},height=${window.screen.availHeight},left=0,top=0`
-    );
-    if (!printWindow) {
+    )) : null;
+    if (shouldPrint && !printWindow) {
       toast.error('Não foi possível abrir a janela de impressão. Verifique se o navegador está bloqueando pop-ups.');
       return '';
     }
@@ -844,9 +853,11 @@ const CashRegister = () => {
       </html>
     `;
 
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
+    if (shouldPrint && printWindow) {
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
     return html;
   };
 
@@ -1720,7 +1731,10 @@ const CashRegister = () => {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => handleSendEmail(register)}
+                                    onClick={() => {
+                                      const reportHtml = handlePrintHistorical(register, null, { print: false });
+                                      handleSendEmail(register, reportHtml);
+                                    }}
                                     disabled={sendingEmail === register.id}
                                     className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                     title="Enviar relatório por e-mail"

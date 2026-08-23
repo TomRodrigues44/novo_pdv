@@ -1,5 +1,4 @@
 import { sql } from '../../../utils/db';
-import { sendCashRegisterCloseEmail } from '../../../lib/email';
 
 export default defineEventHandler(async (event) => {
   try {
@@ -200,40 +199,7 @@ export default defineEventHandler(async (event) => {
       changeTotal: finalChangeTotal,
       envelopeTotal
     };
-
-    // Enviar e-mail de forma assíncrona (não bloquear a resposta)
-        const emailData = {
-          openingAmount,
-          salesTotal,
-          calculatedClosingCash,
-          salesByPayment: {
-            cash: cashSales,
-            debit: debitSales,
-            credit: creditSales,
-            pix: pixSales,
-          },
-          totalsByCategory,
-          totalSangrias,
-          vouchers: vouchersList,
-          voucherTotal: vouchers,
-          additions: additionsList,
-          additionTotal: additions,
-          valorInformado,
-          expectedAmount,
-          difference,
-          changeNeeded: finalChangeNeeded,
-          changeCounts: normalizedChangeCounts,
-          changeTotal: finalChangeTotal,
-          envelopeTotal,
-          closedAt: new Date().toISOString(),
-          notes,
-          identificacaoLoja,
-        };
-
-    // Disparar e-mail em background
-    sendCashRegisterCloseEmail(emailData).catch((err) => {
-      console.error('Erro ao enviar e-mail (background):', err);
-    });
+    // O e-mail é enviado pelo CashRegister usando exatamente o mesmo HTML da impressão.
 
     return result;
   } catch (error) {

@@ -35,6 +35,8 @@ interface CashRegisterReportData {
   closedAt: string;
   notes?: string;
   identificacaoLoja?: string;
+  reportHtml?: string;
+  html?: string;
 }
 
 function getEmailConfig(): EmailConfig {
@@ -270,7 +272,10 @@ export async function sendCashRegisterCloseEmail(data: CashRegisterReportData): 
       throw new Error('E-mail remetente (SMTP_FROM ou SMTP_USER) não configurado');
     }
 
-    const html = generateReportHtml(data);
+    // Fonte única do relatório:
+    // quando o CashRegister envia o HTML oficial, ele é usado sem recriar outro modelo.
+    // O template legado abaixo permanece apenas como fallback de segurança.
+    const html = data.reportHtml || data.html || generateReportHtml(data);
     
     const subject = `📊 Fechamento de Caixa${data.identificacaoLoja ? ` - ${data.identificacaoLoja}` : ''} - ${formatDateTime(data.closedAt)}`;
 
