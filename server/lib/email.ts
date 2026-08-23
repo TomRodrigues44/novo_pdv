@@ -281,17 +281,17 @@ export async function sendCashRegisterCloseEmail(data: CashRegisterReportData): 
       let adapted = sourceHtml;
 
       // Remove o script de impressão automática: no e-mail ele não tem utilidade.
-      adapted = adapted.replace(/<script[\\s\\S]*?<\\/script>/gi, '');
+      adapted = adapted.replace(/<script[\s\S]*?<\/script>/gi, '');
 
       // Remove regras exclusivas de papel/impressão.
-      adapted = adapted.replace(/@page\\s*\\{[\\s\\S]*?\\}/gi, '');
-      adapted = adapted.replace(/@media\\s+print\\s*\\{[\\s\\S]*?\\}\\s*\\}/gi, '');
+      adapted = adapted.replace(/@page\s*\{[\s\S]*?\}/gi, '');
+      adapted = adapted.replace(/@media\s+print\s*\{[\s\S]*?\}\s*\}/gi, '');
 
       // O relatório térmico usa 80mm/72mm. Em clientes de e-mail isso pode virar
       // uma largura imprevisível. Mantemos o MESMO conteúdo e estrutura, mas
       // centralizamos em uma coluna estável de 600px.
       adapted = adapted.replace(
-        /html, body\\s*\\{[\\s\\S]*?\\}/i,
+        /html,\s*body\s*\{[\s\S]*?\}/i,
         `html, body {
           margin: 0 !important;
           padding: 0 !important;
@@ -305,7 +305,7 @@ export async function sendCashRegisterCloseEmail(data: CashRegisterReportData): 
       );
 
       adapted = adapted.replace(
-        /\\.receipt\\s*\\{[\\s\\S]*?\\}/i,
+        /\.receipt\s*\{[\s\S]*?\}/i,
         `.receipt {
           width: 100% !important;
           max-width: 600px !important;
@@ -319,7 +319,7 @@ export async function sendCashRegisterCloseEmail(data: CashRegisterReportData): 
 
       // Garante que os valores continuem alinhados sem estourar a coluna.
       adapted = adapted.replace(
-        /min-width:\\s*24mm;/gi,
+        /min-width:\s*24mm;/gi,
         'min-width: 120px;'
       );
 
