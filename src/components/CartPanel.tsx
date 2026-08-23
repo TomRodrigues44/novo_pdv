@@ -270,27 +270,32 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
       setCurrentSaleId(String(result.id));
             setCurrentDailySaleNumber(String(result.daily_sale_number));
       
-            // Criar sangria para o frete após confirmação do pagamento
-            try {
-              const response = await fetch('/api/cash-transactions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  type: 'withdrawal',
-                  amount: freight,
-                  description: `Taxa Entrega - ${selectedMotoboy?.name || 'Desconhecido'}`
-                })
-              });
-      
-              if (!response.ok) {
-                console.error('Erro ao criar sangria para frete:', response.statusText);
+            // Criar sangria do frete SOMENTE quando houver frete válido.
+            // Sem frete (0, vazio ou inválido), nenhuma transação é criada.
+            const freightAmount = Number(freight);
+
+            if (Number.isFinite(freightAmount) && freightAmount > 0) {
+              try {
+                const response = await fetch('/api/cash-transactions', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    type: 'withdrawal',
+                    amount: freightAmount,
+                    description: `Taxa Entrega - ${selectedMotoboy?.name || 'Desconhecido'}`
+                  })
+                });
+
+                if (!response.ok) {
+                  console.error('Erro ao criar sangria para frete:', response.statusText);
+                  toast.error('Erro ao registrar Taxa de Delivery');
+                }
+              } catch (error) {
+                console.error('Erro ao criar sangria para frete:', error);
                 toast.error('Erro ao registrar Taxa de Delivery');
               }
-            } catch (error) {
-              console.error('Erro ao criar sangria para frete:', error);
-              toast.error('Erro ao registrar Taxa de Delivery');
             }
-      
+
             setCurrentPayments(payments);
             setIsPaymentDialogOpen(false);
             setIsDocumentDialogOpen(true);
