@@ -862,72 +862,148 @@ const CashRegister = () => {
   };
 
   // Nova função para enviar e-mail do fechamento de caixa
-  const handleSendEmail = async (register: any, reportHtml?: string) => {
+  const handleSendEmail = async (register: any, _reportHtml?: string) => {
     setSendingEmail(register.id);
-    
+
     try {
-      // Preparar dados para o e-mail
-      const openingAmount = parseFloat(register.opening_amount || 0);
-      const cashSales = register.salesByPayment?.cash || 0;
-      const salesTotal = (register.salesByPayment?.cash || 0) + (register.salesByPayment?.debit || 0) + (register.salesByPayment?.credit || 0) + (register.salesByPayment?.pix || 0);
-      
-      const calculateTotalsByCategory = (transactions: any[]) => {
-        const withdrawals = transactions?.filter((t: any) => t.type === 'withdrawal') || [];
-        return withdrawals.reduce((acc: any, t: any) => {
-          const desc = t.description || '';
-          let cat = 'outros';
-          if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
-          else if (desc.startsWith('iFood')) cat = 'ifood';
-          else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
-          
-          acc[cat] = (acc[cat] || 0) + parseFloat(t.amount);
-          return acc;
-        }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
-      };
-      
-      const totalsByCategory = calculateTotalsByCategory(register.transactions || []);
-      const totalSangrias = totalsByCategory.taxa_entrega + totalsByCategory.ifood + totalsByCategory.brigadeiros + totalsByCategory.outros;
-      
-      const vouchers = register.transactions?.filter((t: any) => t.type === 'voucher') || [];
-      const additions = register.transactions?.filter((t: any) => t.type === 'addition') || [];
-      
-      const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
-      const additionTotal = additions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
-      
+      // O e-mail recebe DADOS estruturados do mesmo fechamento.
+      // A impressão continua com seu layout térmico; o e-mail usa um renderizador próprio,
+      // compatível com Gmail/Outlook, sem duplicar a lógica financeira.
+      const openingAmount = Number(register.opening_amount || 0);
+      const cashSales = Number(register.salesByPayment?.cash || 0);
+      const debitSales = Number(register.salesByPayment?.debit || 0);
+      const creditSales = Number(register.salesByPayment?.credit || 0);
+      const pixSales = Number(register.salesByPayment?.pix || 0);
+      const salesTotal = cashSales + debitSales + creditSales + pixSales;
+
+      const transactions = register.transactions || [];
+      const withdrawals = transactions.filter((t: any) => t.type === 'withdrawal');
+      const vouchers = transactions.filter((t: any) => t.type === 'voucher');
+      const additions = transactions.filter((t: any) => t.type === 'addition');
+
+      const totalsByCategory = withdrawals.reduce((acc: any, t: any) => {
+        const desc = String(t.description || '');
+        let cat = 'outros';
+        if (desc.startsWith('Taxa Entrega')) cat = 'taxa_entrega';
+        else if (desc.startsWith('iFood')) cat = 'ifood';
+        else if (desc.startsWith('Brigadeiros')) cat = 'brigadeiros';
+        acc[cat] += Number(t.amount || 0);
+        return acc;
+      }, { taxa_entrega: 0, ifood: 0, brigadeiros: 0, outros: 0 });
+
+      const extractPerson = (description: string, prefix: string) =>
+        String(description || '')
+          .replace(new RegExp(`^${prefix}\\s*(?:-|:)?\\s*`, 'i'), '')
+          .trim();
+
+      const motoboyMap = withdrawals.reduce((acc: Record<string, any>, t: any) => {
+        const desc = String(t.description || '');
+        const amount = Number(t.amount || 0);
+        let name = '';
+        let kind: 'delivery' | 'ifood' | null = null;
+
+        if (desc.startsWith('Taxa Entrega')) {
+          name = extractPerson(desc, 'Taxa Entrega');
+          kind = 'delivery';
+        } else if (desc.startsWith('iFood')) {
+          name = extractPerson(desc, 'iFood');
+          kind = 'ifood';
+        }
+
+        if (!kind || !name || name.toLowerCase() === 'desconhecido') return acc;
+
+        if (!acc[name]) {
+          acc[name] = {
+            name,
+            delivery: 0,
+            ifood: 0,
+            total: 0,
+            deliveryCount: 0,
+            ifoodCount: 0,
+            totalCount: 0,
+          };
+        }
+
+        acc[name][kind] += amount;
+        acc[name].total += amount;
+        acc[name][kind === 'delivery' ? 'deliveryCount' : 'ifoodCount'] += 1;
+        acc[name].totalCount += 1;
+        return acc;
+      }, {});
+
+      const motoboys = Object.values(motoboyMap)
+        .filter((m: any) => m.total > 0)
+        .sort((a: any, b: any) => a.name.localeCompare(b.name, 'pt-BR'));
+
+      const totalSangrias =
+        totalsByCategory.taxa_entrega +
+        totalsByCategory.ifood +
+        totalsByCategory.brigadeiros +
+        totalsByCategory.outros;
+
+      const voucherTotal = vouchers.reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+      const additionTotal = additions.reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+
       const calculatedClosingCash = salesTotal - totalSangrias;
-      const valorInformado = parseFloat(register.closing_amount || 0);
-      
-      // CORREÇÃO: Valor Esperado = (Abertura + Dinheiro + Adições) - (Total Sangrias + Total Vales)
-      const expectedAmount = register.expected_amount !== undefined 
-        ? parseFloat(register.expected_amount) 
-        : openingAmount + cashSales + additionTotal - totalSangrias - voucherTotal;
-      
+      const valorInformado = Number(register.closing_amount || 0);
+      const expectedAmount =
+        register.expected_amount !== undefined && register.expected_amount !== null
+          ? Number(register.expected_amount)
+          : openingAmount + cashSales + additionTotal - totalSangrias - voucherTotal;
       const difference = valorInformado - expectedAmount;
+
+      const rawChangeCounts = register.change_counts || register.changeCounts || {};
+      const changeCounts =
+        typeof rawChangeCounts === 'string'
+          ? (() => { try { return JSON.parse(rawChangeCounts); } catch { return {}; } })()
+          : rawChangeCounts;
+
+      const changeNeeded = Boolean(register.change_needed ?? register.changeNeeded ?? false);
+      const changeTotal =
+        register.change_total !== undefined && register.change_total !== null
+          ? Number(register.change_total)
+          : [1, 2, 5, 10, 20, 50].reduce(
+              (sum, denomination) => sum + denomination * Number(changeCounts?.[denomination] ?? changeCounts?.[String(denomination)] ?? 0),
+              0
+            );
+
+      const envelopeTotal =
+        register.envelope_total !== undefined && register.envelope_total !== null
+          ? Number(register.envelope_total)
+          : cashSales + changeTotal + additionTotal - totalsByCategory.brigadeiros - voucherTotal + difference;
 
       const emailData = {
         openingAmount,
         salesTotal,
         calculatedClosingCash,
         salesByPayment: {
-          cash: register.salesByPayment?.cash || 0,
-          debit: register.salesByPayment?.debit || 0,
-          credit: register.salesByPayment?.credit || 0,
-          pix: register.salesByPayment?.pix || 0,
+          cash: cashSales,
+          debit: debitSales,
+          credit: creditSales,
+          pix: pixSales,
         },
         totalsByCategory,
         totalSangrias,
-        vouchers: vouchers.map((t: any) => ({ description: t.description, amount: parseFloat(t.amount) })),
+        motoboys,
+        vouchers: vouchers.map((t: any) => ({
+          description: t.description,
+          amount: Number(t.amount || 0),
+        })),
         voucherTotal,
-        additions: additions.map((t: any) => ({ description: t.description, amount: parseFloat(t.amount) })),
+        additions: additions.map((t: any) => ({
+          description: t.description,
+          amount: Number(t.amount || 0),
+        })),
         additionTotal,
         valorInformado,
         expectedAmount,
         difference,
         closedAt: register.closed_at,
         notes: register.notes,
-        // Mesmo HTML visual usado pela impressão do fechamento.
-        reportHtml: reportHtml || undefined,
-        html: reportHtml || undefined,
+        changeNeeded,
+        changeCounts,
+        changeTotal,
+        envelopeTotal,
       };
 
       const response = await fetch('/api/cash-register/send-email', {

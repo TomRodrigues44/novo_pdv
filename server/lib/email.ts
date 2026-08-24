@@ -35,8 +35,19 @@ interface CashRegisterReportData {
   closedAt: string;
   notes?: string;
   identificacaoLoja?: string;
-  reportHtml?: string;
-  html?: string;
+  motoboys?: Array<{
+    name: string;
+    delivery: number;
+    ifood: number;
+    total: number;
+    deliveryCount: number;
+    ifoodCount: number;
+    totalCount: number;
+  }>;
+  changeNeeded?: boolean;
+  changeCounts?: Record<string | number, number>;
+  changeTotal?: number;
+  envelopeTotal?: number;
 }
 
 function getEmailConfig(): EmailConfig {
@@ -78,12 +89,23 @@ function formatDateTime(dateStr: string): string {
   return new Date(dateStr).toLocaleString('pt-BR');
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function generateReportHtml(data: CashRegisterReportData): string {
   const {
     openingAmount, salesTotal, calculatedClosingCash, salesByPayment,
     totalsByCategory, totalSangrias, vouchers, voucherTotal,
     additions, additionTotal, valorInformado, expectedAmount, difference,
-    closedAt, notes, identificacaoLoja
+    closedAt, notes, identificacaoLoja, motoboys = [],
+    changeNeeded = false, changeCounts = {}, changeTotal = 0,
+    envelopeTotal = 0
   } = data;
 
   const safeNotes = notes?.trim();
@@ -96,6 +118,16 @@ function generateReportHtml(data: CashRegisterReportData): string {
 
   const statusColor =
     difference > 0 ? '#15803d' : difference < 0 ? '#b91c1c' : '#111827';
+
+  const denominations = [1, 2, 5, 10, 20, 50];
+  const changeItems = denominations
+    .map(denomination => ({
+      denomination,
+      quantity: Number(changeCounts?.[denomination] ?? changeCounts?.[String(denomination)] ?? 0),
+    }))
+    .filter(item => item.quantity > 0);
+
+  const brigadeiroTotal = Number(totalsByCategory.brigadeiros || 0);
 
   return `
     <!DOCTYPE html>
@@ -122,7 +154,7 @@ function generateReportHtml(data: CashRegisterReportData): string {
                   </div>
                   ${identificacaoLoja ? `
                   <div style="font-size:13px;line-height:19px;font-weight:800;margin-top:4px;">
-                    ${identificacaoLoja}
+                    ${escapeHtml(identificacaoLoja)}
                   </div>` : ''}
                   <div style="font-size:12px;line-height:18px;color:#4b5563;margin-top:6px;">
                     ${formatDateTime(closedAt)}
@@ -166,9 +198,12 @@ function generateReportHtml(data: CashRegisterReportData): string {
                 <td style="padding:18px 24px 0 24px;">
                   <div style="font-size:13px;font-weight:800;border-bottom:1px solid #111827;padding-bottom:6px;margin-bottom:8px;">SANGRIAS</div>
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;font-size:13px;">
-                    ${totalsByCategory.taxa_entrega > 0 ? `<tr><td style="padding:4px 0;">Deliverys</td><td align="right" style="padding:4px 0;">-${formatCurrency(totalsByCategory.taxa_entrega)}</td></tr>` : ''}
-                    ${totalsByCategory.ifood > 0 ? `<tr><td style="padding:4px 0;">iFood</td><td align="right" style="padding:4px 0;">-${formatCurrency(totalsByCategory.ifood)}</td></tr>` : ''}
-                    ${totalsByCategory.brigadeiros > 0 ? `<tr><td style="padding:4px 0;">Brigadeiros</td><td align="right" style="padding:4px 0;">-${formatCurrency(totalsByCategory.brigadeiros)}</td></tr>` : ''}
+                    ${motoboys.map(m => `
+                      ${m.delivery > 0 ? `<tr><td style="padding:4px 0;">(${m.deliveryCount}) Taxas ${escapeHtml(m.name)}</td><td align="right" style="padding:4px 0;">-${formatCurrency(m.delivery)}</td></tr>` : ''}
+                      ${m.ifood > 0 ? `<tr><td style="padding:4px 0;">(${m.ifoodCount}) iFood ${escapeHtml(m.name)}</td><td align="right" style="padding:4px 0;">-${formatCurrency(m.ifood)}</td></tr>` : ''}
+                      <tr><td style="padding:5px 0;font-weight:800;">(${m.totalCount}) Total Tx ${escapeHtml(m.name)}</td><td align="right" style="padding:5px 0;font-weight:800;">-${formatCurrency(m.total)}</td></tr>
+                    `).join('')}
+                    ${brigadeiroTotal > 0 ? `<tr><td style="padding:4px 0;">Brigadeiros Renata</td><td align="right" style="padding:4px 0;">-${formatCurrency(brigadeiroTotal)}</td></tr>` : ''}
                     ${totalsByCategory.outros > 0 ? `<tr><td style="padding:4px 0;">Outros</td><td align="right" style="padding:4px 0;">-${formatCurrency(totalsByCategory.outros)}</td></tr>` : ''}
                     <tr>
                       <td style="padding:7px 0;border-top:1px dashed #6b7280;font-weight:800;">TOTAL SANGRIAS</td>
@@ -183,7 +218,7 @@ function generateReportHtml(data: CashRegisterReportData): string {
                 <td style="padding:18px 24px 0 24px;">
                   <div style="font-size:13px;font-weight:800;border-bottom:1px solid #111827;padding-bottom:6px;margin-bottom:8px;">VALES</div>
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;font-size:13px;">
-                    ${vouchers.map(v => `<tr><td style="padding:4px 0;">${v.description || 'Sem descrição'}</td><td align="right" style="padding:4px 0;">-${formatCurrency(v.amount)}</td></tr>`).join('')}
+                    ${vouchers.map(v => `<tr><td style="padding:4px 0;">${escapeHtml(v.description || 'Sem descrição')}</td><td align="right" style="padding:4px 0;">-${formatCurrency(v.amount)}</td></tr>`).join('')}
                     <tr>
                       <td style="padding:7px 0;border-top:1px dashed #6b7280;font-weight:800;">TOTAL VALES</td>
                       <td align="right" style="padding:7px 0;border-top:1px dashed #6b7280;font-weight:800;">-${formatCurrency(voucherTotal)}</td>
@@ -197,7 +232,7 @@ function generateReportHtml(data: CashRegisterReportData): string {
                 <td style="padding:18px 24px 0 24px;">
                   <div style="font-size:13px;font-weight:800;border-bottom:1px solid #111827;padding-bottom:6px;margin-bottom:8px;">ADIÇÕES</div>
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;font-size:13px;">
-                    ${additions.map(a => `<tr><td style="padding:4px 0;">${a.description || 'Sem descrição'}</td><td align="right" style="padding:4px 0;">+${formatCurrency(a.amount)}</td></tr>`).join('')}
+                    ${additions.map(a => `<tr><td style="padding:4px 0;">${escapeHtml(a.description || 'Sem descrição')}</td><td align="right" style="padding:4px 0;">+${formatCurrency(a.amount)}</td></tr>`).join('')}
                     <tr>
                       <td style="padding:7px 0;border-top:1px dashed #6b7280;font-weight:800;">TOTAL ADIÇÕES</td>
                       <td align="right" style="padding:7px 0;border-top:1px dashed #6b7280;font-weight:800;">+${formatCurrency(additionTotal)}</td>
@@ -237,11 +272,47 @@ function generateReportHtml(data: CashRegisterReportData): string {
                 </td>
               </tr>
 
+              <tr>
+                <td style="padding:4px 24px 18px 24px;">
+                  <div style="font-size:13px;font-weight:800;border-bottom:1px solid #111827;padding-bottom:6px;margin-bottom:8px;">CONFERÊNCIA DO ENVELOPE</div>
+
+                  ${motoboys.length > 0 ? `
+                    <div style="font-size:12px;font-weight:800;margin:10px 0 5px 0;">TAXAS MOTOBOYS</div>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;font-size:13px;">
+                      ${motoboys.map(m => `<tr><td style="padding:4px 0;">(${m.totalCount}) Total Tx ${escapeHtml(m.name)}</td><td align="right" style="padding:4px 0;font-weight:700;">${formatCurrency(m.total)}</td></tr>`).join('')}
+                    </table>
+                  ` : ''}
+
+                  <div style="font-size:12px;font-weight:800;margin:12px 0 5px 0;">DINHEIRO TROCADO</div>
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;font-size:13px;">
+                    <tr><td style="padding:4px 0;">Situação</td><td align="right" style="padding:4px 0;font-weight:800;">${changeNeeded ? 'NECESSÁRIO' : 'NÃO NECESSÁRIO'}</td></tr>
+                    ${changeNeeded ? changeItems.map(item => `
+                      <tr>
+                        <td style="padding:4px 0;">${String(item.quantity).padStart(2, '0')} ${item.denomination === 1 ? 'moeda' : 'nota'}${item.quantity > 1 ? 's' : ''} de R$ ${item.denomination.toFixed(2).replace('.', ',')}</td>
+                        <td align="right" style="padding:4px 0;">${formatCurrency(item.quantity * item.denomination)}</td>
+                      </tr>
+                    `).join('') : ''}
+                    <tr><td style="padding:7px 0;border-top:1px dashed #6b7280;font-weight:800;">TOTAL TROCADO</td><td align="right" style="padding:7px 0;border-top:1px dashed #6b7280;font-weight:800;">${formatCurrency(changeTotal)}</td></tr>
+                  </table>
+
+                  <div style="font-size:12px;font-weight:800;margin:12px 0 5px 0;">DINHEIRO DO ENVELOPE</div>
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;font-size:13px;">
+                    <tr><td style="padding:4px 0;">Dinheiro das vendas</td><td align="right" style="padding:4px 0;">${formatCurrency(salesByPayment.cash)}</td></tr>
+                    <tr><td style="padding:4px 0;">+ Trocado solicitado</td><td align="right" style="padding:4px 0;">${formatCurrency(changeTotal)}</td></tr>
+                    <tr><td style="padding:4px 0;">+ Adições</td><td align="right" style="padding:4px 0;">${formatCurrency(additionTotal)}</td></tr>
+                    <tr><td style="padding:4px 0;">- Brigadeiros</td><td align="right" style="padding:4px 0;">${formatCurrency(brigadeiroTotal)}</td></tr>
+                    <tr><td style="padding:4px 0;">- Vales</td><td align="right" style="padding:4px 0;">${formatCurrency(voucherTotal)}</td></tr>
+                    <tr><td style="padding:4px 0;">${difference >= 0 ? '+' : '-'} Resultado conferência</td><td align="right" style="padding:4px 0;">${formatCurrency(Math.abs(difference))}</td></tr>
+                    <tr><td style="padding:8px 0;border-top:2px solid #111827;font-weight:900;">TOTAL DO ENVELOPE</td><td align="right" style="padding:8px 0;border-top:2px solid #111827;font-weight:900;">${formatCurrency(envelopeTotal)}</td></tr>
+                  </table>
+                </td>
+              </tr>
+
               ${safeNotes ? `
               <tr>
                 <td style="padding:4px 24px 16px 24px;">
                   <div style="font-size:13px;font-weight:800;border-bottom:1px solid #111827;padding-bottom:6px;margin-bottom:8px;">OBSERVAÇÕES</div>
-                  <div style="font-size:13px;line-height:19px;white-space:pre-wrap;">${safeNotes}</div>
+                  <div style="font-size:13px;line-height:19px;white-space:pre-wrap;">${escapeHtml(safeNotes)}</div>
                 </td>
               </tr>` : ''}
 
@@ -272,64 +343,10 @@ export async function sendCashRegisterCloseEmail(data: CashRegisterReportData): 
       throw new Error('E-mail remetente (SMTP_FROM ou SMTP_USER) não configurado');
     }
 
-    // Fonte única do conteúdo do relatório.
-    // O HTML oficial vem do CashRegister. Para e-mail, apenas adaptamos a APRESENTAÇÃO
-    // (largura/print CSS) para evitar que Gmail/Outlook interpretem 80mm de forma incorreta.
-    const officialReportHtml = data.reportHtml || data.html;
+    // O e-mail usa o renderizador próprio, feito com tabelas e estilos inline.
+    // Os valores vêm do mesmo fechamento usado pela impressão.
+    const html = generateReportHtml(data);
 
-    const adaptReportHtmlForEmail = (sourceHtml: string): string => {
-      let adapted = sourceHtml;
-
-      // Remove o script de impressão automática: no e-mail ele não tem utilidade.
-      adapted = adapted.replace(/<script[\s\S]*?<\/script>/gi, '');
-
-      // Remove regras exclusivas de papel/impressão.
-      adapted = adapted.replace(/@page\s*\{[\s\S]*?\}/gi, '');
-      adapted = adapted.replace(/@media\s+print\s*\{[\s\S]*?\}\s*\}/gi, '');
-
-      // O relatório térmico usa 80mm/72mm. Em clientes de e-mail isso pode virar
-      // uma largura imprevisível. Mantemos o MESMO conteúdo e estrutura, mas
-      // centralizamos em uma coluna estável de 600px.
-      adapted = adapted.replace(
-        /html,\s*body\s*\{[\s\S]*?\}/i,
-        `html, body {
-          margin: 0 !important;
-          padding: 0 !important;
-          width: 100% !important;
-          min-width: 100% !important;
-          max-width: none !important;
-          background: #f3f4f6 !important;
-          color: #000 !important;
-          -webkit-text-size-adjust: 100%;
-        }`
-      );
-
-      adapted = adapted.replace(
-        /\.receipt\s*\{[\s\S]*?\}/i,
-        `.receipt {
-          width: 100% !important;
-          max-width: 600px !important;
-          margin: 20px auto !important;
-          padding: 24px !important;
-          background: #ffffff !important;
-          border: 1px solid #d1d5db !important;
-          color: #000 !important;
-        }`
-      );
-
-      // Garante que os valores continuem alinhados sem estourar a coluna.
-      adapted = adapted.replace(
-        /min-width:\s*24mm;/gi,
-        'min-width: 120px;'
-      );
-
-      return adapted;
-    };
-
-    const html = officialReportHtml
-      ? adaptReportHtmlForEmail(officialReportHtml)
-      : generateReportHtml(data);
-    
     const subject = `📊 Fechamento de Caixa${data.identificacaoLoja ? ` - ${data.identificacaoLoja}` : ''} - ${formatDateTime(data.closedAt)}`;
 
     await transporter.sendMail({
