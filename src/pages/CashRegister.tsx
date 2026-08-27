@@ -229,6 +229,7 @@ const CashRegister = () => {
           change_counts: apiRegister.change_counts ?? result?.changeCounts ?? finalChangeCounts,
           change_total: apiRegister.change_total ?? result?.changeTotal ?? finalChangeTotal,
           envelope_total: apiRegister.envelope_total ?? result?.envelopeTotal,
+          identificacaoLoja: apiRegister.identificacaoLoja ?? result?.identificacaoLoja ?? null,
         };
 
         setCloseResult(result);
@@ -1000,6 +1001,7 @@ const CashRegister = () => {
         difference,
         closedAt: register.closed_at,
         notes: register.notes,
+        identificacaoLoja: register.identificacaoLoja ?? null,
         changeNeeded,
         changeCounts,
         changeTotal,
