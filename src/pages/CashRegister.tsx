@@ -1000,7 +1000,6 @@ const CashRegister = () => {
         difference,
         closedAt: register.closed_at,
         notes: register.notes,
-        identificacaoLoja: register.identificacaoLoja ?? register.identificacao_loja,
         changeNeeded,
         changeCounts,
         changeTotal,
