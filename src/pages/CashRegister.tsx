@@ -1007,7 +1007,8 @@ const CashRegister = () => {
         changeTotal,
         envelopeTotal,
       };
-
+      console.log('📧 DADOS ENVIADOS PARA EMAIL:', emailData);
+      console.log('🏪 IDENTIFICAÇÃO DA LOJA:', emailData.identificacaoLoja);
       const response = await fetch('/api/cash-register/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
