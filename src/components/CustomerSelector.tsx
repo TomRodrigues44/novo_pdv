@@ -16,6 +16,7 @@ interface Customer {
   id: string;
   name: string;
   phone: string;
+  cpf_cnpj?: string;
   address?: string;
   email: string;
   points: number;

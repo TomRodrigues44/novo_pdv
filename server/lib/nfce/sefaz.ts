@@ -67,10 +67,9 @@ function createHttpsAgent(certificate: LoadedCertificate) {
   return new https.Agent({
     pfx: certificate.pfxBuffer,
     passphrase: certificate.password,
-    // Mantido igual ao transporte que já vinha alcançando a SVRS durante
-    // a homologação. Antes de PRODUÇÃO, corrigir a cadeia ICP-Brasil e
-    // habilitar rejectUnauthorized:true.
-    rejectUnauthorized: false,
+    // Validação TLS habilitada: o certificado apresentado pela SEFAZ/SVRS
+    // deve ser aceito pela cadeia de confiança configurada no Node/SO.
+    rejectUnauthorized: true,
   });
 }
 

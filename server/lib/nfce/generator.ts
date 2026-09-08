@@ -22,6 +22,36 @@ const normalizeKey = (value: unknown) => normalizeText(value)
   .replace(/[\u0300-\u036f]/g, '')
   .toLowerCase();
 const onlyDigits = (value: unknown) => normalizeText(value).replace(/\D/g, '');
+
+const isValidCpf = (value: unknown): boolean => {
+  const cpf = onlyDigits(value);
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+
+  const calcDigit = (base: string, factor: number) => {
+    let total = 0;
+    for (const digit of base) total += Number(digit) * factor--;
+    const remainder = (total * 10) % 11;
+    return remainder === 10 ? 0 : remainder;
+  };
+
+  return calcDigit(cpf.slice(0, 9), 10) === Number(cpf[9]) &&
+         calcDigit(cpf.slice(0, 10), 11) === Number(cpf[10]);
+};
+
+const isValidCnpj = (value: unknown): boolean => {
+  const cnpj = onlyDigits(value);
+  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+
+  const calcDigit = (base: string, weights: number[]) => {
+    const total = base.split('').reduce((sum, digit, index) => sum + Number(digit) * weights[index], 0);
+    const remainder = total % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  };
+
+  const first = calcDigit(cnpj.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const second = calcDigit(cnpj.slice(0, 12) + first, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return first === Number(cnpj[12]) && second === Number(cnpj[13]);
+};
 const escapeXml = (value: unknown) => normalizeText(value)
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;')
@@ -268,6 +298,37 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
   // Na versão 3 online não há CSC e não é necessário CDATA.
   const qrCodeData = `${chaveAcesso}|3|${ambiente === 'producao' ? 1 : 2}`;
   const qrCode = `${urlQrCode}?p=${qrCodeData}`;
+
+  // Destinatário: valida CPF/CNPJ antes de gerar o XML.
+  // Em homologação, a SEFAZ exige o xNome padronizado abaixo.
+  let destinatarioXml = '';
+  const documentoDestinatario = onlyDigits(data.cliente?.cpf_cnpj);
+  if (documentoDestinatario) {
+    const tipoDocumento = documentoDestinatario.length === 14 ? 'CNPJ' : documentoDestinatario.length === 11 ? 'CPF' : '';
+    const documentoValido = tipoDocumento === 'CPF'
+      ? isValidCpf(documentoDestinatario)
+      : tipoDocumento === 'CNPJ'
+        ? isValidCnpj(documentoDestinatario)
+        : false;
+
+    if (!documentoValido) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: `CPF/CNPJ do cliente inválido. Corrija o cadastro antes de emitir a NFC-e.`,
+      });
+    }
+
+    const nomeDestinatario = ambiente === 'homologacao'
+      ? 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL'
+      : normalizeText(data.cliente?.name || 'CONSUMIDOR NAO IDENTIFICADO');
+
+    destinatarioXml = `
+    <dest>
+      <${tipoDocumento}>${documentoDestinatario}</${tipoDocumento}>
+      <xNome>${escapeXml(nomeDestinatario)}</xNome>
+      <indIEDest>9</indIEDest>
+    </dest>`;
+  }
   
   return `<?xml version="1.0" encoding="UTF-8"?>
 <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
@@ -314,12 +375,7 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
       ${inscricaoMunicipal ? `<IM>${inscricaoMunicipal}</IM>` : ''}
       <CRT>${crt}</CRT>
     </emit>
-    ${data.cliente && data.cliente.cpf_cnpj ? `
-    <dest>
-      <${onlyDigits(data.cliente.cpf_cnpj).length === 14 ? 'CNPJ' : 'CPF'}>${onlyDigits(data.cliente.cpf_cnpj)}</${onlyDigits(data.cliente.cpf_cnpj).length === 14 ? 'CNPJ' : 'CPF'}>
-      <xNome>${escapeXml(data.cliente.name || 'CONSUMIDOR NAO IDENTIFICADO')}</xNome>
-      <indIEDest>9</indIEDest>
-    </dest>` : ''}
+    ${destinatarioXml}
     ${itensXml}
     <total>
       <ICMSTot>

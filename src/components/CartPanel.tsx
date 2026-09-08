@@ -43,6 +43,7 @@ interface Customer {
   id: string;
   name: string;
   phone: string;
+  cpf_cnpj?: string;
   address?: string;
   email: string;
   points: number;
@@ -336,7 +337,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
             cliente: selectedCustomer ? {
               id: selectedCustomer.id,
               name: selectedCustomer.name,
-              cpf_cnpj: selectedCustomer.phone,
+              cpf_cnpj: selectedCustomer.cpf_cnpj,
             } : undefined,
             frete: freight,
             forma_pagamento: currentPayments.map((p) => ({
