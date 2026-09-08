@@ -160,8 +160,6 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
   const now = formatDhEmiBoaVista(dataEmissao);
   
   let itensXml = '';
-  let totalIcmsBase = 0;
-  let totalIcms = 0;
   let totalProdutos = 0;
   
   (data.itens || []).forEach((item: any, index: number) => {
@@ -170,56 +168,71 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
     const quantidade = Number(item.quantity) || 1;
     const total = preco * quantidade;
     totalProdutos += total;
-    const ncm = item.ncm || '21069090'; // Salgados e produtos de padaria
-    
-    const icmsBase = total;
-    const icms = total * 0.12; // Simples Nacional - alíquota simbólica
-    totalIcmsBase += icmsBase;
-    totalIcms += icms;
+    // Dados fiscais vêm do cadastro do produto (products.fiscal).
+    const fiscal = item.fiscal || {};
+    const ncm = onlyDigits(fiscal.ncm || item.ncm);
+    const cfop = onlyDigits(fiscal.cfop || item.cfop);
+    const cest = onlyDigits(fiscal.cest || item.cest);
+    const unidade = normalizeText(fiscal.unidade || item.unidade || 'UN').toUpperCase();
+    const origem = String(fiscal.origem ?? item.origem ?? 0);
+    const csosn = onlyDigits(fiscal.csosn || item.csosn || '102');
+    const cstPis = onlyDigits(fiscal.cstPis || item.cstPis || '99');
+    const cstCofins = onlyDigits(fiscal.cstCofins || item.cstCofins || '99');
+    const pisAliquota = Number(fiscal.pis ?? item.pis ?? 0);
+    const cofinsAliquota = Number(fiscal.cofins ?? item.cofins ?? 0);
+    const ean = onlyDigits(fiscal.codigoBarras || fiscal.codigo_barras || fiscal.ean || item.codigoBarras || item.codigo_barras || item.ean);
+
+    if (ncm.length !== 8) throw createError({ statusCode: 400, statusMessage: `Produto "${normalizeText(item.name)}": NCM inválido ou não informado.` });
+    if (cfop.length !== 4) throw createError({ statusCode: 400, statusMessage: `Produto "${normalizeText(item.name)}": CFOP inválido ou não informado.` });
+    if (cest && cest.length !== 7) throw createError({ statusCode: 400, statusMessage: `Produto "${normalizeText(item.name)}": CEST deve possuir 7 dígitos.` });
+    if (!/^\d$/.test(origem)) throw createError({ statusCode: 400, statusMessage: `Produto "${normalizeText(item.name)}": Origem inválida.` });
+    if (csosn !== '102') throw createError({ statusCode: 400, statusMessage: `Produto "${normalizeText(item.name)}": CSOSN ${csosn || 'não informado'} ainda não está liberado nesta configuração.` });
+    if (cstPis !== '99' || cstCofins !== '99') throw createError({ statusCode: 400, statusMessage: `Produto "${normalizeText(item.name)}": use CST PIS/COFINS 99 nesta configuração.` });
+    if (!Number.isFinite(pisAliquota) || !Number.isFinite(cofinsAliquota)) throw createError({ statusCode: 400, statusMessage: `Produto "${normalizeText(item.name)}": PIS/COFINS inválidos.` });
     
     itensXml += `
         <det nItem="${itemNumero}">
           <prod>
             <cProd>${escapeXml(item.id)}</cProd>
-            <cEAN>SEM GTIN</cEAN>
+            <cEAN>${ean || 'SEM GTIN'}</cEAN>
             <xProd>${escapeXml(
             ambiente === 'homologacao' && index === 0
               ? 'NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL'
               : item.name
           )}</xProd>
             <NCM>${ncm}</NCM>
-            <CFOP>5102</CFOP>
-            <uCom>UN</uCom>
+            ${cest ? `<CEST>${cest}</CEST>` : ''}
+            <CFOP>${cfop}</CFOP>
+            <uCom>${escapeXml(unidade)}</uCom>
             <qCom>${quantidade.toFixed(4)}</qCom>
             <vUnCom>${preco.toFixed(10)}</vUnCom>
             <vProd>${total.toFixed(2)}</vProd>
-            <cEANTrib>SEM GTIN</cEANTrib>
-            <uTrib>UN</uTrib>
+            <cEANTrib>${ean || 'SEM GTIN'}</cEANTrib>
+            <uTrib>${escapeXml(unidade)}</uTrib>
             <qTrib>${quantidade.toFixed(4)}</qTrib>
             <vUnTrib>${preco.toFixed(10)}</vUnTrib>
             <indTot>1</indTot>
           </prod>
           <imposto>
-            <vTotTrib>${(total * 0.12).toFixed(2)}</vTotTrib>
             <ICMS>
               <ICMSSN102>
-                <orig>0</orig>
-                <CSOSN>102</CSOSN>
+                <orig>${origem}</orig>
+                <CSOSN>${csosn}</CSOSN>
               </ICMSSN102>
             </ICMS>
             <PIS>
               <PISOutr>
-                <CST>49</CST>
+                <CST>${cstPis}</CST>
                 <vBC>0.00</vBC>
-                <pPIS>0.0000</pPIS>
+                <pPIS>${pisAliquota.toFixed(4)}</pPIS>
                 <vPIS>0.00</vPIS>
               </PISOutr>
             </PIS>
             <COFINS>
               <COFINSOutr>
-                <CST>49</CST>
+                <CST>${cstCofins}</CST>
                 <vBC>0.00</vBC>
-                <pCOFINS>0.0000</pCOFINS>
+                <pCOFINS>${cofinsAliquota.toFixed(4)}</pCOFINS>
                 <vCOFINS>0.00</vCOFINS>
               </COFINSOutr>
             </COFINS>
@@ -329,7 +342,6 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
         <vCOFINS>0.00</vCOFINS>
         <vOutro>0.00</vOutro>
         <vNF>${(totalProdutos + (Number(data.frete) || 0)).toFixed(2)}</vNF>
-        <vTotTrib>${(totalIcms).toFixed(2)}</vTotTrib>
       </ICMSTot>
     </total>
     <transp>

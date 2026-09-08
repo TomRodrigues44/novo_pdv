@@ -3,9 +3,12 @@ export interface FiscalInfo {
   cfop: string; // Código Fiscal de Operações e Prestações
   cest: string; // Código Especificador da Substituição Tributária
   unidade: string; // Unidade de medida (UN, KG, LT, etc)
+  csosn?: string; // CSOSN do ICMS para empresas do Simples Nacional
   icms: number; // Alíquota ICMS (%)
   ipi: number; // Alíquota IPI (%)
+  cstPis?: string; // CST do PIS
   pis: number; // Alíquota PIS (%)
+  cstCofins?: string; // CST da COFINS
   cofins: number; // Alíquota COFINS (%)
   cnpjProdutor?: string; // CNPJ do produtor (se aplicável)
   codigoBarras?: string; // EAN/Barcode

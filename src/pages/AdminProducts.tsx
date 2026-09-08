@@ -58,10 +58,13 @@ const AdminProducts = () => {
     cfop: "",
     cest: "",
     unidade: "UN",
-    icms: "17",
+    csosn: "102",
+    icms: "0",
     ipi: "0",
-    pis: "0.65",
-    cofins: "3",
+    cstPis: "99",
+    pis: "0",
+    cstCofins: "99",
+    cofins: "0",
     origem: "0",
     codigoBarras: "",
   });
@@ -130,10 +133,13 @@ const AdminProducts = () => {
       cfop: formData.cfop,
       cest: formData.cest,
       unidade: formData.unidade,
-      icms: parseFloat(formData.icms) || 17,
-      ipi: parseFloat(formData.ipi) || 0,
-      pis: parseFloat(formData.pis) || 0.65,
-      cofins: parseFloat(formData.cofins) || 3,
+      csosn: formData.csosn,
+      icms: Number.isFinite(parseFloat(formData.icms)) ? parseFloat(formData.icms) : 0,
+      ipi: Number.isFinite(parseFloat(formData.ipi)) ? parseFloat(formData.ipi) : 0,
+      cstPis: formData.cstPis,
+      pis: Number.isFinite(parseFloat(formData.pis)) ? parseFloat(formData.pis) : 0,
+      cstCofins: formData.cstCofins,
+      cofins: Number.isFinite(parseFloat(formData.cofins)) ? parseFloat(formData.cofins) : 0,
       origem: parseInt(formData.origem) || 0,
       codigoBarras: formData.codigoBarras || undefined,
     };
@@ -194,10 +200,13 @@ const AdminProducts = () => {
       cfop: product.fiscal?.cfop || "",
       cest: product.fiscal?.cest || "",
       unidade: product.fiscal?.unidade || "UN",
-      icms: product.fiscal?.icms ? String(product.fiscal.icms) : "17",
-      ipi: product.fiscal?.ipi ? String(product.fiscal.ipi) : "0",
-      pis: product.fiscal?.pis ? String(product.fiscal.pis) : "0.65",
-      cofins: product.fiscal?.cofins ? String(product.fiscal.cofins) : "3",
+      csosn: product.fiscal?.csosn ? String(product.fiscal.csosn) : "102",
+      icms: String(product.fiscal?.icms ?? 0),
+      ipi: String(product.fiscal?.ipi ?? 0),
+      cstPis: product.fiscal?.cstPis ? String(product.fiscal.cstPis) : "99",
+      pis: String(product.fiscal?.pis ?? 0),
+      cstCofins: product.fiscal?.cstCofins ? String(product.fiscal.cstCofins) : "99",
+      cofins: String(product.fiscal?.cofins ?? 0),
       origem: product.fiscal?.origem ? String(product.fiscal.origem) : "0",
       codigoBarras: product.fiscal?.codigoBarras || "",
     });
@@ -513,31 +522,22 @@ const AdminProducts = () => {
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium mb-2">
-                            ICMS (%)
-                          </label>
+                          <label className="block text-sm font-medium mb-2">CSOSN ICMS</label>
+                          <Input
+                            value={formData.csosn}
+                            onChange={(e) => setFormData({ ...formData, csosn: e.target.value })}
+                            placeholder="Ex: 102"
+                            required
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Código de Situação da Operação no Simples Nacional</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">ICMS (%)</label>
                           <Input
                             type="number"
                             step="0.01"
                             value={formData.icms}
-                            onChange={(e) =>
-                              setFormData({ ...formData, icms: e.target.value })
-                            }
-                            placeholder="Ex: 17"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">
-                            IPI (%)
-                          </label>
-                          <Input
-                            type="number"
-                            step="0"
-                            value={formData.ipi}
-                            onChange={(e) =>
-                              setFormData({ ...formData, ipi: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, icms: e.target.value })}
                             placeholder="Ex: 0"
                             required
                           />
@@ -546,35 +546,60 @@ const AdminProducts = () => {
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium mb-2">
-                            PIS (%)
-                          </label>
+                          <label className="block text-sm font-medium mb-2">CST PIS</label>
                           <Input
-                            type="number"
-                            step="0.01"
-                            value={formData.pis}
-                            onChange={(e) =>
-                              setFormData({ ...formData, pis: e.target.value })
-                            }
-                            placeholder="Ex: 0.65"
+                            value={formData.cstPis}
+                            onChange={(e) => setFormData({ ...formData, cstPis: e.target.value })}
+                            placeholder="Ex: 99"
                             required
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium mb-2">
-                            COFINS (%)
-                          </label>
+                          <label className="block text-sm font-medium mb-2">PIS (%)</label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={formData.pis}
+                            onChange={(e) => setFormData({ ...formData, pis: e.target.value })}
+                            placeholder="Ex: 0"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">CST COFINS</label>
+                          <Input
+                            value={formData.cstCofins}
+                            onChange={(e) => setFormData({ ...formData, cstCofins: e.target.value })}
+                            placeholder="Ex: 99"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">COFINS (%)</label>
                           <Input
                             type="number"
                             step="0.01"
                             value={formData.cofins}
-                            onChange={(e) =>
-                              setFormData({ ...formData, cofins: e.target.value })
-                            }
-                            placeholder="Ex: 3"
+                            onChange={(e) => setFormData({ ...formData, cofins: e.target.value })}
+                            placeholder="Ex: 0"
                             required
                           />
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">IPI (%)</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.ipi}
+                          onChange={(e) => setFormData({ ...formData, ipi: e.target.value })}
+                          placeholder="Ex: 0"
+                          required
+                        />
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
