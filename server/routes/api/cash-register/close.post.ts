@@ -197,7 +197,8 @@ export default defineEventHandler(async (event) => {
       changeNeeded: finalChangeNeeded,
       changeCounts: normalizedChangeCounts,
       changeTotal: finalChangeTotal,
-      envelopeTotal
+      envelopeTotal,
+      identificacaoLoja
     };
     // O e-mail é enviado pelo CashRegister usando exatamente o mesmo HTML da impressão.
 

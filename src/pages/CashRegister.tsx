@@ -229,6 +229,7 @@ const CashRegister = () => {
           change_counts: apiRegister.change_counts ?? result?.changeCounts ?? finalChangeCounts,
           change_total: apiRegister.change_total ?? result?.changeTotal ?? finalChangeTotal,
           envelope_total: apiRegister.envelope_total ?? result?.envelopeTotal,
+          identificacaoLoja: apiRegister.identificacaoLoja ?? result?.identificacaoLoja ?? null,
         };
 
         setCloseResult(result);
@@ -1000,12 +1001,14 @@ const CashRegister = () => {
         difference,
         closedAt: register.closed_at,
         notes: register.notes,
+        identificacaoLoja: register.identificacaoLoja ?? null,
         changeNeeded,
         changeCounts,
         changeTotal,
         envelopeTotal,
       };
-
+      console.log('📧 DADOS ENVIADOS PARA EMAIL:', emailData);
+      console.log('🏪 IDENTIFICAÇÃO DA LOJA:', emailData.identificacaoLoja);
       const response = await fetch('/api/cash-register/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

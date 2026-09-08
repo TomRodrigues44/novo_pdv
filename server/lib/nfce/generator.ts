@@ -23,9 +23,9 @@ const normalizeKey = (value: unknown) => normalizeText(value)
   .toLowerCase();
 const onlyDigits = (value: unknown) => normalizeText(value).replace(/\D/g, '');
 const escapeXml = (value: unknown) => normalizeText(value)
-  .replace(/&/g, '&')
-  .replace(/</g, '<')
-  .replace(/>/g, '>')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&apos;');
 
@@ -117,7 +117,7 @@ function generateQrCode(chaveAcesso: string, ambiente: string, urlConsulta: stri
 
 function mapPaymentType(type: string): number {
   const paymentMap: Record<string, number> = {
-    debit: 4, credit: 3, pix: 5, cash: 1,
+    debit: 4, credit: 3, pix: 17, cash: 1,
   };
   return paymentMap[type] || 99; // 99 = Outros
 }
@@ -145,17 +145,31 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
   const crt = normalizeText(config.crt);
 
   const chaveAcesso = generateChaveAcesso(codigoUf, dataEmissao, cnpj, '65', serieNfce, numeroNfce);
-  const now = dataEmissao.toISOString();
+  const formatDhEmiBoaVista = (date: Date) => {
+    // NFC-e/NF-e exige AAAA-MM-DDThh:mm:ssTZD.
+    // Boa Vista/RR usa UTC-04:00 durante todo o ano.
+    const local = new Date(date.getTime() - 4 * 60 * 60 * 1000);
+    const yyyy = local.getUTCFullYear();
+    const mm = String(local.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(local.getUTCDate()).padStart(2, '0');
+    const hh = String(local.getUTCHours()).padStart(2, '0');
+    const mi = String(local.getUTCMinutes()).padStart(2, '0');
+    const ss = String(local.getUTCSeconds()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}-04:00`;
+  };
+  const now = formatDhEmiBoaVista(dataEmissao);
   
   let itensXml = '';
   let totalIcmsBase = 0;
   let totalIcms = 0;
+  let totalProdutos = 0;
   
   (data.itens || []).forEach((item: any, index: number) => {
     const itemNumero = index + 1;
     const preco = Number(item.price) || 0;
     const quantidade = Number(item.quantity) || 1;
     const total = preco * quantidade;
+    totalProdutos += total;
     const ncm = item.ncm || '21069090'; // Salgados e produtos de padaria
     
     const icmsBase = total;
@@ -167,15 +181,19 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
         <det nItem="${itemNumero}">
           <prod>
             <cProd>${escapeXml(item.id)}</cProd>
-            <cEAN/>
-            <xProd>${escapeXml(item.name)}</xProd>
+            <cEAN>SEM GTIN</cEAN>
+            <xProd>${escapeXml(
+            ambiente === 'homologacao' && index === 0
+              ? 'NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL'
+              : item.name
+          )}</xProd>
             <NCM>${ncm}</NCM>
             <CFOP>5102</CFOP>
             <uCom>UN</uCom>
             <qCom>${quantidade.toFixed(4)}</qCom>
             <vUnCom>${preco.toFixed(10)}</vUnCom>
             <vProd>${total.toFixed(2)}</vProd>
-            <cEANTrib/>
+            <cEANTrib>SEM GTIN</cEANTrib>
             <uTrib>UN</uTrib>
             <qTrib>${quantidade.toFixed(4)}</qTrib>
             <vUnTrib>${preco.toFixed(10)}</vUnTrib>
@@ -190,14 +208,20 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
               </ICMSSN102>
             </ICMS>
             <PIS>
-              <PISSN>
+              <PISOutr>
                 <CST>49</CST>
-              </PISSN>
+                <vBC>0.00</vBC>
+                <pPIS>0.0000</pPIS>
+                <vPIS>0.00</vPIS>
+              </PISOutr>
             </PIS>
             <COFINS>
-              <COFINSSN>
+              <COFINSOutr>
                 <CST>49</CST>
-              </COFINSSN>
+                <vBC>0.00</vBC>
+                <pCOFINS>0.0000</pCOFINS>
+                <vCOFINS>0.00</vCOFINS>
+              </COFINSOutr>
             </COFINS>
           </imposto>
         </det>`;
@@ -205,19 +229,32 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
   
   let pagamentosXml = '';
   (data.forma_pagamento || []).forEach((pagamento: any) => {
+    const tPag = String(mapPaymentType(pagamento.tipo)).padStart(2, '0');
+    const isCartao = tPag === '03' || tPag === '04';
+
     pagamentosXml += `
         <detPag>
-          <tPag>${String(mapPaymentType(pagamento.tipo)).padStart(2, '0')}</tPag>
+          <tPag>${tPag}</tPag>
           <vPag>${(Number(pagamento.valor) || 0).toFixed(2)}</vPag>
+          ${isCartao ? `<card><tpIntegra>2</tpIntegra></card>` : ''}
         </detPag>`;
   });
   
-  const urlConsulta = ambiente === 'producao'
-    ? `https://www.sefaz.rr.gov.br/nfce/servlet/qrcode`
-    : `https://www.sefaz.rr.gov.br/nfceh/servlet/qrcode`;
+  // URLs de consulta NFC-e específicas da SEFAZ-RR por ambiente.
+  // A validação cStat 395 compara o endereço-base do QR-Code com a tabela da UF.
+  const urlQrCode = ambiente === 'producao'
+    ? 'https://www.sefaz.rr.gov.br/servlet/qrcode'
+    : 'http://200.174.88.103:8080/nfce/servlet/qrcode';
 
-  const qrCodeData = `${chaveAcesso}|2|${ambiente === 'producao' ? 1 : 2}|${now.split('T')[0]}|${(data.valor_total || 0).toFixed(2)}|${Buffer.from(chaveAcesso).toString('hex')}`;
-  const qrCode = `${urlConsulta}?p=${qrCodeData}`;
+  const urlConsultaChave = ambiente === 'producao'
+    ? 'https://www.sefaz.rr.gov.br/nfce/servlet/wp_consulta_nfce'
+    : 'http://200.174.88.103:8080/nfce/servlet/wp_consulta_nfce';
+
+  // QR-Code v3 (NT 2025.001) para emissão ONLINE (tpEmis=1):
+  // chave de acesso | versão 3 | ambiente.
+  // Na versão 3 online não há CSC e não é necessário CDATA.
+  const qrCodeData = `${chaveAcesso}|3|${ambiente === 'producao' ? 1 : 2}`;
+  const qrCode = `${urlQrCode}?p=${qrCodeData}`;
   
   return `<?xml version="1.0" encoding="UTF-8"?>
 <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
@@ -281,8 +318,8 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
         <vST>0.00</vST>
         <vFCPST>0.00</vFCPST>
         <vFCPSTRet>0.00</vFCPSTRet>
-        <vProd>${(data.valor_total || 0).toFixed(2)}</vProd>
-        <vFrete>${(data.frete || 0).toFixed(2)}</vFrete>
+        <vProd>${totalProdutos.toFixed(2)}</vProd>
+        <vFrete>${(Number(data.frete) || 0).toFixed(2)}</vFrete>
         <vSeg>0.00</vSeg>
         <vDesc>0.00</vDesc>
         <vII>0.00</vII>
@@ -291,7 +328,7 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
         <vPIS>0.00</vPIS>
         <vCOFINS>0.00</vCOFINS>
         <vOutro>0.00</vOutro>
-        <vNF>${(data.valor_total || 0).toFixed(2)}</vNF>
+        <vNF>${(totalProdutos + (Number(data.frete) || 0)).toFixed(2)}</vNF>
         <vTotTrib>${(totalIcms).toFixed(2)}</vTotTrib>
       </ICMSTot>
     </total>
@@ -304,10 +341,10 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
     <infAdic>
       <infCpl>Documento emitido por ME ou EPP optante pelo Simples Nacional. Nao gera direito a credito fiscal de IPI.</infCpl>
     </infAdic>
-    <infNFeSupl>
-      <qrCode><![CDATA[${qrCode}]]></qrCode>
-      <urlChave><![CDATA[${urlConsulta}]]></urlChave>
-    </infNFeSupl>
   </infNFe>
+  <infNFeSupl>
+    <qrCode>${escapeXml(qrCode)}</qrCode>
+    <urlChave>${escapeXml(urlConsultaChave)}</urlChave>
+  </infNFeSupl>
 </NFe>`;
 }

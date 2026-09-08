@@ -2,75 +2,57 @@ import { sql } from '../../../utils/db';
 import { enviarParaSefaz, type SefazResponse } from '../../../lib/nfce/sefaz';
 import { generateNfceXml } from '../../../lib/nfce/generator';
 import { saveContingencyNote } from '../../../lib/nfce/contingency';
+import { loadActiveCertificate } from '../../../lib/nfe/certificate';
+import { signNfeXml } from '../../../lib/nfe/signer';
 
 const toNumber = (value: any, fallback: number) => {
   const n = Number(value);
   return isNaN(n) ? fallback : n;
 };
+const compactXml = (xml: string) => String(xml || '').replace(/>\s+</g, '><').trim();
 
 export default defineEventHandler(async (event) => {
   try {
-    console.log('📋 Iniciando emissão de NFC-e...');
+    console.log('📋 Iniciando emissão REAL de NFC-e...');
     const body = await readBody(event);
-    
     const { sale_id, valor_total, itens, cliente, frete, forma_pagamento } = body;
-        
-    console.log('📦 Dados recebidos:', { sale_id, valor_total, itemCount: itens?.length });
-    
+
     const saleIdNumber = typeof sale_id === 'string'
-      ? parseInt(sale_id.replace(/\D/g, ''), 10)
-      : Number(sale_id);
-    
-    if (!saleIdNumber || saleIdNumber <= 0) {
+      ? parseInt(sale_id.replace(/\D/g, ''), 10) : Number(sale_id);
+    if (!saleIdNumber || saleIdNumber <= 0)
       throw createError({ statusCode: 400, statusMessage: 'ID da venda inválido' });
-    }
-    
-    const saleResult = await sql`
-      SELECT id FROM sales WHERE id = ${saleIdNumber} LIMIT 1
-    `;
-                        
-    if (!saleResult || saleResult.length === 0) {
+
+    const saleResult = await sql`SELECT id FROM sales WHERE id = ${saleIdNumber} LIMIT 1`;
+    if (!saleResult?.length)
       throw createError({ statusCode: 404, statusMessage: 'Venda não encontrada.' });
-    }
-    
     const saleDbId = saleResult[0].id;
-    console.log('✅ Venda encontrada:', saleDbId);
-    
+
     const existingNfce = await sql`
-      SELECT id, numero, status FROM nfce
+      SELECT id, chave_acesso, numero, serie, protocolo, status, qr_code,
+             xml_retorno, url_consulta, ambiente, mensagem_status
+      FROM nfce
       WHERE sale_id = ${String(saleDbId)} AND status IN ('autorizada', 'cancelada')
       ORDER BY created_at DESC LIMIT 1
     `;
-                                    
-    if (existingNfce && existingNfce.length > 0) {
-      console.log('✅ NFC-e já existe:', existingNfce[0].id, 'Número:', existingNfce[0].numero);
+    if (existingNfce?.length) {
       return { success: true, message: 'NFC-e já emitida anteriormente', nfce: existingNfce[0] };
     }
-    
-    const pendingNfce = await sql`
-      SELECT id FROM nfce
-      WHERE sale_id = ${String(saleDbId)} AND status = 'pendente' AND created_at > NOW() - INTERVAL '5 minutes'
-      LIMIT 1
-    `;
-                                    
-    if (pendingNfce && pendingNfce.length > 0) {
-      throw createError({ statusCode: 409, statusMessage: 'Já existe uma NFC-e em processamento para esta venda.' });
-    }
-    
-    if (!valor_total || !itens || !Array.isArray(itens)) {
-      throw createError({ statusCode: 400, statusMessage: 'Dados inválidos. Verifique valor_total e itens.' });
-    }
 
-    // --- ATOMIC UPDATE FOR INVOICE NUMBER ---
-    console.log('🔒 Reservando número da NFC-e atomicamente...');
-    
+    const pendingNfce = await sql`
+      SELECT id FROM nfce WHERE sale_id = ${String(saleDbId)}
+      AND status = 'pendente' AND created_at > NOW() - INTERVAL '5 minutes' LIMIT 1
+    `;
+    if (pendingNfce?.length)
+      throw createError({ statusCode: 409, statusMessage: 'Já existe uma NFC-e em processamento para esta venda.' });
+
+    if (!valor_total || !Array.isArray(itens) || itens.length === 0)
+      throw createError({ statusCode: 400, statusMessage: 'Dados inválidos. Verifique valor_total e itens.' });
+
     const configForId = await sql`
       SELECT id FROM company_fiscal_config ORDER BY created_at DESC LIMIT 1
     `;
-
-    if (!configForId || configForId.length === 0) {
-      throw new Error('Configuração fiscal não encontrada.');
-    }
+    if (!configForId?.length)
+      throw createError({ statusCode: 400, statusMessage: 'Configuração fiscal não encontrada.' });
 
     const updateResult = await sql`
       UPDATE company_fiscal_config
@@ -78,125 +60,150 @@ export default defineEventHandler(async (event) => {
       WHERE id = ${configForId[0].id}
       RETURNING ultima_nfce, serie_nfce
     `;
+    if (!updateResult?.length) throw new Error('Falha ao reservar número da NFC-e.');
 
-    if (!updateResult || updateResult.length === 0) {
-      throw new Error('Falha ao atualizar e retornar o número da NFC-e.');
-    }
-
-    const proximoNumero = updateResult[0].ultima_nfce;
+    const proximoNumero = Number(updateResult[0].ultima_nfce);
     const serieNfce = toNumber(updateResult[0].serie_nfce, 1);
-    
+
     const configResult = await sql`
-        SELECT * FROM company_fiscal_config WHERE id = ${configForId[0].id}
+      SELECT * FROM company_fiscal_config WHERE id = ${configForId[0].id} LIMIT 1
     `;
     const config = configResult[0];
+    const ambiente = config.ambiente === 'producao' ? 'producao' : 'homologacao';
 
-    console.log('✅ Número reservado:', proximoNumero);
-    // --- END OF ATOMIC UPDATE ---
+    /* Enriquece os itens com o JSON fiscal do cadastro, sem inventar tributação. */
+    const productIds = [...new Set(itens.map((i: any) => String(i.id || '')).filter(Boolean))];
+    let fiscalByProduct = new Map<string, any>();
+    if (productIds.length) {
+      const products = await sql`SELECT id, fiscal FROM products WHERE id = ANY(${productIds}::text[])`;
+      fiscalByProduct = new Map(products.map((p: any) => {
+        let fiscal = p.fiscal || {};
+        if (typeof fiscal === 'string') {
+          try { fiscal = JSON.parse(fiscal); } catch { fiscal = {}; }
+        }
+        return [String(p.id), fiscal];
+      }));
+    }
 
-    console.log('🔢 Próximo NFC-e (atomicamente reservado):', proximoNumero, 'Série:', serieNfce);
-    
-    const nfceData = { sale_id: saleIdNumber, valor_total, itens, cliente, frete: frete || 0, forma_pagamento };
-                
-    console.log('📝 Gerando XML da NFC-e...');
-    const xmlEnvio = await generateNfceXml(nfceData, config, proximoNumero, serieNfce);
-    console.log('✅ XML gerado, tamanho:', xmlEnvio.length);
+    const enrichedItems = itens.map((item: any) => ({
+      ...item,
+      fiscal: item.fiscal || fiscalByProduct.get(String(item.id)) || {},
+    }));
 
-    console.log('📤 Enviando para SEFAZ...');
+    const nfceData = {
+      sale_id: saleIdNumber, valor_total, itens: enrichedItems, cliente,
+      frete: frete || 0, forma_pagamento,
+    };
+
+    const unsignedXml = compactXml(
+      await generateNfceXml(nfceData, config, proximoNumero, serieNfce),
+    );
+    const accessKey = unsignedXml.match(/Id="NFe(\d{44})"/)?.[1];
+    if (!accessKey) throw new Error('Chave de acesso não encontrada no XML gerado.');
+
+    const certificate = await loadActiveCertificate();
+    const { signedXml } = signNfeXml(
+      unsignedXml, accessKey, certificate.privateKeyPem, certificate.certificateBase64,
+    );
+    if (!signedXml.includes('<Signature'))
+      throw new Error('Falha ao assinar digitalmente a NFC-e.');
+
     let sefazResult: SefazResponse;
     try {
-      sefazResult = await enviarParaSefaz(xmlEnvio, config.ambiente || 'homologacao');
+      sefazResult = await enviarParaSefaz(signedXml, ambiente, certificate);
     } catch (sendError: any) {
       sefazResult = {
-        success: false,
-        status: 'erro',
-        mensagem: sendError?.message || 'Falha de conexão com a SEFAZ',
+        success: false, status: 'erro',
+        mensagem: sendError?.message || 'Falha de comunicação com a SEFAZ',
+        chave_acesso: accessKey, numero: proximoNumero,
       };
     }
-    console.log('📤 Resposta SEFAZ:', sefazResult);
-            
+
     if (!sefazResult.success) {
-      const failureReason = sefazResult.mensagem || 'Não foi possível comunicar com a SEFAZ';
-      console.error('❌ Erro ao autorizar NFC-e na SEFAZ:', sefazResult);
+      const failureReason = sefazResult.mensagem || 'Não foi possível autorizar a NFC-e';
 
-      await saveContingencyNote({
-        saleId: String(saleDbId),
-        xmlContent: xmlEnvio,
-        reason: failureReason,
-        payload: {
-          ambiente: config.ambiente || 'homologacao',
-          numero: proximoNumero,
-          serie: serieNfce,
-          valor_total,
-        },
-      });
+      /* Fila técnica: NÃO significa contingência fiscal autorizada.
+         Erros locais de persistência não podem mascarar a rejeição original da SEFAZ. */
+      try {
+        await saveContingencyNote({
+          saleId: String(saleDbId), xmlContent: signedXml, reason: failureReason,
+          payload: { ambiente, numero: proximoNumero, serie: serieNfce, valor_total, chave_acesso: accessKey },
+        });
+      } catch (contingencyError: any) {
+        console.error('⚠️ Falha em contingency_notes (erro secundário):', contingencyError?.message || contingencyError);
+      }
 
-      await sql`
-        INSERT INTO nfce (sale_id, status, xml_envio, mensagem_status, ambiente, numero, serie)
-        VALUES (${String(saleIdNumber)}, 'rejeitada', ${xmlEnvio}, ${failureReason}, ${config.ambiente || 'homologacao'}, ${proximoNumero}, ${serieNfce})
-      `;
-      await sql`
-        UPDATE sales SET xml_status = 'contingencia' WHERE id = ${saleDbId}
-      `;
-      throw createError({ statusCode: 503, statusMessage: `${failureReason}. NFC-e salva em contingência para reenvio.` });
+      try {
+        await sql`
+          INSERT INTO nfce (sale_id, chave_acesso, status, xml_envio, mensagem_status, ambiente, numero, serie)
+          VALUES (${String(saleDbId)}, ${accessKey}, 'rejeitada', ${signedXml},
+                  ${failureReason}, ${ambiente}, ${proximoNumero}, ${serieNfce})
+        `;
+      } catch (nfceLogError: any) {
+        console.error('⚠️ Falha ao registrar NFC-e rejeitada (erro secundário):', nfceLogError?.message || nfceLogError);
+      }
+
+      try {
+        await sql`
+          UPDATE sales SET xml_chave=${accessKey}, xml_numero=${proximoNumero},
+            xml_status='rejeitada', xml_content=${signedXml}
+          WHERE id=${saleDbId}
+        `;
+      } catch (saleStatusError: any) {
+        console.error('⚠️ Falha ao atualizar venda rejeitada (erro secundário):', saleStatusError?.message || saleStatusError);
+      }
+
+      throw createError({ statusCode: 422, statusMessage: `SEFAZ não autorizou a NFC-e: ${failureReason}` });
     }
-    
-    console.log('✅ NFC-e autorizada! Chave:', sefazResult.chave_acesso, 'Número:', sefazResult.numero);
-    
-    console.log('💾 Salvando NFC-e no banco de dados...');
+
+    const proc = sefazResult.xml_retorno || '';
+    if (!proc.includes('<nfeProc') || !proc.includes('<Signature') || !proc.includes('<protNFe'))
+      throw new Error('Resposta autorizada sem nfeProc/Signature/protNFe completo.');
+
     const insert = await sql`
       INSERT INTO nfce (
         sale_id, chave_acesso, numero, serie, data_emissao, data_autorizacao,
         protocolo, status, qr_code, xml_envio, xml_retorno, url_consulta,
         ambiente, mensagem_status
       ) VALUES (
-        ${String(saleIdNumber)}, ${sefazResult.chave_acesso || ''}, ${sefazResult.numero || 0},
-        ${serieNfce}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ${sefazResult.protocolo || ''},
-        'autorizada', ${sefazResult.qr_code || ''}, ${xmlEnvio},
-        ${sefazResult.xml_retorno || ''}, ${sefazResult.url_consulta || ''},
-        ${config.ambiente || 'homologacao'}, ${sefazResult.mensagem || ''}
+        ${String(saleDbId)}, ${sefazResult.chave_acesso || accessKey},
+        ${sefazResult.numero || proximoNumero}, ${serieNfce},
+        CURRENT_TIMESTAMP, ${sefazResult.data_autorizacao || new Date().toISOString()},
+        ${sefazResult.protocolo || ''}, 'autorizada', ${sefazResult.qr_code || ''},
+        ${signedXml}, ${proc}, ${sefazResult.url_consulta || ''},
+        ${ambiente}, ${sefazResult.mensagem || ''}
       ) RETURNING id
     `;
-    
-    console.log('✅ NFC-e salva com ID:', insert[0].id);
-    
-    console.log('💾 Atualizando venda com dados fiscais...');
+
     await sql`
       UPDATE sales
-      SET xml_chave = ${sefazResult.chave_acesso || ''}, xml_numero = ${sefazResult.numero || 0},
-          xml_status = 'autorizada', xml_content = ${sefazResult.xml_retorno || ''}
-      WHERE id = ${saleDbId}
+      SET xml_chave=${sefazResult.chave_acesso || accessKey},
+          xml_numero=${sefazResult.numero || proximoNumero},
+          xml_status='autorizada', xml_content=${proc}
+      WHERE id=${saleDbId}
     `;
-    console.log('✅ Venda atualizada');
-              
+
     return {
       success: true,
-      message: 'NFC-e emitida e autorizada com sucesso',
+      message: 'NFC-e emitida, assinada e autorizada pela SEFAZ',
       nfce: {
         id: insert[0].id,
-        chave_acesso: sefazResult.chave_acesso || '',
-        numero: Number(sefazResult.numero || 0),
+        chave_acesso: sefazResult.chave_acesso || accessKey,
+        numero: Number(sefazResult.numero || proximoNumero),
         serie: serieNfce,
-        data_autorizacao: new Date().toISOString(),
+        data_autorizacao: sefazResult.data_autorizacao || new Date().toISOString(),
         protocolo: sefazResult.protocolo || '',
         status: 'autorizada',
         qr_code: sefazResult.qr_code || '',
-        xml_retorno: sefazResult.xml_retorno || '',
+        xml_retorno: proc,
         url_consulta: sefazResult.url_consulta || '',
-        ambiente: config.ambiente || 'homologacao',
+        ambiente,
         mensagem_status: sefazResult.mensagem || '',
-      }
+      },
     };
-      
   } catch (error: any) {
-    console.error('❌❌❌ ERRO CRÍTICO ao emitir NFC-e:', error);
-    const isH3Error = !!error.statusCode;
-    if (isH3Error) {
-      throw error;
-    }
-    throw createError({
-      statusCode: 500,
-      statusMessage: error.message || 'Erro desconhecido ao emitir NFC-e',
-    });
+    console.error('❌ ERRO ao emitir NFC-e:', error);
+    if (error?.statusCode) throw error;
+    throw createError({ statusCode: 500, statusMessage: error?.message || 'Erro desconhecido ao emitir NFC-e' });
   }
 });

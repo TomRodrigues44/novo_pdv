@@ -92,6 +92,15 @@ async function getRegisterDetails(register: any) {
 
 export default defineEventHandler(async () => {
   try {
+    // Identificação da unidade usada também nos registros do Histórico.
+    const companyConfigResult = await sql`
+      SELECT identificacao_loja
+      FROM company_fiscal_config
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    const identificacaoLoja = companyConfigResult[0]?.identificacao_loja || null;
+
     const openRegisterResult = await sql`
       SELECT * FROM cash_registers
       WHERE status = 'open'
@@ -109,7 +118,10 @@ export default defineEventHandler(async () => {
       
       // Buscar detalhes para cada registro histórico
       const history = await Promise.all(
-        historyRaw.map(register => getRegisterDetails(register))
+        historyRaw.map(async register => ({
+          ...(await getRegisterDetails(register)),
+          identificacaoLoja,
+        }))
       );
       
       return { current: null, history };
@@ -117,7 +129,10 @@ export default defineEventHandler(async () => {
 
     const currentRegister = openRegisterResult[0];
 
-    const currentDetails = await getRegisterDetails(currentRegister);
+    const currentDetails = {
+      ...(await getRegisterDetails(currentRegister)),
+      identificacaoLoja,
+    };
 
     const historyRaw = await sql`
       SELECT * FROM cash_registers
@@ -128,7 +143,10 @@ export default defineEventHandler(async () => {
     
     // Buscar detalhes para cada registro histórico
     const history = await Promise.all(
-      historyRaw.map(register => getRegisterDetails(register))
+      historyRaw.map(async register => ({
+        ...(await getRegisterDetails(register)),
+        identificacaoLoja,
+      }))
     );
 
     return {

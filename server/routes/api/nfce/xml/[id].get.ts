@@ -2,46 +2,31 @@ import { sql } from '../../../../utils/db';
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id');
+  if (!id) throw createError({ statusCode: 400, statusMessage: 'ID da NFC-e não informado.' });
 
-  if (!id || !/^\d+$/.test(id)) {
+  const rows = await sql`
+    SELECT id, numero, chave_acesso, status, xml_retorno
+    FROM nfce WHERE id = ${id} LIMIT 1
+  `;
+  if (!rows?.length) throw createError({ statusCode: 404, statusMessage: 'NFC-e não encontrada.' });
+
+  const nfce = rows[0];
+  if (!['autorizada', 'cancelada'].includes(nfce.status)) {
+    throw createError({ statusCode: 409, statusMessage: 'Somente NFC-e autorizada/cancelada pode ser exportada.' });
+  }
+
+  const xml = String(nfce.xml_retorno || '').trim();
+  if (!xml.includes('<nfeProc') || !xml.includes('<Signature') || !xml.includes('<protNFe')) {
     throw createError({
-      statusCode: 400,
-      statusMessage: 'ID da NFC-e inválido',
+      statusCode: 422,
+      statusMessage: 'Registro sem XML fiscal completo (nfeProc + Signature + protNFe). Nenhum XML artificial será gerado.',
     });
   }
 
-  try {
-    const result = await sql`
-      SELECT
-        numero,
-        COALESCE(NULLIF(xml_retorno, ''), xml_envio) AS xml_content
-      FROM nfce
-      WHERE id = ${id}
-        AND status = 'autorizada'
-      LIMIT 1
-    `;
-
-    if (result.length === 0 || !result[0].xml_content) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: 'XML da NFC-e não encontrado',
-      });
-    }
-
-    setResponseHeaders(event, {
-      'Content-Type': 'application/xml; charset=utf-8',
-      'Content-Disposition': `attachment; filename="nfe-${result[0].numero || id}.xml"`,
-    });
-
-    return result[0].xml_content;
-  } catch (error: any) {
-    console.error('Error downloading NFC-e XML:', error);
-    if (error.statusCode) {
-      throw error;
-    }
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Erro ao baixar XML fiscal',
-    });
-  }
+  const chave = String(nfce.chave_acesso || '').replace(/\D/g, '');
+  const filename = chave.length === 44 ? `${chave}-procNFe.xml` : `NFCe-${nfce.numero || id}-procNFe.xml`;
+  setHeader(event, 'Content-Type', 'application/xml; charset=utf-8');
+  setHeader(event, 'Content-Disposition', `attachment; filename="${filename}"`);
+  setHeader(event, 'Cache-Control', 'no-store');
+  return xml;
 });
