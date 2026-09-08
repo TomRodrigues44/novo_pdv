@@ -60,7 +60,7 @@ export default defineEventHandler(async (event) => {
     
     // Buscar a nota fiscal (NF-e ou NFC-e) pelo ID da venda (sale_id)
     const nfeResult = await sql`
-      SELECT id, status, sale_id, chave_acesso, numero, serie, ambiente
+      SELECT id, status, sale_id, chave_acesso, numero, serie, ambiente, protocolo
       FROM nfe
       WHERE sale_id::text = ${String(id)}
       ORDER BY created_at DESC
@@ -68,7 +68,7 @@ export default defineEventHandler(async (event) => {
     `;
     
     const nfceResult = await sql`
-      SELECT id, status, sale_id, chave_acesso, numero, serie, ambiente
+      SELECT id, status, sale_id, chave_acesso, numero, serie, ambiente, protocolo
       FROM nfce
       WHERE sale_id::text = ${String(id)}
       ORDER BY created_at DESC
@@ -108,22 +108,18 @@ export default defineEventHandler(async (event) => {
     let sefazResult;
     try {
       if (nfeResult.length > 0) {
-        // Cancelamento de NF-e - usar função específica para NF-e
-        // Por enquanto, vamos usar a função de NFC-e como fallback
-        // Em produção, você teria uma função cancelarNfe específica
-        sefazResult = await cancelarNfce(
-          fiscalNote.chave_acesso,
-          fiscalNote.numero.toString(),
-          justificativa,
-          ambiente
-        );
+        throw createError({
+          statusCode: 501,
+          statusMessage: 'Cancelamento real de NF-e modelo 55 deve usar o serviço próprio de NF-e. Nenhuma alteração foi feita.',
+        });
       } else {
-        // Cancelamento de NFC-e
+        // Cancelamento REAL de NFC-e: evento 110111 assinado e enviado à SVRS.
         sefazResult = await cancelarNfce(
           fiscalNote.chave_acesso,
           fiscalNote.numero.toString(),
           justificativa,
-          ambiente
+          ambiente,
+          fiscalNote.protocolo
         );
       }
     } catch (sefazError: any) {
@@ -201,6 +197,12 @@ export default defineEventHandler(async (event) => {
       }
     }
     
+    // Preservar o protocolo e o XML real do evento de cancelamento.
+    // As colunas são criadas de forma compatível com instalações existentes.
+    await sql`ALTER TABLE nfce ADD COLUMN IF NOT EXISTS cancel_protocolo TEXT`;
+    await sql`ALTER TABLE nfce ADD COLUMN IF NOT EXISTS cancel_xml TEXT`;
+    await sql`ALTER TABLE nfce ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ`;
+
     // Atualizar status da nota fiscal para cancelada
     if (nfeResult.length > 0) {
       await sql`
@@ -211,7 +213,10 @@ export default defineEventHandler(async (event) => {
     } else {
       await sql`
         UPDATE nfce
-        SET status = 'cancelada'
+        SET status = 'cancelada',
+            cancel_protocolo = ${sefazResult.protocolo || null},
+            cancel_xml = ${sefazResult.xml_retorno || sefazResult.xml_resposta_sefaz || null},
+            cancelled_at = CURRENT_TIMESTAMP
         WHERE id = ${fiscalNote.id}
       `;
     }
