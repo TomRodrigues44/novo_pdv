@@ -794,6 +794,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
         saleId={currentDailySaleNumber || undefined}
         nfceData={nfceData}
         delivery={deliveryData}
+        customer={selectedCustomer}
       />
     </>
   );

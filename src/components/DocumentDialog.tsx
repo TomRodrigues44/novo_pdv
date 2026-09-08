@@ -37,6 +37,11 @@ interface Payment {
   amount: number;
 }
 
+interface CustomerData {
+  name?: string;
+  cpf_cnpj?: string;
+}
+
 interface DeliveryData {
   name: string;
   phone: string;
@@ -128,9 +133,10 @@ interface ReceiptDialogProps {
   saleId?: string;
   nfceData: NfceData | null;
   delivery?: DeliveryData | null;
+  customer?: CustomerData | null;
 }
 
-export function ReceiptDialog({ open, onClose, total, freight, cartItems, payments, documentType, saleId, nfceData, delivery }: ReceiptDialogProps) {
+export function ReceiptDialog({ open, onClose, total, freight, cartItems, payments, documentType, saleId, nfceData, delivery, customer }: ReceiptDialogProps) {
   const [companyConfig, setCompanyConfig] = useState<CompanyConfig | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -149,6 +155,12 @@ export function ReceiptDialog({ open, onClose, total, freight, cartItems, paymen
   });
 
   const formatCnpj = (cnpj: string = '') => cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  const maskCpfCnpj = (value: string = '') => {
+    const digits = value.replace(/\D/g, '');
+    if (digits.length === 11) return `***.***.***-${digits.slice(-2)}`;
+    if (digits.length === 14) return `**.***.***/****-${digits.slice(-2)}`;
+    return '';
+  };
   const formatPhone = (phone: string = '') => {
     if (phone.length === 11) return phone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
     if (phone.length === 10) return phone.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
@@ -191,6 +203,23 @@ export function ReceiptDialog({ open, onClose, total, freight, cartItems, paymen
           </div>
 
           <hr className="border-dashed border-black my-2" />
+
+          {isNfceAuthorized && (
+            <>
+              <div className="mb-2">
+                {customer?.cpf_cnpj ? (
+                  <>
+                    <p className="font-bold">CONSUMIDOR</p>
+                    <p>Nome: {customer.name || 'Não informado'}</p>
+                    <p>{customer.cpf_cnpj.replace(/\D/g, '').length === 14 ? 'CNPJ' : 'CPF'}: {maskCpfCnpj(customer.cpf_cnpj)}</p>
+                  </>
+                ) : (
+                  <p className="font-bold">CONSUMIDOR NÃO IDENTIFICADO</p>
+                )}
+              </div>
+              <hr className="border-dashed border-black my-2" />
+            </>
+          )}
 
           <div className="mb-2">
             <div className="grid grid-cols-12 gap-1 font-bold">
