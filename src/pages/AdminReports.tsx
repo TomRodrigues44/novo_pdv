@@ -370,6 +370,7 @@ const AdminReports = () => {
       documentType={selectedSale.fiscal_model === "NFCe" ? "fiscal" : "quote"}
       saleId={String(selectedSale.daily_sale_number || selectedSale.id)}
       nfceData={nfceData}
+      customer={nfceData?.customer || selectedSale.customer || null}
       delivery={
        selectedSale.delivery_name
         ? {

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, FileText, Calendar, Search, Package } from "lucide-react";
+import { Download, FileText, Calendar, Search, Package, ReceiptText, BarChart3, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 interface FiscalNote {
@@ -27,6 +27,7 @@ const AdminXmls = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [modelFilter, setModelFilter] = useState<ModelFilter>("all");
+  const [activeTab, setActiveTab] = useState<"xmls" | "danfes" | "faturamento">("xmls");
 
   const fetchNotes = async () => {
     try {
@@ -157,6 +158,16 @@ const AdminXmls = () => {
     }
   };
 
+  const handleDanfePdf = (note: FiscalNote) => {
+    if (note.model !== "NFC-e") {
+      toast.info("PDF de NF-e será habilitado na auditoria do modelo 55.");
+      return;
+    }
+
+    const url = `/api/nfce/pdf/${note.fiscal_id}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -170,13 +181,42 @@ const AdminXmls = () => {
         <div className="mb-8">
           <h1 className="flex items-center gap-2 text-3xl font-bold">
             <FileText className="h-8 w-8 text-orange-600" />
-            XMLs Fiscais
+            Central Fiscal
           </h1>
           <p className="mt-1 text-gray-600">
-            Baixe os XMLs de NF-e e NFC-e para enviar ao contador
+            XMLs, DANFEs e relatórios de faturamento para a contabilidade
           </p>
         </div>
 
+        <div className="mb-6 grid gap-3 sm:grid-cols-3">
+          <Button
+            type="button"
+            variant={activeTab === "xmls" ? "default" : "outline"}
+            className={activeTab === "xmls" ? "h-12 bg-orange-600 hover:bg-orange-700" : "h-12"}
+            onClick={() => setActiveTab("xmls")}
+          >
+            <FileText className="mr-2 h-4 w-4" /> XMLs Fiscais
+          </Button>
+          <Button
+            type="button"
+            variant={activeTab === "danfes" ? "default" : "outline"}
+            className={activeTab === "danfes" ? "h-12 bg-orange-600 hover:bg-orange-700" : "h-12"}
+            onClick={() => setActiveTab("danfes")}
+          >
+            <ReceiptText className="mr-2 h-4 w-4" /> DANFEs / PDFs
+          </Button>
+          <Button
+            type="button"
+            variant={activeTab === "faturamento" ? "default" : "outline"}
+            className={activeTab === "faturamento" ? "h-12 bg-orange-600 hover:bg-orange-700" : "h-12"}
+            onClick={() => setActiveTab("faturamento")}
+          >
+            <BarChart3 className="mr-2 h-4 w-4" /> Faturamento
+          </Button>
+        </div>
+
+        {activeTab === "xmls" && (
+          <>
         <Card className="mb-6">
           <CardContent className="space-y-4 p-4">
             <div className="flex flex-wrap gap-2">
@@ -314,6 +354,117 @@ const AdminXmls = () => {
             )}
           </CardContent>
         </Card>
+
+          </>
+        )}
+
+        {activeTab === "danfes" && (
+          <>
+            <Card className="mb-6">
+              <CardContent className="p-4">
+                <div className="flex flex-col gap-4 sm:flex-row">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      placeholder="Buscar por modelo, ID ou chave de acesso..."
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <div className="relative flex-1">
+                    <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      type="month"
+                      value={dateFilter}
+                      onChange={(event) => setDateFilter(event.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>DANFEs / PDFs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="py-12 text-center text-gray-500">Carregando...</div>
+                ) : filteredNotes.length === 0 ? (
+                  <div className="py-12 text-center text-gray-500">
+                    <ReceiptText className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+                    <p className="text-lg">Nenhum documento encontrado</p>
+                    <p className="mt-2 text-sm">Tente ajustar a competência ou a busca.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Modelo</TableHead>
+                          <TableHead>Número</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                          <TableHead className="text-right">PDF</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredNotes.map((note) => (
+                          <TableRow key={`danfe-${note.model}-${note.fiscal_id}`}>
+                            <TableCell className="whitespace-nowrap">
+                              {new Date(note.created_at).toLocaleString('pt-BR')}
+                            </TableCell>
+                            <TableCell>
+                              <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                                note.model === "NF-e" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
+                              }`}>
+                                {note.model}
+                              </span>
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">{note.xml_numero || '-'}</TableCell>
+                            <TableCell>{note.customer_name || 'Consumidor não identificado'}</TableCell>
+                            <TableCell className="text-right font-semibold text-green-600">
+                              {formatCurrency(note.total_amount)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                variant={note.model === "NFC-e" ? "default" : "outline"}
+                                className={note.model === "NFC-e" ? "bg-orange-600 hover:bg-orange-700" : ""}
+                                onClick={() => handleDanfePdf(note)}
+                              >
+                                <Printer className="mr-2 h-4 w-4" />
+                                {note.model === "NFC-e" ? "Abrir PDF" : "Em breve"}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {activeTab === "faturamento" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Relatório de Faturamento</CardTitle>
+            </CardHeader>
+            <CardContent className="py-12 text-center">
+              <BarChart3 className="mx-auto mb-4 h-12 w-12 text-orange-300" />
+              <h3 className="text-lg font-semibold">Relatório contábil em implantação</h3>
+              <p className="mx-auto mt-2 max-w-2xl text-sm text-gray-600">
+                Aqui serão gerados o PDF consolidado e a planilha detalhada por competência, com vendas, cancelamentos e faturamento considerado.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="mt-6 border-blue-200 bg-blue-50">
           <CardContent className="p-4">
