@@ -67,6 +67,9 @@ const AdminProducts = () => {
     cofins: "0",
     origem: "0",
     codigoBarras: "",
+    // Reforma Tributária: preparação visual; ainda não integra o XML da NFC-e.
+    cstIbsCbs: "",
+    cClassTrib: "",
   });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -177,12 +180,17 @@ const AdminProducts = () => {
       cfop: "",
       cest: "",
       unidade: "UN",
-      icms: "17",
+      csosn: "102",
+      icms: "0",
       ipi: "0",
-      pis: "0.65",
-      cofins: "3",
+      cstPis: "99",
+      pis: "0",
+      cstCofins: "99",
+      cofins: "0",
       origem: "0",
       codigoBarras: "",
+      cstIbsCbs: "",
+      cClassTrib: "",
     });
     setImagePreview(null);
   };
@@ -209,6 +217,8 @@ const AdminProducts = () => {
       cofins: String(product.fiscal?.cofins ?? 0),
       origem: product.fiscal?.origem ? String(product.fiscal.origem) : "0",
       codigoBarras: product.fiscal?.codigoBarras || "",
+      cstIbsCbs: "",
+      cClassTrib: "",
     });
     setImagePreview(product.image || null);
     setIsDialogOpen(true);
@@ -587,6 +597,25 @@ const AdminProducts = () => {
                             placeholder="Ex: 0"
                             required
                           />
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-gray-300 bg-gray-100 p-4">
+                        <div className="mb-4">
+                          <h4 className="font-semibold text-gray-700">Reforma Tributária — IBS / CBS</h4>
+                          <p className="text-sm text-gray-500">
+                            Em implantação — campos preparados para futura adequação fiscal. Não são enviados à NFC-e.
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-2 text-gray-500">CST IBS/CBS</label>
+                            <Input value={formData.cstIbsCbs} placeholder="Aguardando definição" disabled className="bg-gray-200 text-gray-500 cursor-not-allowed" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2 text-gray-500">cClassTrib</label>
+                            <Input value={formData.cClassTrib} placeholder="Aguardando definição" disabled className="bg-gray-200 text-gray-500 cursor-not-allowed" />
+                          </div>
                         </div>
                       </div>
 
