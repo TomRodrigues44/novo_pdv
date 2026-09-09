@@ -286,11 +286,11 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
   // URLs de consulta NFC-e específicas da SEFAZ-RR por ambiente.
   // A validação cStat 395 compara o endereço-base do QR-Code com a tabela da UF.
   const urlQrCode = ambiente === 'producao'
-    ? 'https://www.sefaz.rr.gov.br/servlet/qrcode'
+    ? 'https://portalweb.sefaz.rr.gov.br/nfce/servlet/qrcode'
     : 'http://200.174.88.103:8080/nfce/servlet/qrcode';
 
   const urlConsultaChave = ambiente === 'producao'
-    ? 'https://www.sefaz.rr.gov.br/nfce/servlet/wp_consulta_nfce'
+    ? 'https://portalweb.sefaz.rr.gov.br/nfce/servlet/wp_consulta_nfce'
     : 'http://200.174.88.103:8080/nfce/servlet/wp_consulta_nfce';
 
   // QR-Code v3 (NT 2025.001) para emissão ONLINE (tpEmis=1):
