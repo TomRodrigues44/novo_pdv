@@ -351,7 +351,10 @@ const AdminReports = () => {
        consultationUrl: nfeData.consultationUrl,
       }}
       customer={nfeData.customer}
-      items={nfeData.items || []}
+      items={(nfeData.items || []).map((item: any) => ({
+       ...item,
+       id: item.codigo || item.code || item.id,
+      }))}
       payments={nfeData.payments || []}
       freight={nfeData.freight || parseFloat(selectedSale.freight || 0)}
       productsTotal={nfeData.productsTotal || (parseFloat(selectedSale.total_amount || 0) - parseFloat(selectedSale.freight || 0))}

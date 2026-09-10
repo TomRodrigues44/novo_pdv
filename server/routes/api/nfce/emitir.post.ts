@@ -73,22 +73,29 @@ export default defineEventHandler(async (event) => {
 
     /* Enriquece os itens com o JSON fiscal do cadastro, sem inventar tributação. */
     const productIds = [...new Set(itens.map((i: any) => String(i.id || '')).filter(Boolean))];
-    let fiscalByProduct = new Map<string, any>();
+    let productDataById = new Map<string, any>();
     if (productIds.length) {
-      const products = await sql`SELECT id, fiscal FROM products WHERE id = ANY(${productIds}::text[])`;
-      fiscalByProduct = new Map(products.map((p: any) => {
+      const products = await sql`SELECT id, codigo, fiscal FROM products WHERE id = ANY(${productIds}::text[])`;
+      productDataById = new Map(products.map((p: any) => {
         let fiscal = p.fiscal || {};
         if (typeof fiscal === 'string') {
           try { fiscal = JSON.parse(fiscal); } catch { fiscal = {}; }
         }
-        return [String(p.id), fiscal];
+        return [String(p.id), {
+          codigo: String(p.codigo || p.id),
+          fiscal,
+        }];
       }));
     }
 
-    const enrichedItems = itens.map((item: any) => ({
-      ...item,
-      fiscal: item.fiscal || fiscalByProduct.get(String(item.id)) || {},
-    }));
+    const enrichedItems = itens.map((item: any) => {
+      const productData = productDataById.get(String(item.id));
+      return {
+        ...item,
+        codigo: item.codigo || productData?.codigo || item.id,
+        fiscal: item.fiscal || productData?.fiscal || {},
+      };
+    });
 
     const nfceData = {
       sale_id: saleIdNumber, valor_total, itens: enrichedItems, cliente,

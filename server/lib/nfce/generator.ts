@@ -247,7 +247,7 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
     itensXml += `
         <det nItem="${itemNumero}">
           <prod>
-            <cProd>${escapeXml(item.id)}</cProd>
+            <cProd>${escapeXml(item.codigo || item.id)}</cProd>
             <cEAN>${ean || 'SEM GTIN'}</cEAN>
             <xProd>${escapeXml(
             ambiente === 'homologacao' && index === 0

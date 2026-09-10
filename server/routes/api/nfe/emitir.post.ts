@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
 
     const productIds = [...new Set(requestedItems.map((item: any) => text(item.productId)).filter(Boolean))];
     const products = await sql`
-      SELECT id, name, price, stock, fiscal
+      SELECT id, codigo, name, price, stock, fiscal
       FROM products
       WHERE id = ANY(${productIds}::text[])
     `;
@@ -64,6 +64,7 @@ export default defineEventHandler(async (event) => {
 
       return {
         id: String(product.id),
+        codigo: String(product.codigo || product.id),
         name: String(product.name),
         price: Number(product.price),
         quantity,
