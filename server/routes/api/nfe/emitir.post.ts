@@ -74,10 +74,17 @@ export default defineEventHandler(async (event) => {
     const productsTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const total = productsTotal + freight;
     const paymentsTotal = payments.reduce((sum: number, payment: any) => sum + (Number(payment.amount) || 0), 0);
-    if (payments.length === 0 || Math.abs(paymentsTotal - total) > 0.01) {
+    const changeTotal = payments.reduce(
+      (sum: number, payment: any) =>
+        sum + Math.max(0, Number(payment.change) || Number(payment.troco) || 0),
+      0,
+    );
+    const netPaymentsTotal = paymentsTotal - changeTotal;
+
+    if (payments.length === 0 || Math.abs(netPaymentsTotal - total) > 0.01) {
       throw createError({
         statusCode: 400,
-        statusMessage: 'A soma das formas de pagamento deve ser igual ao total da NF-e.',
+        statusMessage: 'A soma das formas de pagamento, descontado o troco, deve ser igual ao total da NF-e.',
       });
     }
 
@@ -135,6 +142,19 @@ export default defineEventHandler(async (event) => {
         statusMessage: `SEFAZ rejeitou a NF-e: ${authorization.message}`,
       });
     }
+
+    const protocolXml = String(authorization.authorizationXml || '').trim();
+
+    if (!protocolXml || (!protocolXml.includes('<protNFe') && !protocolXml.includes(':protNFe'))) {
+      throw createError({
+        statusCode: 502,
+        statusMessage: 'A SEFAZ autorizou a NF-e, mas o protocolo de autorização (protNFe) não foi encontrado no retorno.',
+      });
+    }
+
+    const nfeWithoutDeclaration = signedXml.replace(/^<\?xml[^>]*>\s*/i, '').trim();
+    const protocolWithoutDeclaration = protocolXml.replace(/^<\?xml[^>]*>\s*/i, '').trim();
+    const processedXml = `<?xml version="1.0" encoding="UTF-8"?><nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">${nfeWithoutDeclaration}${protocolWithoutDeclaration}</nfeProc>`;
 
     const result = await sql.transaction(async (transaction) => {
       const customerId = text(customer.id) || `customer-nfe-${Date.now()}`;
@@ -210,7 +230,7 @@ export default defineEventHandler(async (event) => {
           ${String(sale.id)}, ${customerId}, ${generated.accessKey}, ${number}, ${series}, 'autorizada',
           ${ambiente}, ${authorization.protocol || null}, CURRENT_TIMESTAMP, ${productsTotal}, ${freight},
           ${total}, ${JSON.stringify(customer)}::jsonb, ${JSON.stringify(items)}::jsonb,
-          ${JSON.stringify(payments)}::jsonb, ${signedXml}, ${authorization.authorizationXml || authorization.rawResponse || null},
+          ${JSON.stringify(payments)}::jsonb, ${signedXml}, ${processedXml},
           ${generated.consultationUrl}, ${authorization.message}
         ) RETURNING id
       `;

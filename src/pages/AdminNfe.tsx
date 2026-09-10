@@ -15,6 +15,7 @@ import { FilterableDropdown } from '@/components/FilterableDropdown';
 
 interface Product {
   id: string;
+  codigo?: string;
   name: string;
   price: number | string;
   stock?: number;
@@ -48,6 +49,7 @@ interface Payment {
   id: number;
   type: string;
   amount: number;
+  change?: number;
 }
 
 const emptyCustomer: CustomerForm = {
@@ -123,7 +125,14 @@ const AdminNfe = () => {
   );
   const total = productsTotal + freight;
   const paymentsTotal = payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
-  const remaining = total - paymentsTotal;
+  const cashTotal = payments
+    .filter((payment) => payment.type === 'cash')
+    .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+  const overpayment = Math.max(paymentsTotal - total, 0);
+  const changeTotal = Math.min(overpayment, cashTotal);
+  const netPaymentsTotal = paymentsTotal - changeTotal;
+  const remaining = total - netPaymentsTotal;
+  const paymentIsValid = Math.abs(remaining) <= 0.01 && (overpayment <= 0.01 || cashTotal > 0);
 
   useEffect(() => {
     if (payments.length === 1) {
@@ -293,7 +302,11 @@ const AdminNfe = () => {
           items: items.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
           freight,
           freightMode,
-          payments: payments.map(({ type, amount }) => ({ type, amount })),
+          payments: payments.map(({ type, amount }) => ({
+            type,
+            amount,
+            change: type === 'cash' ? changeTotal : 0,
+          })),
           motoboy: selectedMotoboy,
         }),
       });
@@ -548,7 +561,14 @@ const AdminNfe = () => {
                 <div className="flex justify-between"><span>Frete</span><span>{currency(freight)}</span></div>
                 <Separator />
                 <div className="flex justify-between text-lg font-bold"><span>Total da NF-e</span><span>{currency(total)}</span></div>
-                <div className={`flex justify-between text-sm ${Math.abs(remaining) <= 0.01 ? 'text-green-700' : 'text-red-600'}`}><span>Diferença do pagamento</span><span>{currency(remaining)}</span></div>
+                {changeTotal > 0 && (
+                  <div className="flex justify-between text-sm font-medium text-green-700">
+                    <span>Troco</span><span>{currency(changeTotal)}</span>
+                  </div>
+                )}
+                <div className={`flex justify-between text-sm ${paymentIsValid ? 'text-green-700' : 'text-red-600'}`}>
+                  <span>Diferença do pagamento</span><span>{currency(remaining)}</span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -572,7 +592,7 @@ const AdminNfe = () => {
 
           <div className="sticky bottom-0 flex items-center justify-between rounded-lg border bg-white p-4 shadow-lg">
             <div><p className="font-semibold">Total: {currency(total)}</p><p className="text-xs text-gray-500">A operação só entra nos relatórios após a autorização.</p></div>
-            <Button size="lg" className="bg-orange-600 hover:bg-orange-700" disabled={emitting || items.length === 0 || Math.abs(remaining) > 0.01} onClick={emitNfe}>
+            <Button size="lg" className="bg-orange-600 hover:bg-orange-700" disabled={emitting || items.length === 0 || !paymentIsValid} onClick={emitNfe}>
               {emitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <FileCheck2 className="mr-2 h-5 w-5" />}
               Emitir NF-e e registrar venda
             </Button>
@@ -625,7 +645,7 @@ const AdminNfe = () => {
           }}
           customer={customer}
           items={items.map((item) => ({
-            id: item.product.id,
+            id: item.product.codigo || item.product.id,
             name: item.product.name,
             quantity: item.quantity,
             price: Number(item.product.price),
@@ -633,7 +653,11 @@ const AdminNfe = () => {
               ? (() => { try { return JSON.parse(item.product.fiscal as string); } catch { return {}; } })()
               : item.product.fiscal || {},
           }))}
-          payments={payments.map(({ type, amount }) => ({ type, amount }))}
+          payments={payments.map(({ type, amount }) => ({
+            type,
+            amount,
+            change: type === 'cash' ? changeTotal : 0,
+          }))}
           freight={freight}
           productsTotal={productsTotal}
           total={total}

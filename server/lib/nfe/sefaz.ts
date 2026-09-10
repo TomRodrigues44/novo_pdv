@@ -1,5 +1,6 @@
 import https from 'node:https';
-import type { LoadedCertificate } from './certificate';
+import { SignedXml } from 'xml-crypto';
+import { loadActiveCertificate, type LoadedCertificate } from './certificate';
 
 type SefazEnvironment = 'homologacao' | 'producao';
 
@@ -7,16 +8,19 @@ const SEFAZ_ENDPOINTS: Record<SefazEnvironment, {
   autorizacao: string;
   retAutorizacao: string;
   statusServico: string;
+  recepcaoEvento: string;
 }> = {
   homologacao: {
     autorizacao: 'https://nfe-homologacao.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx',
     retAutorizacao: 'https://nfe-homologacao.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx',
     statusServico: 'https://nfe-homologacao.svrs.rs.gov.br/ws/NfeStatusServico/NFeStatusServico4.asmx',
+    recepcaoEvento: 'https://nfe-homologacao.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx',
   },
   producao: {
     autorizacao: 'https://nfe.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx',
     retAutorizacao: 'https://nfe.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx',
     statusServico: 'https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NFeStatusServico4.asmx',
+    recepcaoEvento: 'https://nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx',
   },
 };
 
@@ -62,20 +66,14 @@ function buildSoapEnvelope(serviceNamespace: string, innerXml: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"><soap:Body><nfeDadosMsg xmlns="${serviceNamespace}">${innerXml}</nfeDadosMsg></soap:Body></soap:Envelope>`;
 }
 
-// Create HTTPS agent with flexible certificate validation
-// This allows connections to SEFAZ even when system certificates don't include the issuer
+// Cria o agente HTTPS com certificado cliente A1 e validação TLS do servidor.
+// O Node deve ser iniciado com o repositório de CAs do sistema habilitado
+// (ex.: NODE_OPTIONS=--use-system-ca), mantendo rejectUnauthorized=true.
 function createHttpsAgent(certificate: LoadedCertificate, environment: SefazEnvironment) {
-  // Don't reject unauthorized - this allows the connection to proceed
-  // even if the certificate chain isn't fully trusted by the system
   return new https.Agent({
     pfx: certificate.pfxBuffer,
     passphrase: certificate.password,
-    // Don't specify ca - let Node.js use its default trust store
-    // But we include the client certificate (pfx) for signing
-    rejectUnauthorized: false,
-    // Try to include ICP-Brasil certificates if available, but don't fail if not
-    // keepAlive: true,
-    // maxSockets: 5,
+    rejectUnauthorized: true,
   });
 }
 
@@ -287,5 +285,226 @@ export async function checkStatusServico(
     message: extractTag(response.body, 'xMotivo')
       || extractTag(response.body, 'faultstring')
       || `Resposta HTTP ${response.statusCode} sem motivo informado`,
+  };
+}
+export interface NfeCancellationResult {
+  success: boolean;
+  status: string;
+  mensagem: string;
+  chave_acesso?: string;
+  numero?: number;
+  protocolo?: string;
+  data_autorizacao?: string;
+  xml_retorno?: string;
+  xml_resposta_sefaz?: string;
+}
+
+function escapeEventXml(value: unknown): string {
+  return String(value ?? '')
+    .trim()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function formatDhEventoBoaVista(date = new Date()): string {
+  const local = new Date(date.getTime() - 4 * 60 * 60 * 1000);
+  const yyyy = local.getUTCFullYear();
+  const mm = String(local.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(local.getUTCDate()).padStart(2, '0');
+  const hh = String(local.getUTCHours()).padStart(2, '0');
+  const mi = String(local.getUTCMinutes()).padStart(2, '0');
+  const ss = String(local.getUTCSeconds()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}-04:00`;
+}
+
+function cleanCertificateBase64(value: string): string {
+  return String(value || '')
+    .replace(/-----BEGIN CERTIFICATE-----/g, '')
+    .replace(/-----END CERTIFICATE-----/g, '')
+    .replace(/\s+/g, '');
+}
+
+function certificatePemFromBase64(value: string): string {
+  const base64 = cleanCertificateBase64(value);
+  const lines = base64.match(/.{1,64}/g)?.join('\n') || base64;
+  return `-----BEGIN CERTIFICATE-----\n${lines}\n-----END CERTIFICATE-----`;
+}
+
+function signCancellationEvent(
+  eventoXml: string,
+  eventId: string,
+  certificate: LoadedCertificate,
+): string {
+  const certBase64 = cleanCertificateBase64(certificate.certificateBase64);
+  const signer = new SignedXml({
+    privateKey: certificate.privateKeyPem,
+    publicCert: certificatePemFromBase64(certBase64),
+    signatureAlgorithm: 'http://www.w3.org/2000/09/xmldsig#rsa-sha1',
+    canonicalizationAlgorithm: 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315',
+    getKeyInfoContent: () =>
+      `<X509Data><X509Certificate>${certBase64}</X509Certificate></X509Data>`,
+  });
+
+  signer.addReference({
+    xpath: `//*[@Id='${eventId}']`,
+    transforms: [
+      'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
+      'http://www.w3.org/TR/2001/REC-xml-c14n-20010315',
+    ],
+    digestAlgorithm: 'http://www.w3.org/2000/09/xmldsig#sha1',
+    uri: `#${eventId}`,
+  });
+
+  signer.computeSignature(eventoXml, {
+    location: {
+      reference: "//*[local-name(.)='evento']",
+      action: 'append',
+    },
+  });
+
+  const signed = signer.getSignedXml();
+  if (!signed.includes('<Signature')) {
+    throw new Error('Falha ao assinar digitalmente o evento de cancelamento da NF-e.');
+  }
+  return signed;
+}
+
+export async function cancelarNfe(
+  chaveAcesso: string,
+  numero: string,
+  justificativa: string,
+  ambiente: string,
+  protocoloAutorizacao?: string,
+): Promise<NfeCancellationResult> {
+  const chave = String(chaveAcesso || '').replace(/\D/g, '');
+  const protocolo = String(protocoloAutorizacao || '').replace(/\D/g, '');
+  const just = String(justificativa || '').trim();
+
+  if (chave.length !== 44) {
+    return {
+      success: false,
+      status: 'rejeitada',
+      mensagem: 'Chave de acesso inválida para cancelamento da NF-e.',
+      chave_acesso: chaveAcesso,
+      numero: Number(numero) || undefined,
+    };
+  }
+
+  if (!protocolo) {
+    return {
+      success: false,
+      status: 'rejeitada',
+      mensagem: 'Protocolo original de autorização não informado. O cancelamento não foi enviado.',
+      chave_acesso: chave,
+      numero: Number(numero) || undefined,
+    };
+  }
+
+  if (just.length < 15 || just.length > 255) {
+    return {
+      success: false,
+      status: 'rejeitada',
+      mensagem: 'A justificativa deve ter entre 15 e 255 caracteres.',
+      chave_acesso: chave,
+      numero: Number(numero) || undefined,
+    };
+  }
+
+  const normalizedEnvironment: SefazEnvironment =
+    ambiente === 'producao' ? 'producao' : 'homologacao';
+  const tpAmb = normalizedEnvironment === 'producao' ? '1' : '2';
+  const cOrgao = chave.slice(0, 2);
+  const cnpj = chave.slice(6, 20);
+  const tpEvento = '110111';
+  const nSeqEvento = '1';
+  const eventId = `ID${tpEvento}${chave}${String(nSeqEvento).padStart(2, '0')}`;
+
+  const certificate = await loadActiveCertificate();
+
+  const eventoXml =
+    `<evento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00">` +
+      `<infEvento Id="${eventId}">` +
+        `<cOrgao>${cOrgao}</cOrgao>` +
+        `<tpAmb>${tpAmb}</tpAmb>` +
+        `<CNPJ>${cnpj}</CNPJ>` +
+        `<chNFe>${chave}</chNFe>` +
+        `<dhEvento>${formatDhEventoBoaVista()}</dhEvento>` +
+        `<tpEvento>${tpEvento}</tpEvento>` +
+        `<nSeqEvento>${nSeqEvento}</nSeqEvento>` +
+        `<verEvento>1.00</verEvento>` +
+        `<detEvento versao="1.00">` +
+          `<descEvento>Cancelamento</descEvento>` +
+          `<nProt>${protocolo}</nProt>` +
+          `<xJust>${escapeEventXml(just)}</xJust>` +
+        `</detEvento>` +
+      `</infEvento>` +
+    `</evento>`;
+
+  const signedEvento = signCancellationEvent(eventoXml, eventId, certificate);
+  const loteId = String(Date.now()).slice(-15);
+  const envEvento =
+    `<envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00">` +
+      `<idLote>${loteId}</idLote>${signedEvento}` +
+    `</envEvento>`;
+
+  const serviceNamespace =
+    'http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4';
+  const endpoint = SEFAZ_ENDPOINTS[normalizedEnvironment].recepcaoEvento;
+
+  const response = await sendSoapRequest(
+    endpoint,
+    buildSoapEnvelope(serviceNamespace, envEvento),
+    certificate,
+    normalizedEnvironment,
+    `${serviceNamespace}/nfeRecepcaoEvento`,
+  );
+
+  const fault = extractTag(response.body, 'faultstring') || extractTag(response.body, 'Reason');
+  if (fault) {
+    return {
+      success: false,
+      status: 'rejeitada',
+      mensagem: `Falha SOAP da SEFAZ/SVRS: ${fault}`,
+      chave_acesso: chave,
+      numero: Number(numero) || undefined,
+      xml_resposta_sefaz: response.body,
+    };
+  }
+
+  const statusCodes = extractTags(response.body, 'cStat');
+  const motivos = extractTags(response.body, 'xMotivo');
+  const cStat = statusCodes.at(-1) || '';
+  const xMotivo = motivos.at(-1) || 'Motivo não informado';
+  const nProtEvento = extractTag(response.body, 'nProt');
+
+  // 135 = evento registrado e vinculado à NF-e.
+  // 155 = cancelamento homologado fora de prazo, quando aceito pela UF.
+  const homologado = cStat === '135' || cStat === '155';
+
+  if (!homologado) {
+    return {
+      success: false,
+      status: cStat || 'rejeitada',
+      mensagem: `SEFAZ rejeitou o cancelamento (cStat ${cStat || 'sem código'}): ${xMotivo}`,
+      chave_acesso: chave,
+      numero: Number(numero) || undefined,
+      xml_retorno: response.body,
+      xml_resposta_sefaz: response.body,
+    };
+  }
+
+  return {
+    success: true,
+    status: cStat,
+    mensagem: xMotivo,
+    chave_acesso: chave,
+    numero: Number(numero) || undefined,
+    protocolo: nProtEvento || undefined,
+    data_autorizacao: extractTag(response.body, 'dhRegEvento') || undefined,
+    xml_retorno: response.body,
+    xml_resposta_sefaz: response.body,
   };
 }

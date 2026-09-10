@@ -19,6 +19,7 @@ interface DanfeItem {
 interface DanfePayment {
   type: string;
   amount: number;
+  change?: number;
 }
 
 interface DanfeCustomer {
@@ -275,9 +276,20 @@ export function DanfeDialog({
           <div className="mt-2 border-2 border-black">
             <div className="border-b border-black bg-gray-100 px-2 py-0.5"><p className="text-[11px] font-bold">FORMA DE PAGAMENTO</p></div>
             <div className="p-2 text-xs">
-              {payments.length > 0
-                ? payments.map((payment, index) => <span key={index} className="mr-4">{paymentLabels[payment.type] || 'Outros'}: {currency(payment.amount)}</span>)
-                : '—'}
+              {payments.length > 0 ? (
+                <>
+                  {payments.map((payment, index) => (
+                    <span key={index} className="mr-4">
+                      {paymentLabels[payment.type] || 'Outros'}: {currency(payment.amount)}
+                    </span>
+                  ))}
+                  {payments.reduce((sum, payment) => sum + (Number(payment.change) || 0), 0) > 0 && (
+                    <span className="font-semibold">
+                      Troco: {currency(payments.reduce((sum, payment) => sum + (Number(payment.change) || 0), 0))}
+                    </span>
+                  )}
+                </>
+              ) : '—'}
             </div>
           </div>
 

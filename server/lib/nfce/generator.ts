@@ -191,13 +191,37 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
   
   let itensXml = '';
   let totalProdutos = 0;
+
+  // Rateio fiscal do frete entre os itens.
+  // A soma dos vFrete dos itens deve ser exatamente igual ao vFrete total.
+  const itensVenda = data.itens || [];
+  const freteTotal = Math.max(0, Number(data.frete) || 0);
+  const freteTotalCentavos = Math.round(freteTotal * 100);
+  const totalItensParaRateio = itensVenda.reduce((sum: number, item: any) => {
+    const preco = Number(item.price) || 0;
+    const quantidade = Number(item.quantity) || 1;
+    return sum + (preco * quantidade);
+  }, 0);
+  let freteDistribuidoCentavos = 0;
   
-  (data.itens || []).forEach((item: any, index: number) => {
+  itensVenda.forEach((item: any, index: number) => {
     const itemNumero = index + 1;
     const preco = Number(item.price) || 0;
     const quantidade = Number(item.quantity) || 1;
     const total = preco * quantidade;
     totalProdutos += total;
+
+    let freteItemCentavos = 0;
+    if (freteTotalCentavos > 0) {
+      const ultimoItem = index === itensVenda.length - 1;
+      if (ultimoItem) {
+        freteItemCentavos = freteTotalCentavos - freteDistribuidoCentavos;
+      } else if (totalItensParaRateio > 0) {
+        freteItemCentavos = Math.round((freteTotalCentavos * total) / totalItensParaRateio);
+        freteDistribuidoCentavos += freteItemCentavos;
+      }
+    }
+    const freteItem = freteItemCentavos / 100;
     // Dados fiscais vêm do cadastro do produto (products.fiscal).
     const fiscal = item.fiscal || {};
     const ncm = onlyDigits(fiscal.ncm || item.ncm);
@@ -216,7 +240,7 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
     if (cfop.length !== 4) throw createError({ statusCode: 400, statusMessage: `Produto "${normalizeText(item.name)}": CFOP inválido ou não informado.` });
     if (cest && cest.length !== 7) throw createError({ statusCode: 400, statusMessage: `Produto "${normalizeText(item.name)}": CEST deve possuir 7 dígitos.` });
     if (!/^\d$/.test(origem)) throw createError({ statusCode: 400, statusMessage: `Produto "${normalizeText(item.name)}": Origem inválida.` });
-    if (csosn !== '102') throw createError({ statusCode: 400, statusMessage: `Produto "${normalizeText(item.name)}": CSOSN ${csosn || 'não informado'} ainda não está liberado nesta configuração.` });
+    if (!['102', '500'].includes(csosn)) throw createError({ statusCode: 400, statusMessage: `Produto "${normalizeText(item.name)}": CSOSN ${csosn || 'não informado'} ainda não está liberado nesta configuração.` });
     if (cstPis !== '99' || cstCofins !== '99') throw createError({ statusCode: 400, statusMessage: `Produto "${normalizeText(item.name)}": use CST PIS/COFINS 99 nesta configuração.` });
     if (!Number.isFinite(pisAliquota) || !Number.isFinite(cofinsAliquota)) throw createError({ statusCode: 400, statusMessage: `Produto "${normalizeText(item.name)}": PIS/COFINS inválidos.` });
     
@@ -241,14 +265,20 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
             <uTrib>${escapeXml(unidade)}</uTrib>
             <qTrib>${quantidade.toFixed(4)}</qTrib>
             <vUnTrib>${preco.toFixed(10)}</vUnTrib>
+            ${freteItemCentavos > 0 ? `<vFrete>${freteItem.toFixed(2)}</vFrete>` : ''}
             <indTot>1</indTot>
           </prod>
           <imposto>
             <ICMS>
+              ${csosn === '500' ? `
+              <ICMSSN500>
+                <orig>${origem}</orig>
+                <CSOSN>500</CSOSN>
+              </ICMSSN500>` : `
               <ICMSSN102>
                 <orig>${origem}</orig>
-                <CSOSN>${csosn}</CSOSN>
-              </ICMSSN102>
+                <CSOSN>102</CSOSN>
+              </ICMSSN102>`}
             </ICMS>
             <PIS>
               <PISOutr>
@@ -271,15 +301,26 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
   });
   
   let pagamentosXml = '';
+  const trocoTotal = Math.round(
+    (data.forma_pagamento || []).reduce(
+      (sum: number, pagamento: any) => sum + (Number(pagamento.troco) || 0),
+      0
+    ) * 100
+  ) / 100;
+
   (data.forma_pagamento || []).forEach((pagamento: any) => {
     const tPag = String(mapPaymentType(pagamento.tipo)).padStart(2, '0');
-    const isCartao = tPag === '03' || tPag === '04';
+
+    // Crédito (03), Débito (04) e PIX (17) exigem o grupo <card>.
+    // Neste PDV, o pagamento ocorre em POS/PIX não integrado ao sistema,
+    // portanto informamos tpIntegra = 2.
+    const exigeGrupoCard = tPag === '03' || tPag === '04' || tPag === '17';
 
     pagamentosXml += `
         <detPag>
           <tPag>${tPag}</tPag>
           <vPag>${(Number(pagamento.valor) || 0).toFixed(2)}</vPag>
-          ${isCartao ? `<card><tpIntegra>2</tpIntegra></card>` : ''}
+          ${exigeGrupoCard ? `<card><tpIntegra>2</tpIntegra></card>` : ''}
         </detPag>`;
   });
   
@@ -388,7 +429,7 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
         <vFCPST>0.00</vFCPST>
         <vFCPSTRet>0.00</vFCPSTRet>
         <vProd>${totalProdutos.toFixed(2)}</vProd>
-        <vFrete>${(Number(data.frete) || 0).toFixed(2)}</vFrete>
+        <vFrete>${freteTotal.toFixed(2)}</vFrete>
         <vSeg>0.00</vSeg>
         <vDesc>0.00</vDesc>
         <vII>0.00</vII>
@@ -397,7 +438,7 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
         <vPIS>0.00</vPIS>
         <vCOFINS>0.00</vCOFINS>
         <vOutro>0.00</vOutro>
-        <vNF>${(totalProdutos + (Number(data.frete) || 0)).toFixed(2)}</vNF>
+        <vNF>${(totalProdutos + freteTotal).toFixed(2)}</vNF>
       </ICMSTot>
     </total>
     <transp>
@@ -405,6 +446,7 @@ export async function generateNfceXml(data: any, config: any, numeroNfce: number
     </transp>
     <pag>
       ${pagamentosXml}
+      ${trocoTotal > 0 ? `<vTroco>${trocoTotal.toFixed(2)}</vTroco>` : ''}
     </pag>
     <infAdic>
       <infCpl>Documento emitido por ME ou EPP optante pelo Simples Nacional. Nao gera direito a credito fiscal de IPI.</infCpl>

@@ -343,6 +343,7 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
             forma_pagamento: currentPayments.map((p) => ({
               tipo: p.type,
               valor: p.amount,
+              troco: p.change || 0,
             })),
           }),
         });

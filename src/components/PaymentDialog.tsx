@@ -38,7 +38,9 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
   const [amount, setAmount] = useState("");
 
   const subtotal = total - freight;
-  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+  // Total efetivamente pago na venda: no dinheiro, desconta o troco.
+  // Ex.: recebeu R$ 50,00 para quitar R$ 48,75 => pagamento líquido R$ 48,75.
+  const totalPaid = payments.reduce((sum, p) => sum + p.amount - (p.change || 0), 0);
   const remaining = total - totalPaid;
   const isComplete = remaining <= 0.01;
 
@@ -81,15 +83,9 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
     onClose();
   };
 
-  // Auto-avançar quando o pagamento estiver completo
-  useEffect(() => {
-    if (isComplete && payments.length > 0 && open) {
-      const timer = setTimeout(() => {
-        handleConfirmPayment();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isComplete, payments.length, open]);
+  // A confirmação permanece manual. Isso permite conferir o troco antes de finalizar
+  // e evita que um pagamento em dinheiro com valor recebido maior que o restante
+  // seja fechado automaticamente antes da conferência do operador.
 
   // Calcular troco total
   const totalChange = payments.reduce((sum, p) => {

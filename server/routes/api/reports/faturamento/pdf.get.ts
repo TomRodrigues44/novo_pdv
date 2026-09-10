@@ -422,6 +422,11 @@ export default defineEventHandler(async (event) => {
     // -------------------------------------------------------------------------
     let tableY = 475;
 
+    // Área protegida do rodapé. Nenhuma linha da tabela pode ultrapassar este limite.
+    const FOOTER_TOP = 700;
+    const FOOTER_SAFE_GAP = 16;
+    const CONTENT_BOTTOM = FOOTER_TOP - FOOTER_SAFE_GAP;
+
     const drawTableTitle = (y: number) => {
       doc.save().roundedRect(LEFT, y, CONTENT_W, 27, 6).fill(ORANGE).restore();
       doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(11)
@@ -450,7 +455,8 @@ export default defineEventHandler(async (event) => {
     tableY = drawTableHeader(tableY);
 
     for (const day of report.porDia) {
-      if (tableY > 716) {
+      // Reserva a altura completa da próxima linha antes de desenhá-la.
+      if (tableY + 21 > CONTENT_BOTTOM) {
         doc.addPage();
         tableY = 44;
         tableY = drawTableTitle(tableY);
@@ -481,6 +487,15 @@ export default defineEventHandler(async (event) => {
       tableY += 21;
     }
 
+    // Total do período. Se não houver espaço seguro acima do rodapé,
+    // continua em nova página repetindo o cabeçalho da tabela.
+    if (tableY + 23 > CONTENT_BOTTOM) {
+      doc.addPage();
+      tableY = 44;
+      tableY = drawTableTitle(tableY);
+      tableY = drawTableHeader(tableY);
+    }
+
     // Total do período.
     let x = LEFT;
     const totalValues = [
@@ -506,7 +521,7 @@ export default defineEventHandler(async (event) => {
     // -------------------------------------------------------------------------
     // OBSERVAÇÃO
     // -------------------------------------------------------------------------
-    if (tableY > 635) {
+    if (tableY + 16 + 48 > CONTENT_BOTTOM) {
       doc.addPage();
       tableY = 50;
     } else {
@@ -528,7 +543,7 @@ export default defineEventHandler(async (event) => {
     // -------------------------------------------------------------------------
     // RODAPÉ — sempre dentro da primeira página útil; evita página vazia.
     // -------------------------------------------------------------------------
-    const footerTop = 700;
+    const footerTop = FOOTER_TOP;
     const footerBottom = 782;
 
     const footerAddress = [

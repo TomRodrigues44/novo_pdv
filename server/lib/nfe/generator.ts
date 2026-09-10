@@ -12,9 +12,9 @@ const HOMOLOGATION_RECIPIENT_NAME = 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - S
 const text = (value: unknown) => String(value ?? '').trim();
 const digits = (value: unknown) => text(value).replace(/\D/g, '');
 const xml = (value: unknown) => text(value)
-  .replace(/&/g, '&')
-  .replace(/</g, '<')
-  .replace(/>/g, '>')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&apos;');
 
@@ -97,21 +97,46 @@ export function generateNfeXml(data: any, config: any, number: number, series: n
     : HOMOLOGATION_RECIPIENT_NAME;
   const interstate = recipientUf !== emitterUf;
   const productsTotal = data.items.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
-  const freight = Number(data.freight) || 0;
+  const freightCents = Math.max(0, Math.round((Number(data.freight) || 0) * 100));
+  const freight = freightCents / 100;
   const total = productsTotal + freight;
+
+  let distributedFreightCents = 0;
 
   const itemsXml = data.items.map((item: any, index: number) => {
     const fiscal = item.fiscal || {};
     const itemTotal = item.price * item.quantity;
-    const itemFreight = index === 0 ? freight : 0;
+    let itemFreightCents = 0;
+
+    if (freightCents > 0 && productsTotal > 0) {
+      if (index === data.items.length - 1) {
+        itemFreightCents = freightCents - distributedFreightCents;
+      } else {
+        itemFreightCents = Math.round((itemTotal / productsTotal) * freightCents);
+        distributedFreightCents += itemFreightCents;
+      }
+    }
+
+    const itemFreight = itemFreightCents / 100;
     const cfop = digits(fiscal.cfop) || (interstate ? '6102' : '5102');
     const ncm = digits(fiscal.ncm);
     const origin = Number(fiscal.origem ?? 0);
+    const csosn = digits(fiscal.csosn || fiscal.icms_csosn || '102');
+
+    if (!['102', '500'].includes(csosn)) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: `CSOSN ${csosn || '(vazio)'} do produto “${item.name}” ainda não é suportado pelo emissor de NF-e.`,
+      });
+    }
+
+    const pisCst = digits(fiscal.pis_cst || fiscal.cst_pis || '99').padStart(2, '0');
+    const cofinsCst = digits(fiscal.cofins_cst || fiscal.cst_cofins || '99').padStart(2, '0');
 
     return `
       <det nItem="${index + 1}">
         <prod>
-          <cProd>${xml(item.id)}</cProd>
+          <cProd>${xml(item.codigo || item.id)}</cProd>
           <cEAN>SEM GTIN</cEAN>
           <xProd>${xml(item.name)}</xProd>
           <NCM>${ncm}</NCM>
@@ -130,14 +155,13 @@ export function generateNfeXml(data: any, config: any, number: number, series: n
         </prod>
         <imposto>
           <ICMS>
-            <ICMSSN102>
-              <orig>${origin}</orig>
-              <CSOSN>102</CSOSN>
-            </ICMSSN102>
+            ${csosn === '500'
+              ? `<ICMSSN500><orig>${origin}</orig><CSOSN>500</CSOSN></ICMSSN500>`
+              : `<ICMSSN102><orig>${origin}</orig><CSOSN>102</CSOSN></ICMSSN102>`}
           </ICMS>
           <PIS>
             <PISOutr>
-              <CST>49</CST>
+              <CST>${pisCst}</CST>
               <vBC>0.00</vBC>
               <pPIS>0.0000</pPIS>
               <vPIS>0.00</vPIS>
@@ -145,7 +169,7 @@ export function generateNfeXml(data: any, config: any, number: number, series: n
           </PIS>
           <COFINS>
             <COFINSOutr>
-              <CST>49</CST>
+              <CST>${cofinsCst}</CST>
               <vBC>0.00</vBC>
               <pCOFINS>0.0000</pCOFINS>
               <vCOFINS>0.00</vCOFINS>
@@ -157,6 +181,12 @@ export function generateNfeXml(data: any, config: any, number: number, series: n
 
   const paymentsXml = data.payments.map((payment: any) => `
       <detPag><tPag>${paymentCode(payment.type)}</tPag><vPag>${Number(payment.amount).toFixed(2)}</vPag></detPag>`).join('');
+
+  const totalChangeCents = data.payments.reduce(
+    (sum: number, payment: any) => sum + Math.max(0, Math.round((Number(payment.change) || Number(payment.troco) || 0) * 100)),
+    0,
+  );
+  const changeXml = totalChangeCents > 0 ? `<vTroco>${(totalChangeCents / 100).toFixed(2)}</vTroco>` : '';
 
   const consultationUrl = 'https://www.sefaz.rr.gov.br/nfe/consulta';
   const emitterMunicipalityCode = digits(config.codigo_municipio || '1400100');
@@ -194,8 +224,10 @@ export function generateNfeXml(data: any, config: any, number: number, series: n
       <vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS>
       <vOutro>0.00</vOutro><vNF>${total.toFixed(2)}</vNF><vTotTrib>0.00</vTotTrib></ICMSTot></total>
     <transp><modFrete>${data.freightMode || (freight > 0 ? '0' : '9')}</modFrete></transp>
-    <pag>${paymentsXml}</pag>
-    <infAdic><infCpl>NF-e EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL.</infCpl></infAdic>
+    <pag>${paymentsXml}${changeXml}</pag>
+    ${config.ambiente !== 'producao'
+      ? '<infAdic><infCpl>NF-e EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL.</infCpl></infAdic>'
+      : ''}
   </infNFe>
 </NFe>`;
 

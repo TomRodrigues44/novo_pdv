@@ -12,14 +12,14 @@ export default defineEventHandler(async (event) => {
 
   try {
     const result = await sql`
-      SELECT numero, xml_envio
+      SELECT numero, xml_retorno
       FROM nfe
       WHERE id = ${id}
         AND status = 'autorizada'
       LIMIT 1
     `;
 
-    if (result.length === 0 || !result[0].xml_envio) {
+    if (result.length === 0 || !result[0].xml_retorno) {
       throw createError({
         statusCode: 404,
         statusMessage: 'XML da NF-e não encontrado',
@@ -31,7 +31,16 @@ export default defineEventHandler(async (event) => {
       'Content-Disposition': `attachment; filename="nfe-${result[0].numero || id}.xml"`,
     });
 
-    return result[0].xml_envio;
+    const xmlRetorno = String(result[0].xml_retorno || '').trim();
+
+    if (!xmlRetorno.includes('<protNFe') && !xmlRetorno.includes(':protNFe')) {
+      throw createError({
+        statusCode: 422,
+        statusMessage: 'XML autorizado da NF-e está sem protocolo de autorização (protNFe).',
+      });
+    }
+
+    return xmlRetorno;
   } catch (error: any) {
     console.error('Error downloading NFe XML:', error);
 
