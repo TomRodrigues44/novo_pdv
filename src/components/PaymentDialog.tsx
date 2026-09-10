@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,7 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
   const [selectedType, setSelectedType] = useState<"debit" | "credit" | "pix" | "cash">("debit");
   const [amount, setAmount] = useState("");
+  const autoConfirmingRef = useRef(false);
 
   const subtotal = total - freight;
   // Total efetivamente pago na venda: no dinheiro, desconta o troco.
@@ -69,23 +70,44 @@ export const PaymentDialog = ({ open, onClose, total, freight, cartItems, custom
   };
 
   const handleConfirmPayment = () => {
-    if (!isComplete || payments.length === 0) {
+    if (!isComplete || payments.length === 0 || autoConfirmingRef.current) {
       return;
     }
-    onPaymentConfirm(payments);
-    setPayments([]);
-    onClose();
-  };
 
-  const handleClose = () => {
+    autoConfirmingRef.current = true;
+    onPaymentConfirm([...payments]);
     setPayments([]);
     setAmount("");
     onClose();
   };
 
-  // A confirmação permanece manual. Isso permite conferir o troco antes de finalizar
-  // e evita que um pagamento em dinheiro com valor recebido maior que o restante
-  // seja fechado automaticamente antes da conferência do operador.
+  const handleClose = () => {
+    autoConfirmingRef.current = false;
+    setPayments([]);
+    setAmount("");
+    onClose();
+  };
+
+  // Restaura a confirmação automática quando o pagamento líquido atinge o total.
+  // A trava impede disparos duplicados enquanto o estado/renderização é atualizado.
+  useEffect(() => {
+    if (!open) {
+      autoConfirmingRef.current = false;
+      return;
+    }
+
+    if (!isComplete || payments.length === 0 || autoConfirmingRef.current) {
+      return;
+    }
+
+    autoConfirmingRef.current = true;
+    const completedPayments = [...payments];
+
+    onPaymentConfirm(completedPayments);
+    setPayments([]);
+    setAmount("");
+    onClose();
+  }, [open, isComplete, payments, onPaymentConfirm, onClose]);
 
   // Calcular troco total
   const totalChange = payments.reduce((sum, p) => {

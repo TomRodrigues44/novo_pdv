@@ -120,6 +120,49 @@ export const CartPanel = ({ selectedCustomer, onCustomerChange, onOpenCustomerFo
 
   const totalWithFreight = cartTotal + freight;
 
+  // Ao selecionar/trocar um cliente, reaproveitar automaticamente os dados
+  // cadastrais como dados de entrega da venda.
+  // O operador continua podendo editar/remover a entrega sem alterar o cadastro.
+  useEffect(() => {
+    if (!selectedCustomer) {
+      setDeliveryData(null);
+      setDeliveryForm({
+        name: "",
+        phone: "",
+        address: "",
+        number: "",
+        neighborhood: "",
+        notes: "",
+      });
+      return;
+    }
+
+    const customerDelivery: DeliveryData = {
+      name: selectedCustomer.name || "",
+      phone: selectedCustomer.phone || "",
+      address: selectedCustomer.logradouro || selectedCustomer.address || "",
+      number: selectedCustomer.numero || "",
+      neighborhood: selectedCustomer.bairro || "",
+      notes: selectedCustomer.complemento
+        ? `Complemento: ${selectedCustomer.complemento}`
+        : "",
+    };
+
+    setDeliveryForm(customerDelivery);
+
+    // Só considera uma entrega automaticamente quando os campos essenciais
+    // do cadastro estiverem preenchidos. Caso falte algo, o formulário já
+    // ficará pré-preenchido para o operador completar em "Adicionar Entrega".
+    const hasCompleteDelivery =
+      customerDelivery.name.trim() &&
+      customerDelivery.phone.trim() &&
+      customerDelivery.address.trim() &&
+      customerDelivery.number.trim() &&
+      customerDelivery.neighborhood.trim();
+
+    setDeliveryData(hasCompleteDelivery ? customerDelivery : null);
+  }, [selectedCustomer]);
+
   // Buscar motoboys
   useEffect(() => {
     const fetchMotoboys = async () => {
