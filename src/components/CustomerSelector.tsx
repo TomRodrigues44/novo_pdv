@@ -69,9 +69,11 @@ export const CustomerSelector = ({
     }
   }, [open]);
 
+  const normalizedSearchTerm = searchTerm.toLowerCase();
+
   const filteredCustomers = customers.filter((customer) =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.phone.includes(searchTerm)
+    (customer.name ?? '').toLowerCase().includes(normalizedSearchTerm) ||
+    (customer.phone ?? '').includes(searchTerm)
   );
 
   const handleSelectCustomer = (customer: Customer) => {
