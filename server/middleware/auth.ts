@@ -19,13 +19,14 @@ const cashierRoutes = [
   '/api/sales',
   '/api/nfce',
   '/api/fiscal/company-config',
-  '/api/reports',        // Added: Relatórios
-  '/api/nfe/emitir',    // Added: Emitir NF-e
-  '/api/xmls',          // Added: XMLs Fiscais
-  '/api/contingency',   // Added: Contingência
-  '/api/kitchen',       // Added: Cozinha
-  '/api/cancel-password', // Added: Senha de cancelamento
-  '/api/nfe',           // Added: NF-e geral
+  '/api/fiscal/xml-export',
+  '/api/reports',
+  '/api/nfe/emitir',
+  '/api/xmls',
+  '/api/contingency',
+  '/api/kitchen',
+  '/api/cancel-password',
+  '/api/nfe',
 ];
 
 const managerRoutes = [
@@ -38,21 +39,37 @@ const managerRoutes = [
 
 function isAllowed(path: string, role: UserRole) {
   if (role === 'admin') return true;
-  const allowedRoutes = role === 'manager' ? managerRoutes : cashierRoutes;
-  return allowedRoutes.some((route) => path === route || path.startsWith(`${route}/`));
+
+  const allowedRoutes =
+    role === 'manager' ? managerRoutes : cashierRoutes;
+
+  return allowedRoutes.some(
+    (route) => path === route || path.startsWith(`${route}/`)
+  );
 }
 
 export default defineEventHandler(async (event) => {
-  const path = getRequestPath(event);
+  // A autorização deve considerar somente o caminho da rota,
+  // sem parâmetros de consulta como ?inicio=...&fim=...
+  const requestPath = getRequestPath(event);
+  const path = requestPath.split('?')[0];
+
   if (!path.startsWith('/api/') || publicRoutes.has(path)) return;
 
   const user = await getSessionUser(event);
+
   if (!user) {
-    throw createError({ statusCode: 401, statusMessage: 'Faça login para continuar.' });
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Faça login para continuar.',
+    });
   }
 
   if (!isAllowed(path, user.role)) {
-    throw createError({ statusCode: 403, statusMessage: 'Seu perfil não possui acesso a este recurso.' });
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Seu perfil não possui acesso a este recurso.',
+    });
   }
 
   event.context.authUser = user;

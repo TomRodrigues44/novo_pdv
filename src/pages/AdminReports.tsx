@@ -57,6 +57,7 @@ const AdminReports = () => {
  const [cancelJustificativa, setCancelJustificativa] = useState("");
  const [cancelLoading, setCancelLoading] = useState(false);
  const [cancelPasswordConfigured, setCancelPasswordConfigured] = useState(false);
+ const [downloadingXmlId, setDownloadingXmlId] = useState<any>(null);
 
  const report = getSalesReport(days);
 
@@ -121,7 +122,97 @@ const AdminReports = () => {
    setLoadingReceipt(false);
   }
  };
+ const handleDownloadXml = async (sale: any) => {
+  if (!sale?.id) {
+    toast.error("Venda inválida para download do XML.");
+    return;
+  }
 
+  if (!["autorizada", "cancelada"].includes(sale.xml_status)) {
+    toast.error(
+      "Somente documentos fiscais autorizados ou cancelados podem ser baixados."
+    );
+    return;
+  }
+
+  if (sale.fiscal_model !== "NFCe" && sale.fiscal_model !== "NFe") {
+    toast.error(
+      "Esta venda não possui NF-e/NFC-e disponível para download."
+    );
+    return;
+  }
+
+  setDownloadingXmlId(sale.id);
+
+  try {
+    const endpoint =
+      sale.fiscal_model === "NFe"
+        ? `/api/nfe/xml/${sale.id}`
+        : `/api/nfce/xml/${sale.id}`;
+
+    const response = await fetch(endpoint, {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      let message = "Não foi possível baixar o XML fiscal.";
+
+      try {
+        const error = await response.json();
+
+        message =
+          error.statusMessage ||
+          error.message ||
+          message;
+      } catch {
+        // Mantém a mensagem padrão.
+      }
+
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+
+    const disposition =
+      response.headers.get("content-disposition") || "";
+
+    const filenameMatch =
+      disposition.match(/filename\*=UTF-8''([^;]+)/i) ||
+      disposition.match(/filename="?([^";]+)"?/i);
+
+    const filename = filenameMatch?.[1]
+      ? decodeURIComponent(filenameMatch[1].trim())
+      : `${sale.fiscal_model}-${sale.id}-procNFe.xml`;
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = filename;
+
+    document.body.appendChild(link);
+
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(url);
+
+    toast.success("XML fiscal baixado com sucesso!");
+  } catch (error) {
+    console.error("Erro ao baixar XML fiscal:", error);
+
+    toast.error(
+      error instanceof Error
+        ? error.message
+        : "Erro ao baixar XML fiscal."
+    );
+  } finally {
+    setDownloadingXmlId(null);
+  }
+ };
  const handleCancelClick = (sale: any) => {
   setSelectedSale(sale);
   setCancelDialogOpen(true);
@@ -316,6 +407,22 @@ const AdminReports = () => {
                   ? <Loader2 className="h-4 w-4 animate-spin" />
                   : <Printer className="h-4 w-4" />}
                 </Button>
+                {(sale.fiscal_model === "NFCe" ||
+                  sale.fiscal_model === "NFe") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDownloadXml(sale)}
+                  disabled={downloadingXmlId === sale.id}
+                  title="Baixar XML fiscal"
+                                            >
+                  {downloadingXmlId === sale.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                  <Download className="h-4 w-4" />
+                    )}
+                  </Button>
+                    )}
                 <Button
                  variant="ghost"
                  size="sm"

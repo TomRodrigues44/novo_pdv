@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, FileText, Calendar, Search, Package, ReceiptText, BarChart3, Printer, FileSpreadsheet } from "lucide-react";
+import { Download, FileText, Calendar, Search, Package, ReceiptText, BarChart3, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 interface FiscalNote {
@@ -21,25 +21,6 @@ interface FiscalNote {
 
 type ModelFilter = "all" | "NF-e" | "NFC-e";
 
-interface FaturamentoDia {
-  data: string;
-  quantidade: number;
-  bruto: number;
-  canceladas: number;
-  faturamento: number;
-}
-
-interface FaturamentoResumo {
-  competencia: string;
-  totalRegistros: number;
-  vendasNaoCanceladas: number;
-  vendasCanceladas: number;
-  valorBruto: number;
-  valorCancelado: number;
-  faturamentoConsiderado: number;
-  porDia: FaturamentoDia[];
-}
-
 const AdminXmls = () => {
   const [notes, setNotes] = useState<FiscalNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,9 +28,6 @@ const AdminXmls = () => {
   const [dateFilter, setDateFilter] = useState("");
   const [modelFilter, setModelFilter] = useState<ModelFilter>("all");
   const [activeTab, setActiveTab] = useState<"xmls" | "danfes" | "faturamento">("xmls");
-  const [faturamento, setFaturamento] = useState<FaturamentoResumo | null>(null);
-  const [loadingFaturamento, setLoadingFaturamento] = useState(false);
-  const [faturamentoCompetencia, setFaturamentoCompetencia] = useState(() => new Date().toISOString().slice(0, 7));
 
   const fetchNotes = async () => {
     try {
@@ -144,38 +122,70 @@ const AdminXmls = () => {
   };
 
   const handleDownloadAll = async () => {
+    if (!dateFilter) {
+      toast.warning('Selecione o mês antes de baixar todos os XMLs.');
+      return;
+    }
+
     if (filteredNotes.length === 0) {
       toast.warning('Nenhum XML encontrado para download');
       return;
     }
 
     try {
-      const xmlContents = await Promise.all(
-        filteredNotes.map(async (note) => {
-          const endpoint = note.model === "NF-e"
-            ? `/api/nfe/xml/${note.fiscal_id}`
-            : `/api/nfce/xml/${note.fiscal_id}`;
+      const [year, month] = dateFilter.split('-').map(Number);
 
-          const response = await fetch(endpoint);
-          if (!response.ok) {
-            throw new Error(`Não foi possível baixar a ${note.model} nº ${note.xml_numero || note.id}`);
-          }
+      if (!year || !month || month < 1 || month > 12) {
+        throw new Error('Competência inválida. Selecione novamente o mês.');
+      }
 
-          return {
-            note,
-            xml: await response.text(),
-          };
-        }),
-      );
+      const lastDay = new Date(year, month, 0).getDate();
+      const inicio = `${year}-${String(month).padStart(2, '0')}-01`;
+      const fim = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-      const combinedXmls = xmlContents.map(({ note, xml }) =>
-        `<!-- ${note.model} nº ${note.xml_numero || note.id} | ${new Date(note.created_at).toLocaleString('pt-BR')} -->\n${xml}`,
-      ).join('\n\n');
+      const endpoint = `/api/fiscal/xml-export?inicio=${encodeURIComponent(inicio)}&fim=${encodeURIComponent(fim)}`;
 
-      downloadFile(combinedXmls, `xmls-fiscais-${dateFilter || 'todos'}.xml`, 'application/xml');
-      toast.success(`${filteredNotes.length} XML(s) baixado(s)!`);
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        let message = 'Não foi possível gerar o ZIP dos XMLs fiscais.';
+
+        try {
+          const errorData = await response.json();
+          message = errorData.statusMessage || errorData.message || message;
+        } catch {
+          // Mantém a mensagem padrão caso a resposta não seja JSON.
+        }
+
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get('content-disposition') || '';
+      const filenameMatch =
+        disposition.match(/filename\*=UTF-8''([^;]+)/i) ||
+        disposition.match(/filename="?([^";]+)"?/i);
+
+      const filename = filenameMatch?.[1]
+        ? decodeURIComponent(filenameMatch[1].trim())
+        : `XML-Fiscais-${inicio.replace(/-/g, '')}-${fim.replace(/-/g, '')}.zip`;
+
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success(`Pacote ZIP fiscal de ${dateFilter} gerado com sucesso!`);
     } catch (error: any) {
-      console.error('Error downloading fiscal XMLs:', error);
+      console.error('Error downloading fiscal ZIP:', error);
       toast.error(error.message || 'Erro ao baixar os XMLs');
     }
   };
@@ -188,51 +198,6 @@ const AdminXmls = () => {
 
     const url = `/api/nfce/pdf/${note.fiscal_id}`;
     window.open(url, "_blank", "noopener,noreferrer");
-  };
-
-  const fetchFaturamento = async () => {
-    if (!faturamentoCompetencia) return;
-    try {
-      setLoadingFaturamento(true);
-      const response = await fetch(`/api/reports/faturamento?competencia=${encodeURIComponent(faturamentoCompetencia)}`);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.statusMessage || 'Falha ao carregar faturamento');
-      }
-      setFaturamento(await response.json());
-    } catch (error: any) {
-      console.error('Error fetching billing report:', error);
-      setFaturamento(null);
-      toast.error(error.message || 'Erro ao carregar faturamento');
-    } finally {
-      setLoadingFaturamento(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === "faturamento") fetchFaturamento();
-  }, [activeTab, faturamentoCompetencia]);
-
-  const handleFaturamentoPdf = () => {
-    if (!faturamentoCompetencia) {
-      toast.warning("Selecione uma competência.");
-      return;
-    }
-
-    window.open(
-      `/api/reports/faturamento/pdf?competencia=${encodeURIComponent(faturamentoCompetencia)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
-  };
-
-  const handleFaturamentoExcel = () => {
-    if (!faturamentoCompetencia) {
-      toast.warning("Selecione uma competência.");
-      return;
-    }
-
-    window.location.href = `/api/reports/faturamento/excel?competencia=${encodeURIComponent(faturamentoCompetencia)}`;
   };
 
   const formatCurrency = (value: number) =>
@@ -519,97 +484,18 @@ const AdminXmls = () => {
         )}
 
         {activeTab === "faturamento" && (
-          <>
-            <Card className="mb-6">
-              <CardContent className="p-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                  <div className="flex-1">
-                    <label className="mb-2 block text-sm font-medium text-gray-700">Competência</label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                      <Input type="month" value={faturamentoCompetencia}
-                        onChange={(event) => setFaturamentoCompetencia(event.target.value)} className="pl-10" />
-                    </div>
-                  </div>
-                  <Button type="button" onClick={fetchFaturamento} disabled={loadingFaturamento || !faturamentoCompetencia}
-                    className="bg-orange-600 hover:bg-orange-700">
-                    <BarChart3 className="mr-2 h-4 w-4" />
-                    {loadingFaturamento ? "Atualizando..." : "Atualizar"}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleFaturamentoPdf}
-                    disabled={!faturamentoCompetencia}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Gerar PDF
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleFaturamentoExcel}
-                    disabled={!faturamentoCompetencia}>
-                    <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    Gerar Excel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {loadingFaturamento ? (
-              <Card><CardContent className="py-16 text-center text-gray-500">Carregando faturamento...</CardContent></Card>
-            ) : !faturamento ? (
-              <Card><CardContent className="py-16 text-center text-gray-500">
-                <BarChart3 className="mx-auto mb-4 h-12 w-12 text-orange-300" />
-                Não foi possível carregar o relatório desta competência.
-              </CardContent></Card>
-            ) : (
-              <>
-                <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-500">Registros</CardTitle></CardHeader>
-                    <CardContent><div className="text-2xl font-bold">{faturamento.totalRegistros}</div>
-                      <p className="mt-1 text-xs text-gray-500">{faturamento.vendasNaoCanceladas} não canceladas</p></CardContent></Card>
-                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-500">Valor bruto</CardTitle></CardHeader>
-                    <CardContent><div className="text-2xl font-bold">{formatCurrency(faturamento.valorBruto)}</div>
-                      <p className="mt-1 text-xs text-gray-500">Todas as vendas registradas</p></CardContent></Card>
-                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-500">Canceladas</CardTitle></CardHeader>
-                    <CardContent><div className="text-2xl font-bold text-red-600">{formatCurrency(faturamento.valorCancelado)}</div>
-                      <p className="mt-1 text-xs text-gray-500">{faturamento.vendasCanceladas} venda(s)</p></CardContent></Card>
-                  <Card className="border-green-200 bg-green-50"><CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-green-700">Faturamento considerado</CardTitle></CardHeader>
-                    <CardContent><div className="text-2xl font-bold text-green-700">{formatCurrency(faturamento.faturamentoConsiderado)}</div>
-                      <p className="mt-1 text-xs text-green-700/70">Bruto menos canceladas</p></CardContent></Card>
-                </div>
-
-                <Card>
-                  <CardHeader><CardTitle>Faturamento diário</CardTitle></CardHeader>
-                  <CardContent>
-                    {faturamento.porDia.length === 0 ? (
-                      <div className="py-12 text-center text-gray-500">Nenhuma venda encontrada nesta competência.</div>
-                    ) : (
-                      <div className="overflow-x-auto"><Table><TableHeader><TableRow>
-                        <TableHead>Data</TableHead><TableHead className="text-right">Vendas</TableHead>
-                        <TableHead className="text-right">Valor bruto</TableHead><TableHead className="text-right">Canceladas</TableHead>
-                        <TableHead className="text-right">Faturamento</TableHead>
-                      </TableRow></TableHeader><TableBody>
-                        {faturamento.porDia.map((dia) => (
-                          <TableRow key={dia.data}>
-                            <TableCell className="font-medium">{new Date(`${dia.data}T12:00:00`).toLocaleDateString('pt-BR')}</TableCell>
-                            <TableCell className="text-right">{dia.quantidade}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(dia.bruto)}</TableCell>
-                            <TableCell className="text-right text-red-600">{formatCurrency(dia.canceladas)}</TableCell>
-                            <TableCell className="text-right font-semibold text-green-700">{formatCurrency(dia.faturamento)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody></Table></div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card className="mt-6 border-amber-200 bg-amber-50">
-                  <CardContent className="p-4 text-sm text-amber-800">
-                    Nesta etapa, o faturamento considerado corresponde às vendas registradas no período,
-                    excluindo apenas as vendas com status <strong>cancelled</strong>. Valide os totais antes
-                    de utilizá-los para apuração contábil.
-                  </CardContent>
-                </Card>
-              </>
-            )}
-          </>
+          <Card>
+            <CardHeader>
+              <CardTitle>Relatório de Faturamento</CardTitle>
+            </CardHeader>
+            <CardContent className="py-12 text-center">
+              <BarChart3 className="mx-auto mb-4 h-12 w-12 text-orange-300" />
+              <h3 className="text-lg font-semibold">Relatório contábil em implantação</h3>
+              <p className="mx-auto mt-2 max-w-2xl text-sm text-gray-600">
+                Aqui serão gerados o PDF consolidado e a planilha detalhada por competência, com vendas, cancelamentos e faturamento considerado.
+              </p>
+            </CardContent>
+          </Card>
         )}
 
         <Card className="mt-6 border-blue-200 bg-blue-50">
