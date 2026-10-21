@@ -495,6 +495,10 @@ const CashRegister = () => {
     const closedDate = closedAt.toLocaleDateString('pt-BR');
     const closedTime = closedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
+    // Identificação da unidade configurada no sistema.
+    // É exibida tanto no cabeçalho quanto no rodapé do relatório impresso.
+    const identificacaoLoja = String(register.identificacaoLoja || '').trim();
+
     const html = `
       <!DOCTYPE html>
       <html lang="pt-BR">
@@ -546,6 +550,14 @@ const CashRegister = () => {
             line-height: 1.1;
             font-weight: 900;
             letter-spacing: .2px;
+          }
+
+          .store-identification {
+            margin: 3px 0 2px;
+            font-size: 14px;
+            line-height: 1.15;
+            font-weight: 900;
+            text-transform: uppercase;
           }
 
           .document-title {
@@ -683,6 +695,13 @@ const CashRegister = () => {
             font-weight: 900;
           }
 
+          .footer-store {
+            margin-top: 2px;
+            font-size: 13px;
+            font-weight: 900;
+            text-transform: uppercase;
+          }
+
           @media print {
             html, body {
               width: 80mm !important;
@@ -700,6 +719,7 @@ const CashRegister = () => {
         <main class="receipt">
           <header class="header">
             <h1 class="company">EMPÓRIO DAS COXINHAS</h1>
+            ${identificacaoLoja ? `<div class="store-identification">${escapeHtml(identificacaoLoja)}</div>` : ''}
             <div class="document-title">Relatório de Fechamento de Caixa</div>
           </header>
 
@@ -839,6 +859,7 @@ const CashRegister = () => {
           <footer class="footer">
             <div class="thanks">*** OBRIGADO PELA PREFERÊNCIA ***</div>
             <div class="footer-company">EMPÓRIO DAS COXINHAS</div>
+            ${identificacaoLoja ? `<div class="footer-store">${escapeHtml(identificacaoLoja)}</div>` : ''}
           </footer>
         </main>
 
