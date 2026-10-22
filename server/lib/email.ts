@@ -349,15 +349,32 @@ export async function sendCashRegisterCloseEmail(data: CashRegisterReportData): 
 
     const subject = `📊 Fechamento de Caixa${data.identificacaoLoja ? ` - ${data.identificacaoLoja}` : ''} - ${formatDateTime(data.closedAt)}`;
 
-    await transporter.sendMail({
-      from: `"Empório das Coxinhas" <${fromEmail}>`,
-      to: toEmail,
-      subject,
-      html,
-    });
+    const retryDelays = [0, 2000, 5000];
+    let lastError: any = null;
 
-    console.log(`✅ E-mail de fechamento de caixa enviado para ${toEmail}`);
-    return { success: true };
+    for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
+      const delay = retryDelays[attempt];
+      if (delay > 0) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+      try {
+        await transporter.sendMail({
+          from: `"Empório das Coxinhas" <${fromEmail}>`,
+          to: toEmail,
+          subject,
+          html,
+        });
+
+        console.log(`✅ E-mail de fechamento de caixa enviado para ${toEmail} (tentativa ${attempt + 1})`);
+        return { success: true };
+      } catch (error: any) {
+        lastError = error;
+        console.error(`❌ Tentativa ${attempt + 1}/3 de envio falhou:`, error?.message || error);
+      }
+    }
+
+    throw lastError || new Error('Falha ao enviar e-mail após 3 tentativas');
   } catch (error: any) {
     console.error('❌ Erro ao enviar e-mail de fechamento:', error);
     return { success: false, error: error.message };

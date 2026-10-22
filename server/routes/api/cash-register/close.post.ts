@@ -172,12 +172,18 @@ export default defineEventHandler(async (event) => {
         change_needed = ${finalChangeNeeded},
         change_counts = ${JSON.stringify(normalizedChangeCounts)}::jsonb,
         change_total = ${finalChangeTotal},
-        envelope_total = ${envelopeTotal}
+        envelope_total = ${envelopeTotal},
+        email_status = 'pending',
+        email_attempts = 0,
+        email_sent_at = NULL,
+        email_last_attempt_at = NULL,
+        email_last_error = NULL
       WHERE id = ${register.id}
     `;
     
     const result = { 
-      success: true, 
+      success: true,
+      id: register.id, 
       salesTotal,
       cashSales,
       closingCash: calculatedClosingCash,

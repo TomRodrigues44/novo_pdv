@@ -72,6 +72,43 @@ const CashRegister = () => {
     fetchMotoboys();
   }, []);
 
+  // Recupera automaticamente fechamentos cujo e-mail ficou pendente por falha de internet/SMTP.
+  // A rota do servidor processa no máximo um fechamento por chamada e ignora os já enviados.
+  useEffect(() => {
+    let cancelled = false;
+
+    const retryPendingEmail = async () => {
+      if (!navigator.onLine || cancelled) return;
+
+      try {
+        const response = await fetch('/api/cash-register/retry-pending-emails', {
+          method: 'POST',
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result?.processed && result?.success) {
+            console.log('📧 E-mail pendente recuperado automaticamente:', result.id);
+            queryClient.invalidateQueries({ queryKey: ['cash-register'] });
+          }
+        }
+      } catch (error) {
+        // Silencioso: a pendência permanece no banco e será tentada novamente depois.
+        console.warn('E-mail pendente ainda não pôde ser reenviado:', error);
+      }
+    };
+
+    retryPendingEmail();
+    const interval = window.setInterval(retryPendingEmail, 60_000);
+    window.addEventListener('online', retryPendingEmail);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener('online', retryPendingEmail);
+    };
+  }, [queryClient]);
+
   useEffect(() => {
     if (!currentRegister) {
       setTimeElapsed(0);
@@ -217,6 +254,7 @@ const CashRegister = () => {
         const closedRegister = {
           ...currentRegister,
           ...apiRegister,
+          id: apiRegister.id ?? result?.id ?? currentRegister?.id,
           opening_amount: apiRegister.opening_amount ?? currentRegister?.opening_amount,
           closing_amount: apiRegister.closing_amount ?? amount,
           expected_amount: apiRegister.expected_amount ?? result?.expectedCashAmount ?? result?.expectedTotalAmount ?? currentRegister?.expected_amount,
@@ -995,6 +1033,7 @@ const CashRegister = () => {
           : cashSales + changeTotal + additionTotal - totalsByCategory.brigadeiros - voucherTotal + difference;
 
       const emailData = {
+        cashRegisterId: register.id,
         openingAmount,
         salesTotal,
         calculatedClosingCash,
@@ -1038,6 +1077,7 @@ const CashRegister = () => {
 
       if (response.ok) {
         toast.success('E-mail do fechamento de caixa enviado com sucesso!');
+        queryClient.invalidateQueries({ queryKey: ['cash-register'] });
       } else {
         const error = await response.json();
         toast.error(error.statusMessage || 'Erro ao enviar e-mail');
